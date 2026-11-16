@@ -1,4 +1,4 @@
-import { format, isSameYear, isToday, isYesterday } from 'date-fns'
+import { differenceInCalendarDays, format, formatDistanceStrict, isSameYear, isToday, isYesterday } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import type { Address, FolderRole } from '@shared/types'
 
@@ -8,6 +8,28 @@ export function listDate(ts: number): string {
   if (isYesterday(d)) return 'Hier'
   if (isSameYear(d, new Date())) return format(d, 'd MMM', { locale: fr })
   return format(d, 'dd/MM/yy')
+}
+
+/** Going back in a conversation (newest first), when two messages are on different days: "La veille", "3 jours plus tôt"… */
+export function gapLabel(newer: number, older: number): string | null {
+  const days = differenceInCalendarDays(newer, older)
+  if (days <= 0) return null
+  if (days === 1) return 'La veille'
+  if (days < 7) return `${days} jours plus tôt`
+  return `${formatDistanceStrict(older, newer, { locale: fr, roundingMethod: 'floor' })} plus tôt`
+}
+
+/** Day heading in a conversation: "mercredi 11 novembre" (with the year when it isn't this one). */
+export function dayLabel(ts: number): string {
+  const d = new Date(ts)
+  return format(d, isSameYear(d, new Date()) ? 'EEEE d MMMM' : 'EEEE d MMMM yyyy', { locale: fr })
+}
+
+/** How long a conversation has been going: "sur 3 jours", or null within a day. */
+export function spanLabel(first: number, last: number): string | null {
+  if (differenceInCalendarDays(last, first) < 1) return null
+  const days = differenceInCalendarDays(last, first)
+  return days < 31 ? `sur ${days} jour${days > 1 ? 's' : ''}` : `sur ${formatDistanceStrict(first, last, { locale: fr })}`
 }
 
 export function fullDate(ts: number): string {

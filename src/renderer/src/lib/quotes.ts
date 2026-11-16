@@ -79,7 +79,8 @@ export function quoteTextMail(html: string): string {
   const lines = html.split('<br>')
   let i = lines.length - 1
   while (i >= 0 && (lines[i].trim() === '' || lines[i].startsWith('&gt;'))) i--
-  if (i === lines.length - 1) return html
+  // Only trailing blank lines: nothing quoted.
+  if (!lines.slice(i + 1).some((l) => l.startsWith('&gt;'))) return html
   if (i >= 0 && ATTRIBUTION.test(lines[i].replace(/<[^>]+>/g, '').trim())) i--
   const head = lines.slice(0, i + 1).join('<br>')
   const tail = lines.slice(i + 1).join('<br>')

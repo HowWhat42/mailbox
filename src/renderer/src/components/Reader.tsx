@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   Archive,
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   MailOpen,
   MoreHorizontal,
   OctagonAlert,
+  Paperclip,
   PenLine,
   Reply,
   ReplyAll,
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react'
 import type { Address, MessageDetail } from '@shared/types'
 import { api, threadKey, useStore } from '../store'
-import { displayName, formatAddresses, fullDate, listDate } from '../lib/format'
+import { dayLabel, displayName, formatAddresses, fullDate, gapLabel, listDate, spanLabel } from '../lib/format'
 import { draftToCompose, replyDraft, type ReplyKind } from '../lib/reply'
 import { threadMenu } from '../lib/threadActions'
 import { useLayout } from '../lib/layout'
@@ -53,76 +54,200 @@ function ToolButton({
   )
 }
 
+/** "à Paul Durand, vous +2": who a message went to, short. */
+function recipientsShort(m: MessageDetail, me: string): string {
+  const names = [...m.to, ...m.cc].map((a) => (a.address.toLowerCase() === me ? 'vous' : displayName(a)))
+  if (!names.length) return ''
+  return `à ${names.slice(0, 3).join(', ')}${names.length > 3 ? ` +${names.length - 3}` : ''}`
+}
+
+/** `top` / `bottom`: dates at each end of the item, for the day gaps around it. */
+type TimelineItem =
+  | { kind: 'message'; m: MessageDetail; top: number; bottom: number }
+  | { kind: 'folded'; messages: MessageDetail[]; top: number; bottom: number }
+
+/**
+ * The conversation as it's drawn, newest first: the two latest messages and the original stay
+ * visible, a run of collapsed messages in between folds into one row.
+ */
+function timeline(messages: MessageDetail[], expanded: Set<string>, showAll: boolean): TimelineItem[] {
+  const newestFirst = messages.toReversed()
+  const items: TimelineItem[] = []
+  let run: MessageDetail[] = []
+  const one = (m: MessageDetail): TimelineItem => ({ kind: 'message', m, top: m.date, bottom: m.date })
+  const flush = (): void => {
+    if (run.length >= 2) items.push({ kind: 'folded', messages: run, top: run[0]!.date, bottom: run.at(-1)!.date })
+    else items.push(...run.map(one))
+    run = []
+  }
+  newestFirst.forEach((m, i) => {
+    const foldable = !showAll && i > 1 && i < newestFirst.length - 1 && !expanded.has(m.id)
+    if (foldable) run.push(m)
+    else {
+      flush()
+      items.push(one(m))
+    }
+  })
+  flush()
+  return items
+}
+
+/** Left column of the conversation timeline: a node (avatar or count) and the rail down to the next one. */
+function Rail({ children, line = 'solid', end }: { children?: React.ReactNode; line?: 'solid' | 'dashed'; end?: boolean }) {
+  return (
+    <div aria-hidden className="flex flex-col items-center">
+      {children}
+      {!end && (
+        <span
+          className={`w-0 flex-1 border-l ${line === 'dashed' ? 'border-dashed border-line-strong' : 'border-line'} ${children ? 'mt-1.5' : ''}`}
+        />
+      )}
+    </div>
+  )
+}
+
 function Message({
   m,
+  me,
   expanded,
+  last,
   onToggle,
   onReply
 }: {
   m: MessageDetail
+  me: string
   expanded: boolean
+  last: boolean
   onToggle: () => void
   onReply: (m: MessageDetail) => void
 }) {
   const { toast } = useStore.getState()
-  const name = displayName(m.from)
-
-  if (!expanded) {
-    return (
-      <button onClick={onToggle} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:bg-hover">
-        <Avatar name={name} seed={m.from.address} size={28} />
-        <span className="w-40 shrink-0 truncate text-[13px] font-medium text-fg-2">{name}</span>
-        <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{(m.text ?? '').replace(/\s+/g, ' ').slice(0, 160)}</span>
-        <span className="tnum shrink-0 text-[11.5px] text-muted">{listDate(m.date)}</span>
-      </button>
-    )
-  }
-
-  const recipients = [m.to.length ? `À ${formatAddresses(m.to)}` : '', m.cc.length ? `Cc ${formatAddresses(m.cc)}` : ''].filter(Boolean)
+  const mine = m.from.address.toLowerCase() === me
+  const name = mine ? 'Vous' : displayName(m.from)
+  const to = recipientsShort(m, me)
 
   return (
-    <article className="rounded-xl bg-surface px-3 py-4 shadow-card @[600px]:px-5">
-      <header className="mb-4 flex items-start gap-3">
-        <button onClick={onToggle} className="shrink-0" aria-label="Replier le message">
-          <Avatar name={name} seed={m.from.address} size={36} />
-        </button>
-        <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left" aria-label={`Replier le message de ${name}`}>
-          <span className="flex items-baseline gap-2">
-            <span className="truncate text-[13.5px] font-semibold">{name}</span>
-            {m.from.name && <span className="truncate text-[12px] text-muted select-text">{m.from.address}</span>}
+    <li data-mine={mine || undefined} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3">
+      <Rail end={last}>
+        <span className={`rounded-full ${mine ? 'outline-2 outline-offset-2 outline-accent' : ''}`}>
+          <Avatar name={displayName(m.from)} seed={m.from.address} size={32} />
+        </span>
+      </Rail>
+      <div className={last ? '' : 'pb-3'}>
+        {!expanded ? (
+          <button
+            onClick={onToggle}
+            aria-label={`Déplier le message de ${name}`}
+            className={`flex min-h-8 w-full items-center gap-3 rounded-xl px-3 py-1.5 text-left transition-colors hover:bg-hover ${mine ? 'bg-accent-soft/40' : ''}`}
+          >
+            <span className={`w-28 shrink-0 truncate text-[13px] @[600px]:w-36 ${m.unread ? 'font-semibold text-fg' : 'font-medium text-fg-2'}`}>
+              {name}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[12.5px] text-muted">{(m.text ?? '').replace(/\s+/g, ' ').slice(0, 160)}</span>
+            {m.attachments.length > 0 && <Paperclip size={13} className="shrink-0 text-muted" aria-label="Pièces jointes" />}
+            {m.unread && <span className="size-1.5 shrink-0 rounded-full bg-accent" aria-label="Non lu" />}
+            <span className="tnum shrink-0 text-[11.5px] text-muted">{listDate(m.date)}</span>
+          </button>
+        ) : (
+          <article
+            aria-label={`Message de ${name}`}
+            className={`rounded-xl px-3 py-4 shadow-card @[600px]:px-5 ${mine ? 'bg-[color-mix(in_oklch,var(--accent)_7%,var(--surface))]' : 'bg-surface'}`}
+          >
+            <header className="mb-4 flex items-start gap-3">
+              <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left" aria-label={`Replier le message de ${name}`}>
+                <span className="flex items-baseline gap-2">
+                  <span className="truncate text-[13.5px] font-semibold">{name}</span>
+                  {!mine && m.from.name && (
+                    <span className="hidden truncate text-[12px] text-muted select-text @[520px]:inline">{m.from.address}</span>
+                  )}
+                  {m.unread && (
+                    <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10.5px] font-medium text-accent">Nouveau</span>
+                  )}
+                </span>
+                {to && (
+                  <span
+                    className="block truncate text-[12px] text-muted select-text"
+                    title={[formatAddresses(m.to), m.cc.length ? `Cc ${formatAddresses(m.cc)}` : ''].filter(Boolean).join('\n')}
+                  >
+                    {to}
+                  </span>
+                )}
+              </button>
+              <time dateTime={new Date(m.date).toISOString()} className="tnum hidden shrink-0 pt-0.5 text-[12px] text-muted @[640px]:block">
+                {fullDate(m.date)}
+              </time>
+              <time className="tnum shrink-0 pt-0.5 text-[12px] text-muted @[640px]:hidden" title={fullDate(m.date)}>
+                {listDate(m.date)}
+              </time>
+              <ToolButton icon={Reply} label="Répondre à ce message" onClick={() => onReply(m)} />
+            </header>
+            {m.unavailable ? (
+              <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-4 py-5 text-[13px] text-fg-2">
+                <WifiOff size={15} className="shrink-0 text-amber-400" />
+                Ce message n’est pas encore téléchargé. Il s’affichera dès le retour de la connexion.
+              </div>
+            ) : (
+              <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
+            )}
+            {m.attachments.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                {m.attachments.map((a) => (
+                  <AttachmentCard
+                    key={a.id}
+                    name={a.filename}
+                    size={a.size}
+                    onOpen={() => api.mail.openAttachment(m.id, a.id).catch((e: Error) => toast(e.message, 'error'))}
+                    onSave={() => api.mail.saveAttachment(m.id, a.id).catch((e: Error) => toast(e.message, 'error'))}
+                  />
+                ))}
+              </div>
+            )}
+          </article>
+        )}
+      </div>
+    </li>
+  )
+}
+
+/** Day change between two messages ("mercredi 11 novembre · 2 jours plus tôt"), on a dashed stretch of the rail. */
+function DayGap({ newer, older }: { newer: number; older: number }) {
+  const gap = gapLabel(newer, older)
+  if (!gap) return null
+  return (
+    <li className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3">
+      <Rail line="dashed" />
+      <p className="pb-3 pl-3 pt-0.5 text-[11.5px] text-muted">
+        <span className="font-medium text-fg-2">{dayLabel(older)}</span> · {gap}
+      </p>
+    </li>
+  )
+}
+
+/** Older messages folded into one row, with their senders' faces. */
+function Folded({ messages, onOpen }: { messages: MessageDetail[]; onOpen: () => void }) {
+  const senders = [...new Map(messages.map((m) => [m.from.address.toLowerCase(), m.from])).values()]
+  return (
+    <li className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3">
+      <Rail line="dashed">
+        <span className="grid size-8 place-items-center rounded-full border border-line-strong text-[11.5px] font-semibold text-fg-2">
+          {messages.length}
+        </span>
+      </Rail>
+      <div className="pb-3">
+        <button
+          onClick={onOpen}
+          className="flex min-h-8 w-full items-center gap-2.5 rounded-xl px-3 py-1.5 text-left text-[12.5px] text-fg-2 transition-colors hover:bg-hover hover:text-fg"
+        >
+          <span className="flex -space-x-1.5">
+            {senders.slice(0, 4).map((a) => (
+              <Avatar key={a.address} name={displayName(a)} seed={a.address} size={18} />
+            ))}
           </span>
-          <span className="block truncate text-[12px] text-muted select-text" title={recipients.join('\n')}>
-            {recipients.join(' · ')}
-          </span>
+          {messages.length} messages plus anciens
+          {messages.some((m) => m.unread) && <span className="size-1.5 rounded-full bg-accent" aria-label="Dont non lus" />}
         </button>
-        <time className="tnum hidden shrink-0 pt-0.5 text-[12px] text-muted @[640px]:block">{fullDate(m.date)}</time>
-        <time className="tnum shrink-0 pt-0.5 text-[12px] text-muted @[640px]:hidden" title={fullDate(m.date)}>
-          {listDate(m.date)}
-        </time>
-        <ToolButton icon={Reply} label="Répondre à ce message" onClick={() => onReply(m)} />
-      </header>
-      {m.unavailable ? (
-        <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-4 py-5 text-[13px] text-fg-2">
-          <WifiOff size={15} className="shrink-0 text-amber-400" />
-          Ce message n’est pas encore téléchargé. Il s’affichera dès le retour de la connexion.
-        </div>
-      ) : (
-        <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
-      )}
-      {m.attachments.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2.5">
-          {m.attachments.map((a) => (
-            <AttachmentCard
-              key={a.id}
-              name={a.filename}
-              size={a.size}
-              onOpen={() => api.mail.openAttachment(m.id, a.id).catch((e: Error) => toast(e.message, 'error'))}
-              onSave={() => api.mail.saveAttachment(m.id, a.id).catch((e: Error) => toast(e.message, 'error'))}
-            />
-          ))}
-        </div>
-      )}
-    </article>
+      </div>
+    </li>
   )
 }
 
@@ -157,6 +282,8 @@ export function Reader() {
   // What was loaded, and for which thread: anything for another thread reads as "loading".
   const [loaded, setLoaded] = useState<{ key: string; messages: MessageDetail[] | null; error: string | null } | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  // Conversation (key) whose folded older messages were opened.
+  const [showAll, setShowAll] = useState<string | null>(null)
   const [more, setMore] = useState<HTMLElement | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const { single } = useLayout()
@@ -231,6 +358,9 @@ export function Reader() {
     }
   }
   const allAttachments = (messages ?? []).flatMap((m) => m.attachments.map((a) => ({ m, a })))
+  const me = account?.email.toLowerCase() ?? ''
+  const participants = new Set((messages ?? []).flatMap((m) => [m.from, ...m.to, ...m.cc].map((a) => a.address.toLowerCase()))).size
+  const span = messages && messages.length > 1 ? spanLabel(messages[0]!.date, messages.at(-1)!.date) : null
 
   return (
     <section className="@container flex min-w-0 flex-1 flex-col">
@@ -285,6 +415,12 @@ export function Reader() {
               )}
             </div>
 
+            {messages && messages.length > 1 && (
+              <p className="-mt-3 mb-5 text-[12.5px] text-muted">
+                {[`${messages.length} messages`, `${participants} participants`, span].filter(Boolean).join(' · ')}
+              </p>
+            )}
+
             {messages && !isDraft && (thread.category === 'newsletters' || thread.category === 'notifications') && (
               <TriageBanner thread={thread} messageId={messages.at(-1)!.id} />
             )}
@@ -310,25 +446,8 @@ export function Reader() {
               </div>
             )}
 
-            <div className="space-y-2">
-              {messages?.map((m) => (
-                <Message
-                  key={m.id}
-                  m={m}
-                  expanded={expanded.has(m.id)}
-                  onReply={(msg) => reply('reply', msg)}
-                  onToggle={() => {
-                    const next = new Set(expanded)
-                    if (next.has(m.id)) next.delete(m.id)
-                    else next.add(m.id)
-                    setExpanded(next)
-                  }}
-                />
-              ))}
-            </div>
-
             {messages && !isDraft && (
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mb-5 flex flex-wrap gap-2">
                 <button onClick={() => reply('reply')} className="flex h-9 items-center gap-2 rounded-lg btn-primary px-4 text-[13px] font-medium">
                   <Reply size={15} /> Répondre
                 </button>
@@ -346,9 +465,11 @@ export function Reader() {
                 </button>
                 {messages.length > 1 && (
                   <button
-                    onClick={() =>
-                      setExpanded(expanded.size === messages.length ? new Set([messages.at(-1)!.id]) : new Set(messages.map((m) => m.id)))
-                    }
+                    onClick={() => {
+                      const all = expanded.size === messages.length
+                      setExpanded(all ? new Set([messages.at(-1)!.id]) : new Set(messages.map((m) => m.id)))
+                      setShowAll(all ? null : key)
+                    }}
                     className="ml-auto flex h-9 items-center gap-1.5 rounded-lg px-3 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
                   >
                     <ChevronDown size={14} className={expanded.size === messages.length ? 'rotate-180' : ''} />
@@ -356,6 +477,33 @@ export function Reader() {
                   </button>
                 )}
               </div>
+            )}
+
+            {messages && (
+              <ol aria-label="Messages de la conversation">
+                {timeline(messages, expanded, showAll === key).map((item, i, items) => (
+                  <Fragment key={item.kind === 'folded' ? `folded:${item.messages[0]!.id}` : item.m.id}>
+                    {i > 0 && <DayGap newer={items[i - 1]!.bottom} older={item.top} />}
+                    {item.kind === 'folded' ? (
+                      <Folded messages={item.messages} onOpen={() => setShowAll(key)} />
+                    ) : (
+                      <Message
+                        m={item.m}
+                        me={me}
+                        last={i === items.length - 1}
+                        expanded={expanded.has(item.m.id)}
+                        onReply={(msg) => reply('reply', msg)}
+                        onToggle={() => {
+                          const next = new Set(expanded)
+                          if (next.has(item.m.id)) next.delete(item.m.id)
+                          else next.add(item.m.id)
+                          setExpanded(next)
+                        }}
+                      />
+                    )}
+                  </Fragment>
+                ))}
+              </ol>
             )}
           </div>
 

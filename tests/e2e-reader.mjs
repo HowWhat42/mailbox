@@ -33,7 +33,27 @@ await send({
   subject: 'Re: Horaires',
   text: 'Oui, 14h me va.\n\nLe 15/11/2026 à 18:00, Toi a écrit :\n> On se voit à quelle heure ?\n> Je suis dispo l’après-midi.'
 })
-step('a Gmail-style reply and a plain-text reply sent')
+// A five-message conversation over four days, one of them from us.
+const day = 86_400_000
+const atlas = [
+  ['Claire Dubois <claire@example.com>', 4 * day, 'Voici le planning du projet Atlas.'],
+  [`Test <${account.user}>`, 3 * day, 'Merci, je regarde ça.'],
+  ['Claire Dubois <claire@example.com>', 3 * day - 3_600_000, 'Je t’envoie aussi le budget.'],
+  ['Marc Petit <marc@example.com>', day, 'Je valide le planning.'],
+  ['Claire Dubois <claire@example.com>', 0, 'Parfait, on lance lundi.']
+]
+for (const [i, [from, ago, text]] of atlas.entries()) {
+  await send({
+    from,
+    cc: 'marc@example.com',
+    subject: i ? 'Re: Projet Atlas' : 'Projet Atlas',
+    text,
+    date: new Date(Date.now() - ago),
+    messageId: `<atlas-${i}@example.com>`,
+    ...(i ? { inReplyTo: `<atlas-${i - 1}@example.com>`, references: atlas.slice(0, i).map((_, j) => `<atlas-${j}@example.com>`) } : {})
+  })
+}
+step('a Gmail-style reply, a plain-text reply and a five-message conversation sent')
 
 const app = await electron.launch({ args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`] })
 const page = await app.firstWindow()
@@ -54,6 +74,31 @@ await inputs.nth(2).fill(account.smtp.host)
 await inputs.nth(3).fill(String(account.smtp.port))
 await page.click('button:has-text("Connecter le compte")')
 await page.waitForFunction(() => document.querySelectorAll('[role=option]').length >= 2, null, { timeout: 60_000 })
+
+// Conversation timeline: summary, our own message marked, day changes, older messages folded.
+await page.waitForSelector('[role=option]:has-text("Projet Atlas")', { timeout: 60_000 })
+await page.click('[role=option]:has-text("Projet Atlas")')
+const conv = page.locator('ol[aria-label="Messages de la conversation"]')
+await page.waitForSelector('text=5 messages · 3 participants · sur 4 jours', { timeout: 30_000 }).catch(async (err) => {
+  await page.screenshot({ path: join(shots, 'r-00-conversation-fail.png') })
+  throw err
+})
+if ((await conv.locator('article').count()) !== 5) throw new Error('new messages should all be open on first read')
+if ((await conv.locator('li[data-mine]').count()) !== 1) throw new Error('our own message should be marked')
+await conv.locator('article[aria-label="Message de Vous"]').waitFor()
+await conv.locator('text=La veille').first().waitFor()
+await conv.locator('text=/2 jours plus tôt/').waitFor()
+const order = await conv.locator('article time[datetime]').evaluateAll((els) => els.map((e) => Date.parse(e.getAttribute('datetime'))))
+if (order.some((t, i) => i && t > order[i - 1])) throw new Error('newest message should come first')
+if (await conv.locator('.mb-quote-toggle').count()) throw new Error('no quote to fold in these messages')
+await page.screenshot({ path: join(shots, 'r-00-conversation.png') })
+await page.click('[role=option]:has-text("Budget 2027")')
+await page.click('[role=option]:has-text("Projet Atlas")')
+await conv.locator('text=2 messages plus anciens').click()
+await conv.locator('button[aria-label="Déplier le message de Vous"]').waitFor()
+if ((await conv.locator('article').count()) !== 1) throw new Error('only the latest message should be open once read')
+await page.screenshot({ path: join(shots, 'r-00-conversation-read.png') })
+step('conversation timeline: newest first, summary, own message, day gaps, older messages folded')
 
 const body = () => page.frameLocator('iframe[title="Contenu du message"]').last()
 const frameHeight = () =>
