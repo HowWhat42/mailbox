@@ -56,7 +56,7 @@ export async function discoverSettings(email: string): Promise<ServerSettings | 
     const mx = (await resolveMx(domain)).sort((a, b) => a.priority - b.priority).map((r) => r.exchange)
     const hosted = byMx(mx)
     if (hosted) return fromProvider(hosted, email, 'détecté via MX')
-    for (const base of [...new Set(mx.map(baseDomain))]) {
+    for (const base of new Set(mx.map(baseDomain))) {
       const found = await autoconfig(`https://autoconfig.thunderbird.net/v1.1/${base}`, email)
       if (found) return { ...found, provider: `${base} (détecté via MX)` }
     }
