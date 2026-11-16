@@ -10,7 +10,8 @@ import type {
   MailView,
   MessageAction,
   OutgoingAttachment,
-  ThreadSummary
+  ThreadSummary,
+  UpdateStatus
 } from '@shared/types'
 import { applyAppearance } from './lib/appearance'
 
@@ -86,6 +87,7 @@ interface State {
   /** Accounts whose server can't be reached right now. */
   offline: Record<string, boolean>
   queue: { actions: number; outbox: number }
+  update: UpdateStatus | null
   outboxOpen: boolean
   view: MailView
   filter: MailFilter
@@ -197,6 +199,7 @@ export const useStore = create<State>((set, get) => ({
   syncing: {},
   offline: {},
   queue: { actions: 0, outbox: 0 },
+  update: null,
   outboxOpen: false,
   view: { type: 'unified', role: 'inbox' },
   filter: 'all',
@@ -250,6 +253,8 @@ export const useStore = create<State>((set, get) => ({
     }
     loadQueue()
     api.app.on('queue:changed', loadQueue)
+    void api.updates.status().then((update) => set({ update }))
+    api.app.on('update:status', (update) => set({ update }))
     // Back online: replay what was queued right away instead of waiting for the next sync.
     window.addEventListener('online', () => void api.mail.sync().catch(() => {}))
     api.app.on('sync:status', (s) => {

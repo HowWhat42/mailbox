@@ -11,6 +11,7 @@ import { startReminders, stopReminders } from './calendar/reminders'
 import { applyZoom, createMainWindow, iconPath, showMainWindow, TITLEBAR } from './windows'
 import { createTray } from './tray'
 import { APP_ID, isolateDevData } from './identity'
+import { startUpdater } from './updater'
 
 isolateDevData()
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -48,6 +49,7 @@ app.whenReady().then(() => {
     win?.setBackgroundColor(TITLEBAR[theme].color)
   })
   applyLoginItem()
+  startUpdater()
 
   onUiScaleChange(() => applyZoom())
   createMainWindow({ hidden: process.argv.includes('--hidden') })

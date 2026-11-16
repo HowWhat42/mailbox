@@ -21,9 +21,12 @@
     "format:check": "oxfmt --check",
     "test:e2e:reader": "electron-vite build && node tests/e2e-reader.mjs",
     "check": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && oxlint --deny-warnings && oxfmt --check",
-    "test:e2e:offline": "electron-vite build && node tests/e2e-offline.mjs"
+    "test:e2e:offline": "electron-vite build && node tests/e2e-offline.mjs",
+    "test:e2e:update": "electron-vite build && node tests/e2e-update.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
+    "electron-updater": "^6.8.11",
     "ical.js": "^2.2.1",
     "imapflow": "^2.12.1",
     "mailparser": "^3.14.5",
@@ -90,8 +93,17 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Mailbox",
-      "runAfterFinish": true
-    }
+      "runAfterFinish": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "HowWhat42",
+        "repo": "mailbox",
+        "releaseType": "release"
+      }
+    ]
   },
   "productName": "Mailbox"
 }

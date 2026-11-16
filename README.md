@@ -87,11 +87,34 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - CalDAV : modifier une occurrence d'un événement récurrent n'est pas pris en charge ; la suppression et la réponse à une invitation s'appliquent à toute la série.
 - Rappels : pas pour les événements « toute la journée ».
 
-## Installeur Windows
+## Installeur Windows et mises à jour
 
 ```bash
-pnpm dist   # produit dist/Mailbox Setup <version>.exe (non signé)
+pnpm dist              # installeur local : dist/Mailbox-Setup-<version>.exe (non signé)
+pnpm release           # publie une version : patch par défaut, ou `pnpm release minor|major`
 ```
+
+`pnpm release` vérifie que `main` est propre et à jour, lance `pnpm check`, monte la version, commit,
+tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur sur Windows, le publie en
+GitHub Release (avec `latest.yml` et le blockmap pour les mises à jour différentielles) et attache une
+attestation de provenance (`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`).
+
+Les apps installées vérifient au démarrage puis toutes les 4 heures, téléchargent en arrière-plan et
+affichent « Mise à jour prête » dans la barre latérale : un redémarrage l’installe (sinon elle
+s’installe à la prochaine fermeture). Réglages › Général › Mises à jour montre la version et permet de
+chercher tout de suite.
+
+Secrets du dépôt (optionnels) : `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`, injectés au build pour
+activer la connexion Google dans l’app installée.
+
+**Signature** : l’installeur n’est pas signé. Au premier install sur un PC, SmartScreen affiche
+« Windows a protégé votre ordinateur » → _Informations complémentaires_ → _Exécuter quand même_ ; les
+mises à jour suivantes passent sans avertissement. Pour signer plus tard (Azure Artifact Signing),
+ajouter `build.win.sign` (`type: "azure"`, `publisherName`, `endpoint`, `codeSigningAccountName`,
+`certificateProfileName`) et les secrets `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`
+au job de release ; electron-updater vérifiera alors l’éditeur des mises à jour.
+
+Le dev (`pnpm dev`) garde ses données dans `%APPDATA%\Mailbox Dev`, à part de l’app installée.
 
 ## Tests
 
@@ -103,6 +126,7 @@ pnpm test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi
 pnpm test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
 pnpm test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
 pnpm test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
+pnpm test:e2e:update     # installeur 9.9.9 servi en local : détection, téléchargement, « Mise à jour prête »
 ```
 
 ## Architecture

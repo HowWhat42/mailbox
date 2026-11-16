@@ -1,8 +1,54 @@
 import { useEffect, useState } from 'react'
-import { CircleCheck, CircleDashed } from 'lucide-react'
+import { CircleCheck, CircleDashed, RefreshCw } from 'lucide-react'
+import { format } from 'date-fns'
+import type { UpdateStatus } from '@shared/types'
 import { api, useStore } from '../../store'
 import { Select, Toggle } from '../../components/ui/Controls'
 import { Row, Section, Segmented } from './parts'
+
+function updateHint(u: UpdateStatus): string {
+  switch (u.state) {
+    case 'unsupported':
+      return 'Version de développement : pas de mise à jour automatique.'
+    case 'idle':
+      return 'Recherche automatique au démarrage, puis toutes les 4 heures.'
+    case 'checking':
+      return 'Recherche en cours…'
+    case 'latest':
+      return `Vous avez la dernière version${u.checkedAt ? ` · vérifié à ${format(u.checkedAt, 'HH:mm')}` : ''}.`
+    case 'downloading':
+      return `Téléchargement de la version ${u.available} · ${u.percent ?? 0} %`
+    case 'ready':
+      return `La version ${u.available} est prête. Elle s’installera au prochain redémarrage de Mailbox.`
+    case 'error':
+      return u.error ?? 'La recherche de mise à jour a échoué.'
+  }
+}
+
+function UpdatesSection() {
+  const update = useStore((s) => s.update)
+  if (!update) return null
+  const busy = update.state === 'checking' || update.state === 'downloading'
+  return (
+    <Section title="Mises à jour" description="Les nouvelles versions se téléchargent en arrière-plan ; un redémarrage suffit pour les installer.">
+      <Row label={`Mailbox ${update.current}`} hint={updateHint(update)}>
+        {update.state === 'ready' ? (
+          <button onClick={() => void api.updates.install()} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium">
+            Redémarrer maintenant
+          </button>
+        ) : (
+          <button
+            disabled={busy || update.state === 'unsupported'}
+            onClick={() => void api.updates.check()}
+            className="flex h-8 items-center gap-2 rounded-lg border border-line px-3.5 text-[12.5px] text-fg-2 hover:border-line-strong hover:text-fg disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={busy ? 'animate-spin' : ''} /> Rechercher
+          </button>
+        )}
+      </Row>
+    </Section>
+  )
+}
 
 export function GeneralSettings() {
   const settings = useStore((s) => s.settings)!
@@ -79,6 +125,8 @@ export function GeneralSettings() {
           />
         </Row>
       </Section>
+
+      <UpdatesSection />
     </>
   )
 }

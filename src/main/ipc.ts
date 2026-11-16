@@ -32,6 +32,7 @@ import { addSource, listSources, removeSource, syncAccountSources, updateSource 
 import { activeReminders, dismissReminder, joinReminder, openReminder, snoozeReminder } from './calendar/reminders'
 import { getSettings, loginItemStatus, setSettings } from './settings'
 import { classifySender, listRules, reapplyRules, removeRule, reorderRules, saveRule } from './mail/rules'
+import { checkForUpdates, installUpdate, updateStatus } from './updater'
 import { unsubscribe } from './mail/unsubscribe'
 
 const DAY = 86_400_000
@@ -199,6 +200,11 @@ const handlers: Handlers = {
     get: async () => getSettings(),
     set: async (patch) => setSettings(patch),
     loginItem: async () => loginItemStatus()
+  },
+  updates: {
+    status: async () => updateStatus(),
+    check: () => checkForUpdates(),
+    install: async () => installUpdate()
   },
   reminders: {
     list: async () => activeReminders(),

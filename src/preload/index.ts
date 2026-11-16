@@ -51,6 +51,7 @@ const api = {
   ]),
   settings: invoker('settings', ['get', 'set', 'loginItem']),
   rules: invoker('rules', ['list', 'save', 'remove', 'reorder', 'reapply', 'classifySender']),
+  updates: invoker('updates', ['status', 'check', 'install']),
   reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),

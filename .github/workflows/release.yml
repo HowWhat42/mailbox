@@ -1,0 +1,52 @@
+name: Release
+
+# `pnpm release` bumps the version and pushes a vX.Y.Z tag; this builds the Windows installer
+# and publishes it as a GitHub Release. Installed apps pick it up through electron-updater.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the release and upload the installer
+  id-token: write # build provenance
+  attestations: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Tag matches package.json
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+
+      - run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Optional: without them the installed app hides "Sign in with Google".
+          MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      - name: Package and publish
+        run: pnpm exec electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/Mailbox-Setup-*.exe

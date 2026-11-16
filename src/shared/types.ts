@@ -361,6 +361,18 @@ export interface QueuedSend {
   lastError: string | null
 }
 
+/** In-app updates (installed app only; a dev build reads "unsupported"). */
+export interface UpdateStatus {
+  state: 'unsupported' | 'idle' | 'checking' | 'latest' | 'downloading' | 'ready' | 'error'
+  /** Running version. */
+  current: string
+  /** Version being downloaded or ready to install. */
+  available?: string
+  percent?: number
+  error?: string
+  checkedAt?: number
+}
+
 export interface AppEvents {
   'mail:changed': { accountId: string }
   'sync:status': SyncStatus
@@ -371,6 +383,7 @@ export interface AppEvents {
   'calendar:open': { eventId: string; start: number }
   'settings:changed': AppSettings
   'queue:changed': Record<string, never>
+  'update:status': UpdateStatus
 }
 
 export interface MailboxApi {
@@ -457,6 +470,13 @@ export interface MailboxApi {
     snooze(key: string, minutes: number): Promise<void>
     dismiss(key: string): Promise<void>
     open(key: string): Promise<void>
+  }
+  updates: {
+    status(): Promise<UpdateStatus>
+    /** Checks now; a found update starts downloading on its own. */
+    check(): Promise<UpdateStatus>
+    /** Restarts into the downloaded version. */
+    install(): Promise<void>
   }
   app: {
     openExternal(url: string): Promise<void>

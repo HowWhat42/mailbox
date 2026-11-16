@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  CircleArrowUp,
   Archive,
   CalendarDays,
   ChevronRight,
@@ -105,6 +106,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const menuFor = (target: MailView, folder?: Folder) => (anchor: { x: number; y: number }) => setMenu({ anchor, items: folderMenu(target, folder) })
   const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
   const queue = useStore((st) => st.queue)
+  const update = useStore((st) => st.update)
   const errored = accounts.filter((a) => a.syncError)
 
   const active = (v: MailView): boolean => mode === 'mail' && sameView(view, v)
@@ -310,6 +312,29 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           )}
         </div>
       )}
+
+      {update?.state === 'ready' &&
+        (collapsed ? (
+          <button
+            onClick={() => void api.updates.install()}
+            title={`Redémarrer pour installer Mailbox ${update.available}`}
+            aria-label="Redémarrer pour mettre à jour"
+            className="btn-primary mx-auto mb-2 grid size-8 place-items-center rounded-lg"
+          >
+            <CircleArrowUp size={15} />
+          </button>
+        ) : (
+          <div role="status" className="mx-3 mb-2 rounded-lg border border-line bg-accent-soft/50 p-2.5">
+            <p className="flex items-center gap-2 text-[12.5px] font-medium">
+              <CircleArrowUp size={14} className="shrink-0 text-accent" />
+              <span className="truncate">Mise à jour prête</span>
+              <span className="ml-auto shrink-0 text-[11.5px] font-normal text-muted">{update.available}</span>
+            </p>
+            <button onClick={() => void api.updates.install()} className="btn-primary mt-2 h-7 w-full rounded-md text-[12px] font-medium">
+              Redémarrer pour installer
+            </button>
+          </div>
+        ))}
 
       {!collapsed && errored.length > 0 && (
         <button
