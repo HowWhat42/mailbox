@@ -7,10 +7,10 @@ import { fieldCls } from '../../components/Modal'
 import { Row, Section } from './parts'
 import { MarkerSample } from './MarkerPicker'
 import { accountLabel } from '../../lib/accounts'
-import { isHex } from '../../lib/appearance'
 import { isHtmlSignature, signatureHtml } from '../../lib/signature'
 import { templateFields } from '../../lib/templates'
 import { HtmlPreview } from '../../components/HtmlPreview'
+import { ColorPicker } from '../../components/ui/ColorPicker'
 import { TemplateEditor } from '../../components/TemplateEditor'
 
 const COLORS = ['#8f86f0', '#5b8cff', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635', '#f5b041', '#fb7c5c', '#f87171', '#f472b6', '#c084fc', '#94a3b8']
@@ -22,7 +22,6 @@ export function AccountSettings({ account }: { account: Account }) {
   const [signature, setSignature] = useState(account.signature)
   const [caldavUrl, setCaldavUrl] = useState(account.caldavUrl ?? '')
   const [label, setLabel] = useState(account.label)
-  const [hex, setHex] = useState(account.color)
   const marker = useStore((s) => s.settings?.accountMarker ?? 'stripe')
 
   const dirty = name !== account.name || signature !== account.signature || caldavUrl !== (account.caldavUrl ?? '')
@@ -134,19 +133,9 @@ export function AccountSettings({ account }: { account: Account }) {
                 style={{ background: c }}
               />
             ))}
-            <span className="ml-2 size-6 rounded-md border border-line" style={{ background: isHex(hex) ? hex : 'transparent' }} />
-            <input
-              value={hex}
-              onChange={(e) => {
-                const v = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
-                setHex(v)
-                if (isHex(v)) patch({ color: v.toLowerCase() })
-              }}
-              maxLength={7}
-              spellCheck={false}
-              aria-label="Couleur personnalisée du compte"
-              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
-            />
+            <span className="ml-1">
+              <ColorPicker label="Couleur personnalisée du compte" value={account.color} onChange={(v) => patch({ color: v })} />
+            </span>
           </div>
         </Row>
         <Row

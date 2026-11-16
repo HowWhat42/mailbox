@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import type { ThemeMode } from '@shared/types'
 import { useStore } from '../../store'
-import { ACCENTS, isHex } from '../../lib/appearance'
+import { ACCENTS } from '../../lib/appearance'
 import { Avatar } from '../../components/Avatar'
 import { Row, Section, Segmented } from './parts'
 import { Select } from '../../components/ui/Controls'
+import { ColorPicker } from '../../components/ui/ColorPicker'
 import { MarkerPicker } from './MarkerPicker'
 
 const THEMES: { value: ThemeMode; label: string; icon: typeof Moon }[] = [
@@ -38,7 +38,6 @@ function Preview() {
 export function AppearanceSettings() {
   const settings = useStore((s) => s.settings)!
   const update = useStore((s) => s.updateSettings)
-  const [hex, setHex] = useState(settings.accent)
 
   return (
     <>
@@ -65,7 +64,6 @@ export function AppearanceSettings() {
               <button
                 key={a.hex}
                 onClick={() => {
-                  setHex(a.hex)
                   void update({ accent: a.hex })
                 }}
                 title={a.name}
@@ -82,22 +80,9 @@ export function AppearanceSettings() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-[12.5px] text-fg-2">Personnalisée</span>
-            <span className="size-7 rounded-md border border-line" style={{ background: isHex(hex) ? hex : 'transparent' }} />
-            <input
-              value={hex}
-              onChange={(e) => {
-                const v = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
-                setHex(v)
-                if (isHex(v)) void update({ accent: v.toLowerCase() })
-              }}
-              aria-label="Code couleur"
-              spellCheck={false}
-              maxLength={7}
-              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
-            />
-            {!isHex(hex) && <span className="text-[12px] text-danger">Format #RRGGBB</span>}
+            <ColorPicker label="Couleur d’accent personnalisée" value={settings.accent} onChange={(v) => void update({ accent: v })} />
           </div>
           <Preview />
         </div>
