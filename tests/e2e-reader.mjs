@@ -53,7 +53,13 @@ for (const [i, [from, ago, text]] of atlas.entries()) {
     ...(i ? { inReplyTo: `<atlas-${i - 1}@example.com>`, references: atlas.slice(0, i).map((_, j) => `<atlas-${j}@example.com>`) } : {})
   })
 }
-step('a Gmail-style reply, a plain-text reply and a five-message conversation sent')
+// Bigger than the bytes a sync fetches for previews: its body comes from the post-sync prefetch.
+await send({
+  from: 'Atelier Nord <rapport@atelier-nord.example>',
+  subject: 'Rapport annuel',
+  html: `<h1>Rapport annuel</h1>${'<p>Chiffres clés, projets et perspectives de l’année.</p>'.repeat(1200)}`
+})
+step('a Gmail-style reply, a plain-text reply, a five-message conversation and a 60 kB report sent')
 
 const app = await electron.launch({ args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`] })
 const page = await app.firstWindow()
@@ -74,6 +80,18 @@ await inputs.nth(2).fill(account.smtp.host)
 await inputs.nth(3).fill(String(account.smtp.port))
 await page.click('button:has-text("Connecter le compte")')
 await page.waitForFunction(() => document.querySelectorAll('[role=option]').length >= 2, null, { timeout: 60_000 })
+
+// Opening recent mail needs no network: small mail is kept whole during sync, bigger mail prefetched after it.
+await page.waitForSelector('[role=option]:has-text("Rapport annuel")', { timeout: 60_000 })
+await page.waitForFunction(() => !document.querySelector('button[aria-label=Synchroniser] .animate-spin'), null, { timeout: 60_000 })
+for (const subject of ['Rapport annuel', 'Horaires']) {
+  const start = Date.now()
+  await page.click(`[role=option]:has-text("${subject}")`)
+  await page.frameLocator('iframe[title="Contenu du message"]').last().locator('body *').first().waitFor()
+  const took = Date.now() - start
+  if (took > 800) throw new Error(`${subject} took ${took} ms to open: its body should already be local`)
+  step(`${subject} opened in ${took} ms (body already local)`)
+}
 
 // Conversation timeline: summary, our own message marked, day changes, older messages folded.
 await page.waitForSelector('[role=option]:has-text("Projet Atlas")', { timeout: 60_000 })

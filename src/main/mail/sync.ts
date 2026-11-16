@@ -20,6 +20,10 @@ import { sendMessage } from './send'
 /** Newest messages pulled per folder on first sync. Older mail stays on the server. */
 const INITIAL_WINDOW = 400
 const FETCH_BATCH = 50
+/** Bytes of each new message fetched during sync: enough for the preview, and the whole of most personal mail. */
+const PREVIEW_BYTES = 24_000
+/** Bodies downloaded ahead after a sync, so opening recent mail needs no network. */
+const PREFETCH = { count: 50, maxMessageBytes: 2_000_000, maxTotalBytes: 30_000_000 }
 
 const ROLE_BY_SPECIAL_USE: Record<string, FolderRole> = {
   '\\Inbox': 'inbox',
@@ -103,6 +107,7 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
         await syncFolder(client, account, folder)
         emit('mail:changed', { accountId })
       }
+      for (const folder of order.filter((f) => f.role === 'inbox')) await prefetchBodies(client, account, folder)
     })
     if (firstSync && !inboxOnly) reapplyRules()
     setSyncResult(accountId, null)
@@ -227,6 +232,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
       const toRead: number[] = []
       const toStar: number[] = []
       const toMove = new Map<string, number[]>()
+      const complete: [string, Buffer][] = []
       for await (const msg of client.fetch(
         batch,
         {
@@ -236,8 +242,9 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           internalDate: true,
           bodyStructure: true,
           threadId: true,
+          size: true,
           headers: TRIAGE_HEADERS,
-          source: { maxLength: 24_000 }
+          source: { maxLength: PREVIEW_BYTES }
         },
         { uid: true }
       )) {
@@ -273,6 +280,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           continue
         }
         const snippet = msg.source ? await previewFromPartialSource(msg.source) : ''
+        // Small mail fits in the preview bytes: that is the whole message, keep it and skip the download on open.
+        if (msg.source && msg.size && msg.source.length >= msg.size) complete.push([`${folder.id}:${msg.uid}`, msg.source])
         rows.push([
           `${folder.id}:${msg.uid}`,
           account.id,
@@ -308,6 +317,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
         )
         for (const row of rows) insert.run(...(row as (string | number | null)[]))
       })
+      for (const [id, source] of complete) await storeBody(id, account.id, source).catch(() => undefined)
       // Replay rule actions on the server while the folder is still selected.
       try {
         if (toRead.length) await client.messageFlagsAdd(toRead, ['\\Seen'], { uid: true })
@@ -341,6 +351,46 @@ function notify(account: Account, items: Incoming[]): void {
   new Notification({ title, body, silent: !settings.mailSound }).show()
 }
 
+/**
+ * Downloads the bodies of the newest messages of a folder that don't have one yet, on the sync's
+ * connection: one FETCH for sizes, one for the sources. Skips large mail (attachments) and caps the total.
+ */
+async function prefetchBodies(client: ImapFlow, account: Account, folder: FolderRow): Promise<void> {
+  const missing = getDb()
+    .prepare('SELECT id, uid FROM messages WHERE folder_id = ? AND eml_path IS NULL ORDER BY date DESC LIMIT ?')
+    .all(folder.id, PREFETCH.count) as { id: string; uid: number }[]
+  if (!missing.length) return
+  await inMailbox(client, folder.path, async () => {
+    const sizes = new Map<number, number>()
+    for await (const msg of client.fetch(
+      missing.map((m) => m.uid),
+      { uid: true, size: true },
+      { uid: true }
+    )) {
+      if (msg.size) sizes.set(msg.uid, msg.size)
+    }
+    let budget = PREFETCH.maxTotalBytes
+    const wanted = missing.filter((m) => {
+      const size = sizes.get(m.uid)
+      if (!size || size > PREFETCH.maxMessageBytes || size > budget) return false
+      budget -= size
+      return true
+    })
+    if (!wanted.length) return
+    const idByUid = new Map(wanted.map((m) => [m.uid, m.id]))
+    const sources: [string, Buffer][] = []
+    for await (const msg of client.fetch(
+      wanted.map((m) => m.uid),
+      { uid: true, source: true },
+      { uid: true }
+    )) {
+      const id = idByUid.get(msg.uid)
+      if (id && msg.source) sources.push([id, msg.source])
+    }
+    for (const [id, source] of sources) await storeBody(id, account.id, source).catch(() => undefined)
+  })
+}
+
 /** Downloads and caches the full source of messages that have no body yet. */
 export async function ensureBodies(messageIds: string[]): Promise<void> {
   const db = getDb()
@@ -360,11 +410,18 @@ export async function ensureBodies(messageIds: string[]): Promise<void> {
     await withImap(account, async (client) => {
       for (const [path, inFolder] of Map.groupBy(msgs, (m) => m.path)) {
         await inMailbox(client, path, async () => {
-          for (const m of inFolder) {
-            const fetched = await client.fetchOne(String(m.uid), { source: true }, { uid: true })
-            if (!fetched || !fetched.source) continue
-            await storeBody(m.id, accountId, fetched.source)
+          // One FETCH for the whole conversation: a round trip per message costs more than the bytes.
+          const idByUid = new Map(inFolder.map((m) => [m.uid, m.id]))
+          const sources: [string, Buffer][] = []
+          for await (const msg of client.fetch(
+            inFolder.map((m) => m.uid),
+            { uid: true, source: true },
+            { uid: true }
+          )) {
+            const id = idByUid.get(msg.uid)
+            if (id && msg.source) sources.push([id, msg.source])
           }
+          for (const [id, source] of sources) await storeBody(id, accountId, source)
         })
       }
     })

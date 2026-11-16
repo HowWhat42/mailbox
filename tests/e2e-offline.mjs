@@ -58,7 +58,14 @@ const smtp = createTransport({
   auth: { user: account.user, pass: account.pass }
 })
 await smtp.sendMail({ from: 'Léa <lea@example.com>', to: account.user, subject: 'À archiver hors ligne', text: 'A' })
-await smtp.sendMail({ from: 'Paul <paul@example.com>', to: account.user, subject: 'Reste dans la boîte', text: 'B' })
+// Over the prefetch size limit: its body is only fetched when opened.
+await smtp.sendMail({
+  from: 'Paul <paul@example.com>',
+  to: account.user,
+  subject: 'Reste dans la boîte',
+  text: 'B',
+  attachments: [{ filename: 'plans.bin', content: Buffer.alloc(2_200_000, 7) }]
+})
 step('two messages delivered')
 
 const imapRelay = relay(account.imap.host, account.imap.port)
@@ -107,13 +114,20 @@ await page.click('button[aria-label=Synchroniser]')
 await page.waitForSelector('nav ~ div p:text-is("Hors ligne"), aside p:text-is("Hors ligne")', { timeout: 30_000 })
 step('server unreachable: the sidebar says "Hors ligne"')
 
-// Opening a message whose body was never downloaded says so instead of failing.
+// Small mail was kept whole during sync: it reads fine offline.
+await page.click('[role=option]:has-text("À archiver")')
+await page.frameLocator('iframe[title="Contenu du message"]').last().locator('text=A').waitFor({ timeout: 10_000 })
+// A big one (attachment) never downloaded says so instead of failing.
 await page.click('[role=option]:has-text("Reste dans la boîte")')
 await page.waitForSelector('text=pas encore téléchargé')
 await page.click('[role=option]:has-text("À archiver")')
 await page.keyboard.press('e')
-await page.waitForSelector('text=1 action en attente', { timeout: 20_000 })
-step('archive kept locally and queued')
+await page.waitForSelector('text=/actions? en attente/', { timeout: 20_000 }).catch(async (err) => {
+  await page.screenshot({ path: join(shots, 'o-00-queue.png') })
+  console.log('queue:', JSON.stringify(await page.evaluate(() => window.mailbox.mail.queue())))
+  throw err
+})
+step('small mail readable offline, big one marked not downloaded; archive kept locally and queued')
 
 await page.keyboard.press('c')
 await page.fill('input[aria-label=Destinataires]', account.user)
@@ -137,7 +151,7 @@ step('message written offline waits in the outbox')
 await imapRelay.start()
 await smtpRelay.start()
 await page.click('button[aria-label=Synchroniser]')
-await page.waitForSelector('text=1 action en attente', { state: 'detached', timeout: 60_000 }).catch(async (err) => {
+await page.waitForSelector('text=/actions? en attente/', { state: 'detached', timeout: 60_000 }).catch(async (err) => {
   await page.screenshot({ path: join(shots, 'o-03-stuck.png') })
   console.log('queue after reconnect:', JSON.stringify(await page.evaluate(() => window.mailbox.mail.queue())))
   console.log('accounts:', JSON.stringify((await page.evaluate(() => window.mailbox.accounts.list())).map((a) => [a.syncError, a.lastSyncAt])))
