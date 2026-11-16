@@ -105,14 +105,25 @@ const top = await page.$$eval('[data-index]', (els) =>
 )
 if (top.join() !== 'notifications,invitations,newsletters') throw new Error(`bundles not pinned on top: ${top.join()}`)
 await page.screenshot({ path: join(shots, 't-01-bundles.png') })
-// No row may spill over the next one (bundles wrap their senders and are measured, not estimated).
-const overlaps = await page.$$eval('[data-index]', (els) =>
-  els
-    .map((e) => e.getBoundingClientRect())
-    .toSorted((a, b) => a.top - b.top)
-    .flatMap((r, i, all) => (i && all[i - 1].bottom > r.top + 0.5 ? [`${all[i - 1].bottom} > ${r.top}`] : []))
-)
-if (overlaps.length) throw new Error(`list rows overlap: ${overlaps.join(', ')}`)
+// Rows sit edge to edge: none spills over the next, and none leaves a gap after it (stale cached heights).
+const checkRows = async (when) => {
+  await page.waitForTimeout(400)
+  const issues = await page.$$eval('[data-index]', (els) =>
+    els
+      .map((e) => ({ i: Number(e.dataset.index), r: e.getBoundingClientRect() }))
+      .toSorted((a, b) => a.i - b.i)
+      .flatMap((x, k, all) => {
+        if (!k || all[k - 1].i !== x.i - 1) return []
+        const d = x.r.top - all[k - 1].r.bottom
+        return Math.abs(d) > 1 ? [`#${x.i - 1}→#${x.i}: ${d > 0 ? 'gap' : 'overlap'} ${Math.round(Math.abs(d))}px`] : []
+      })
+  )
+  // Date headers keep their own height instead of one cached for another row.
+  const headers = await page.$$eval('[data-list-header]', (els) => els.map((e) => [e.textContent, Math.round(e.getBoundingClientRect().height)]))
+  for (const [label, h] of headers) if (h > 40) issues.push(`header "${label}" is ${h}px tall`)
+  if (issues.length) throw new Error(`list rows misplaced ${when}: ${issues.join(', ')}`)
+}
+await checkRows('on first display')
 await bundle('notifications').click()
 await expectRows('Notifications', ['Nouvelle issue'])
 await back()
@@ -121,6 +132,11 @@ await expectRows('Invitations', ['Revue de sprint'])
 await page.keyboard.press('Escape')
 await bundle('newsletters').click()
 await expectRows('Newsletters', ['nouveautés'])
+// The list changes shape (filter, bundle opened and closed): cached heights must follow the rows.
+await page.click('button:has-text("Non lus")')
+await checkRows('after filtering unread')
+await page.click('button:has-text("Tous")')
+await checkRows('back to all')
 step('smart inbox: people listed, notifications / newsletters / invitations bundled')
 
 await rows().first().click()

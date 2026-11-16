@@ -244,6 +244,12 @@ export function ThreadList() {
     count: items.length,
     getScrollElement: () => parent.current,
     estimateSize: (i) => (items[i].type === 'header' ? HEADER : items[i].type === 'bundle' ? (compact ? 48 : 66) : rowHeight),
+    // Measured sizes are cached per key: keyed by position, a header or a short row would inherit the
+    // height of whatever sat at its index before the list changed, leaving big gaps.
+    getItemKey: (i) => {
+      const it = items[i]
+      return it.type === 'header' ? `h:${it.label}` : it.type === 'bundle' ? `b:${it.b.category}` : `t:${threadKey(it.t)}`
+    },
     overscan: 10
   })
 
@@ -438,7 +444,9 @@ export function ThreadList() {
                   }}
                 >
                   {it.type === 'header' ? (
-                    <div className="flex h-full items-end px-5 pb-1.5 text-[12px] font-medium text-muted">{it.label}</div>
+                    <div data-list-header className="flex h-full items-end px-5 pb-1.5 text-[12px] font-medium text-muted">
+                      {it.label}
+                    </div>
                   ) : it.type === 'bundle' ? (
                     <BundleRow bundle={it.b} compact={compact} />
                   ) : (

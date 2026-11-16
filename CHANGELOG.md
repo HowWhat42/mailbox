@@ -4,6 +4,8 @@
 
 ## À venir
 
+- Les grands vides qui pouvaient apparaître dans la liste des messages, au-dessus de « Aujourd'hui » ou « Ce mois-ci », ont disparu.
+
 ## 0.1.5 — 16 novembre 2026
 
 ### Les mails s'ouvrent tout de suite
