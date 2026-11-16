@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight, Mail } from 'lucide-react'
-import type { ImapAccountInput } from '@shared/types'
+import type { ImapAccountInput, ServerSettings } from '@shared/types'
 import { api, useStore } from '../store'
 import { Label, Modal, fieldCls } from './Modal'
 
@@ -40,7 +40,7 @@ export function AccountSetup() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [googleReady, setGoogleReady] = useState(true)
-  const [detected, setDetected] = useState(false)
+  const [detected, setDetected] = useState<ServerSettings | null>(null)
 
   useEffect(() => {
     void api.accounts.googleConfigured().then(setGoogleReady)
@@ -74,20 +74,26 @@ export function AccountSetup() {
     setError(null)
     const found = await api.accounts.discover(form.email.trim()).catch(() => null)
     const domain = form.email.split('@')[1] ?? ''
+    const servers = found ?? {
+      imapHost: `imap.${domain}`,
+      imapPort: 993,
+      imapSecure: true,
+      smtpHost: `smtp.${domain}`,
+      smtpPort: 465,
+      smtpSecure: true,
+      username: form.email
+    }
     setForm((f) => ({
       ...f,
-      ...(found ?? {
-        imapHost: `imap.${domain}`,
-        imapPort: 993,
-        imapSecure: true,
-        smtpHost: `smtp.${domain}`,
-        smtpPort: 465,
-        smtpSecure: true,
-        username: f.email
-      }),
-      username: found?.username ?? f.email
+      imapHost: servers.imapHost,
+      imapPort: servers.imapPort,
+      imapSecure: servers.imapSecure,
+      smtpHost: servers.smtpHost,
+      smtpPort: servers.smtpPort,
+      smtpSecure: servers.smtpSecure,
+      username: servers.username || f.email
     }))
-    setDetected(!!found)
+    setDetected(found)
     setBusy(false)
     setStep('servers')
   }
@@ -181,11 +187,16 @@ export function AccountSetup() {
 
       {step === 'servers' && (
         <form onSubmit={connect} className="space-y-3.5 px-5 pb-5">
-          <p className="text-[12.5px] text-muted">
-            {detected
-              ? 'Réglages trouvés automatiquement. Vérifiez-les puis connectez-vous.'
-              : 'Réglages non trouvés automatiquement : voici une proposition, à corriger si besoin.'}
-          </p>
+          {detected ? (
+            <div className="rounded-lg border border-line bg-white/[0.02] px-3 py-2.5 text-[12.5px]">
+              <p className="text-fg-2">
+                Réglages trouvés : <span className="font-semibold text-fg">{detected.provider}</span>. Vérifiez-les puis connectez-vous.
+              </p>
+              {detected.note && <p className="mt-1 text-muted">{detected.note}</p>}
+            </div>
+          ) : (
+            <p className="text-[12.5px] text-muted">Réglages non trouvés automatiquement : voici une proposition, à corriger si besoin.</p>
+          )}
           <div className="grid grid-cols-[1fr_88px] gap-2">
             <Label text="Serveur IMAP">
               <input required value={form.imapHost} onChange={(e) => set('imapHost', e.target.value)} className={fieldCls} />

@@ -48,6 +48,10 @@ export interface ServerSettings {
   smtpPort: number
   smtpSecure: boolean
   username: string
+  /** Where the settings came from, e.g. "iCloud" or "OVHcloud (via MX)". */
+  provider?: string
+  /** Provider-specific advice (app passwords, Bridge…). */
+  note?: string
 }
 
 export type FolderRole = 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive' | 'all' | 'flagged' | null
