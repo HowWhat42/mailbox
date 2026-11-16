@@ -222,7 +222,18 @@ const MIGRATIONS: string[] = [
     data TEXT NOT NULL
   );
   `,
-  `ALTER TABLE accounts ADD COLUMN label TEXT NOT NULL DEFAULT '';`
+  `ALTER TABLE accounts ADD COLUMN label TEXT NOT NULL DEFAULT '';`,
+  // Changes made offline, replayed in order once the server is reachable again.
+  `
+  CREATE TABLE pending_ops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    last_error TEXT
+  );
+  `
 ]
 
 function migrate(d: DatabaseSync): void {

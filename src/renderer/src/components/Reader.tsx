@@ -14,6 +14,7 @@ import {
   ReplyAll,
   Star,
   Trash2,
+  WifiOff,
   type LucideIcon
 } from 'lucide-react'
 import type { Address, MessageDetail } from '@shared/types'
@@ -100,7 +101,14 @@ function Message({
         </time>
         <ToolButton icon={Reply} label="Répondre à ce message" onClick={() => onReply(m)} />
       </header>
-      <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
+      {m.unavailable ? (
+        <div className="flex items-center gap-2.5 rounded-lg border border-dashed border-line-strong px-4 py-5 text-[13px] text-fg-2">
+          <WifiOff size={15} className="shrink-0 text-amber-400" />
+          Ce message n’est pas encore téléchargé. Il s’affichera dès le retour de la connexion.
+        </div>
+      ) : (
+        <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
+      )}
       {m.attachments.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2.5">
           {m.attachments.map((a) => (
@@ -152,6 +160,8 @@ export function Reader() {
   const [more, setMore] = useState<HTMLElement | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const { single } = useLayout()
+  // Reload the open conversation when the connection comes back (bodies may now download).
+  const online = !Object.values(useStore((st) => st.offline)).some(Boolean)
   const s = useStore.getState()
 
   const accountId = thread?.accountId
@@ -184,7 +194,9 @@ export function Reader() {
       cancelled = true
       clearTimeout(markTimer)
     }
-  }, [accountId, threadId, key])
+    // `online` is a trigger: coming back online reloads bodies that couldn't download.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [accountId, threadId, key, online])
 
   if (!thread) {
     return (

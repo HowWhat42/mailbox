@@ -13,6 +13,9 @@ import { idList, parseFull, previewFromPartialSource } from './parse'
 import { classify, parseHeaders, signalsFrom, TRIAGE_HEADERS } from './triage'
 import { knownContacts, listRules, reapplyRules } from './rules'
 import { getSettings, inQuietHours } from '../settings'
+import { flushQueue, isOffline } from './queue'
+import { runOnServer } from './actions'
+import { sendMessage } from './send'
 
 /** Newest messages pulled per folder on first sync. Older mail stays on the server. */
 const INITIAL_WINDOW = 400
@@ -58,6 +61,8 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
   // On a first sync, Sent arrives after the inbox: re-sort once we know who the user writes to.
   const firstSync = !(getDb().prepare('SELECT 1 FROM messages WHERE account_id = ? LIMIT 1').get(accountId) as unknown)
   try {
+    // Offline changes go first, so the folder sync below doesn't undo them.
+    await flushQueue(accountId, { action: (id, op) => runOnServer(id, [op]), send: (msg) => sendMessage(msg) })
     await withImap(account, async (client) => {
       const folders = inboxOnly ? foldersOf(accountId).filter((f) => f.role === 'inbox') : await syncFolderList(client, account)
       const order = folders.toSorted((a, b) => rank(a.role) - rank(b.role))
@@ -71,6 +76,11 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
     setSyncResult(accountId, null)
     emit('sync:status', { accountId, state: 'idle', message: null })
   } catch (err) {
+    if (isOffline(err)) {
+      // Not an account problem: keep the last error state, just say we're offline.
+      emit('sync:status', { accountId, state: 'offline', message: 'Hors ligne' })
+      throw err
+    }
     const message = describeError(err)
     if (account.kind === 'google') forgetGoogleToken(accountId)
     setSyncResult(accountId, message)

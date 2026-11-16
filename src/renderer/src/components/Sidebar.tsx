@@ -16,6 +16,7 @@ import {
   Sun,
   Tag,
   Trash2,
+  WifiOff,
   type LucideIcon
 } from 'lucide-react'
 import type { Folder, FolderRole, MailView } from '@shared/types'
@@ -88,6 +89,8 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const { compose, setSetup, openSettings, updateSettings, toast } = useStore.getState()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
+  const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
+  const queue = useStore((st) => st.queue)
   const errored = accounts.filter((a) => a.syncError)
 
   const active = (v: MailView): boolean => mode === 'mail' && sameView(view, v)
@@ -265,6 +268,27 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
       </nav>
 
       {!collapsed && <NextUp />}
+
+      {!collapsed && (anyOffline || queue.outbox > 0 || queue.actions > 0) && (
+        // Offline / pending work, Superhuman-style: the app keeps working, this says what's waiting.
+        <div className="mx-3 mb-2 space-y-1 rounded-xl border border-line bg-white/[0.02] p-2.5 text-[12px]">
+          {anyOffline && (
+            <p className="flex items-center gap-2 font-medium text-fg-2">
+              <WifiOff size={13} className="text-amber-400" /> Hors ligne
+            </p>
+          )}
+          {queue.actions > 0 && (
+            <p className="text-muted">
+              {queue.actions} action{queue.actions > 1 ? 's' : ''} en attente de synchronisation
+            </p>
+          )}
+          {queue.outbox > 0 && (
+            <button onClick={() => useStore.getState().setOutbox(true)} className="flex w-full items-center gap-2 text-left text-fg-2 hover:text-fg">
+              <Send size={12} /> Boîte d’envoi · {queue.outbox}
+            </button>
+          )}
+        </div>
+      )}
 
       {!collapsed && errored.length > 0 && (
         <button

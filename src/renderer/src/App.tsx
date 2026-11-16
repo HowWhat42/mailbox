@@ -10,6 +10,7 @@ import { AccountSetup } from './components/AccountSetup'
 import { SettingsView } from './views/SettingsView'
 import { Toasts } from './components/Toasts'
 import { MovePicker } from './components/MovePicker'
+import { OutboxDialog } from './components/OutboxDialog'
 import { DialogHost } from './components/ui/DialogHost'
 import { CalendarView } from './views/CalendarView'
 import { useMailShortcuts } from './lib/shortcuts'
@@ -23,6 +24,7 @@ export function App() {
   const setupOpen = useStore((s) => s.setupOpen)
   const selected = useStore((s) => s.selected)
   const drawerOpen = useStore((s) => s.drawerOpen)
+  const outboxOpen = useStore((s) => s.outboxOpen)
   const layout = useLayout()
 
   useEffect(() => {
@@ -78,6 +80,7 @@ export function App() {
       {paletteOpen && <CommandPalette />}
       {setupOpen && <AccountSetup />}
       <MovePicker />
+      {outboxOpen && <OutboxDialog onClose={() => useStore.getState().setOutbox(false)} />}
       <DialogHost />
       <Toasts />
     </div>

@@ -9,7 +9,8 @@ import { discoverSettings } from './accounts/discover'
 import { describeError, syncAccount } from './mail/sync'
 import { bundleMessageIds, listBundles, listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
 import { applyAction, threadTargets } from './mail/actions'
-import { deleteDraft, saveDraft, sendMessage } from './mail/send'
+import { deleteDraft, saveDraft, sendOrQueue } from './mail/send'
+import { isOffline, outbox, pendingActionCount, takeFromOutbox } from './mail/queue'
 import { openAttachment, saveAttachment } from './mail/attachments'
 import { unwatch, watch } from './mail/watch'
 import { forgetCaldav } from './calendar/caldav'
@@ -112,14 +113,20 @@ const handlers: Handlers = {
     act: (ids, action) => applyAction(ids, action),
     actThread: (accountId, threadId, folderId, action, destFolderId) =>
       applyAction(threadTargets(accountId, threadId, folderId, action), action, destFolderId),
-    send: (msg) => sendMessage(msg),
+    send: (msg) => sendOrQueue(msg),
+    queue: async () => ({ actions: pendingActionCount(), outbox: outbox() }),
+    takeFromOutbox: async (id) => takeFromOutbox(id),
+    retryOutbox: async () => {
+      await Promise.allSettled(listAccounts().map((a) => syncAccount(a.id)))
+    },
     saveDraft: (msg) => saveDraft(msg),
     deleteDraft: (id) => deleteDraft(id),
     contacts: async (query) => searchContacts(query),
     sync: async (accountId) => {
       const ids = accountId ? [accountId] : listAccounts().map((a) => a.id)
       const results = await Promise.allSettled(ids.map((id) => syncAccount(id)))
-      const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+      // Being offline is shown as a state in the sidebar, not as an error.
+      const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected' && !isOffline(r.reason))
       if (failed.length) throw new Error(failed.map((f) => (f.reason as Error).message).join('\n'))
     },
     openAttachment: (messageId, attachmentId) => openAttachment(messageId, attachmentId),

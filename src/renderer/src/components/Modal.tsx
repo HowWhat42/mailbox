@@ -1,4 +1,6 @@
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import { X } from 'lucide-react'
+import { useStore } from '../store'
 
 export function Modal({
   title,
@@ -13,12 +15,33 @@ export function Modal({
   width?: number
   closable?: boolean
 }) {
+  const root = useRef<HTMLDivElement>(null)
+  // Latest onClose without re-subscribing: a listener swapped while an event is being
+  // dispatched would miss that event (Escape could then do nothing).
+  const close = useRef(onClose)
+  useLayoutEffect(() => {
+    close.current = onClose
+  })
+  useEffect(() => {
+    // Escape works wherever the focus is. Only the modal on top reacts: the last one in the DOM.
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape' || !closable || useStore.getState().dialog) return
+      const modals = document.querySelectorAll('[data-modal]')
+      if (modals[modals.length - 1] !== root.current) return
+      e.preventDefault()
+      close.current()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closable])
+
   return (
     <div
+      ref={root}
+      data-modal
       role="presentation"
       className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/45 p-6 backdrop-blur-[2px]"
       onMouseDown={(e) => closable && e.target === e.currentTarget && onClose()}
-      onKeyDown={(e) => closable && e.key === 'Escape' && onClose()}
     >
       <div role="dialog" aria-label={title} className="pop-in w-full rounded-xl glass" style={{ maxWidth: width }}>
         <div className="flex h-12 items-center px-5">

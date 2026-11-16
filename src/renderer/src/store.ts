@@ -83,6 +83,10 @@ interface State {
   accounts: Account[]
   folders: Folder[]
   syncing: Record<string, boolean>
+  /** Accounts whose server can't be reached right now. */
+  offline: Record<string, boolean>
+  queue: { actions: number; outbox: number }
+  outboxOpen: boolean
   view: MailView
   filter: MailFilter
   /** 'smart' = inbox with bundles, a category = inside one bundle, 'all' = plain list. */
@@ -109,6 +113,7 @@ interface State {
   updateSettings(patch: Partial<AppSettings>): Promise<void>
   toggleSidebar(): void
   setDrawer(open: boolean): void
+  setOutbox(open: boolean): void
   focusEvent(focus: { eventId: string; start: number } | null): void
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
@@ -190,6 +195,9 @@ export const useStore = create<State>((set, get) => ({
   folders: [],
   counts: { inbox: 0, flagged: 0, categories: { people: 0, notifications: 0, newsletters: 0, invitations: 0 } },
   syncing: {},
+  offline: {},
+  queue: { actions: 0, outbox: 0 },
+  outboxOpen: false,
   view: { type: 'unified', role: 'inbox' },
   filter: 'all',
   category: 'smart',
@@ -237,8 +245,19 @@ export const useStore = create<State>((set, get) => ({
     })
     api.app.on('accounts:changed', () => void get().refreshAccounts())
     api.app.on('calendar:open', (focus) => get().focusEvent(focus.eventId ? focus : { eventId: '', start: focus.start }))
+    const loadQueue = (): void => {
+      void api.mail.queue().then((q) => set({ queue: { actions: q.actions, outbox: q.outbox.length } }))
+    }
+    loadQueue()
+    api.app.on('queue:changed', loadQueue)
+    // Back online: replay what was queued right away instead of waiting for the next sync.
+    window.addEventListener('online', () => void api.mail.sync().catch(() => {}))
     api.app.on('sync:status', (s) => {
-      set({ syncing: { ...get().syncing, [s.accountId]: s.state === 'syncing' } })
+      set({
+        syncing: { ...get().syncing, [s.accountId]: s.state === 'syncing' },
+        // 'syncing' says nothing about reachability: keep the last known state until it ends.
+        offline: s.state === 'syncing' ? get().offline : { ...get().offline, [s.accountId]: s.state === 'offline' }
+      })
       if (s.state !== 'syncing') void get().refreshAccounts()
     })
     window.addEventListener('beforeunload', () => get().flushPending())
@@ -294,6 +313,10 @@ export const useStore = create<State>((set, get) => ({
 
   setDrawer(open) {
     set({ drawerOpen: open })
+  },
+
+  setOutbox(open) {
+    set({ outboxOpen: open })
   },
 
   focusEvent(focus) {
@@ -485,6 +508,8 @@ export const useStore = create<State>((set, get) => ({
 
   toast(text, tone = 'info', action) {
     const id = ++toastId
+    // IPC errors arrive as "Error invoking remote method 'x': Error: message": keep the message.
+    text = text.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, '')
     set({ toasts: [...get().toasts.slice(-3), { id, text, tone, action }] })
     // A toast with an undo lives exactly as long as the undo window.
     setTimeout(() => get().dismiss(id), action ? (get().settings?.undoSeconds ?? 5) * 1000 : tone === 'error' ? 7000 : 3200)

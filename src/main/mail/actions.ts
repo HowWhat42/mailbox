@@ -5,6 +5,7 @@ import { emit } from '../events'
 import { getAccount } from '../accounts/store'
 import { inMailbox, withImap } from './imap'
 import { describeError, foldersOf, syncAccount, type FolderRow } from './sync'
+import { enqueue, isOffline, type QueuedAction } from './queue'
 
 interface Target {
   id: string
@@ -53,20 +54,20 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
   for (const accountId of accounts) emit('mail:changed', { accountId })
 
   for (const accountId of accounts) {
-    const account = getAccount(accountId)
-    const folders = foldersOf(accountId)
+    const groups = [
+      ...Map.groupBy(
+        relevant.filter((t) => t.account_id === accountId),
+        (t) => t.folder_id
+      )
+    ].map(([folderId, msgs]): QueuedAction => ({ kind: 'action', folderId, uids: msgs.map((m) => m.uid), action, destFolderId }))
     try {
-      await withImap(account, async (client) => {
-        for (const [folderId, msgs] of Map.groupBy(
-          relevant.filter((t) => t.account_id === accountId),
-          (t) => t.folder_id
-        )) {
-          const folder = folders.find((f) => f.id === folderId)
-          if (!folder) continue
-          await inMailbox(client, folder.path, () => serverAction(client, account.kind, folders, folder, msgs, action, destFolderId))
-        }
-      })
+      await runOnServer(accountId, groups)
     } catch (err) {
+      if (isOffline(err)) {
+        // Offline: keep the local change and replay it when the server is back.
+        for (const g of groups) enqueue(accountId, g)
+        continue
+      }
       void syncAccount(accountId).catch(() => {})
       throw new Error(describeError(err), { cause: err })
     }
@@ -74,16 +75,28 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
   }
 }
 
+/** Performs queued or live actions on the server, one connection for all of them. */
+export async function runOnServer(accountId: string, ops: QueuedAction[]): Promise<void> {
+  const account = getAccount(accountId)
+  const folders = foldersOf(accountId)
+  await withImap(account, async (client) => {
+    for (const op of ops) {
+      const folder = folders.find((f) => f.id === op.folderId)
+      if (!folder) continue
+      await inMailbox(client, folder.path, () => serverAction(client, account.kind, folders, folder, op.uids, op.action, op.destFolderId))
+    }
+  })
+}
+
 async function serverAction(
   client: ImapFlow,
   kind: 'imap' | 'google',
   folders: FolderRow[],
   folder: FolderRow,
-  msgs: Target[],
+  uids: number[],
   action: MessageAction,
   destFolderId?: string
 ): Promise<void> {
-  const uids = msgs.map((m) => m.uid)
   const opts = { uid: true }
   switch (action) {
     case 'read':

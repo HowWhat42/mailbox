@@ -9,6 +9,7 @@ import { googleAccessToken } from '../accounts/google'
 import { inMailbox, withImap } from './imap'
 import { loadAttachment } from './attachments'
 import { describeError, foldersOf, syncFolder } from './sync'
+import { enqueue, isOffline } from './queue'
 
 async function attachmentsOf(list: OutgoingAttachment[]): Promise<Mail.Attachment[]> {
   return Promise.all(
@@ -40,6 +41,18 @@ async function buildMime(account: Account, msg: OutgoingMessage, { requireRecipi
   return { raw: await mail.build(), envelope, messageId: mail.messageId().replace(/^<|>$/g, '') }
 }
 
+/** Sends now, or puts the message in the outbox when the server can't be reached. */
+export async function sendOrQueue(msg: OutgoingMessage): Promise<'sent' | 'queued'> {
+  try {
+    await sendMessage(msg)
+    return 'sent'
+  } catch (err) {
+    if (!isOffline(err)) throw err
+    enqueue(msg.accountId, { kind: 'send', message: msg })
+    return 'queued'
+  }
+}
+
 export async function sendMessage(msg: OutgoingMessage): Promise<void> {
   const account = getAccount(msg.accountId)
   const { raw, envelope } = await buildMime(account, msg, { requireRecipients: true })
@@ -56,6 +69,7 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
   try {
     await transport.sendMail({ envelope, raw })
   } catch (err) {
+    if (isOffline(err)) throw err
     throw new Error(`Envoi impossible : ${describeError(err)}`, { cause: err })
   } finally {
     transport.close()

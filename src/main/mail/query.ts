@@ -12,6 +12,7 @@ import {
 } from '@shared/types'
 import { getDb } from '../db'
 import { ensureBodies } from './sync'
+import { isOffline } from './queue'
 
 interface SummaryRow {
   id: string
@@ -283,6 +284,7 @@ interface DetailRow {
   body_html: string | null
   body_text: string | null
   attachments_json: string | null
+  eml_path: string | null
   role: string | null
 }
 
@@ -306,7 +308,12 @@ export async function threadMessages(accountId: string, threadId: string): Promi
     return [...byMsgId.values()].toSorted((a, b) => a.date - b.date)
   }
 
-  await ensureBodies(pick(select()).map((r) => r.id))
+  try {
+    await ensureBodies(pick(select()).map((r) => r.id))
+  } catch (err) {
+    // Offline: show what is cached; bodies not downloaded yet come once the server is back.
+    if (!isOffline(err)) throw err
+  }
   return pick(select()).map((r) => ({
     id: r.id,
     accountId: r.account_id,
@@ -325,6 +332,7 @@ export async function threadMessages(accountId: string, threadId: string): Promi
     references: JSON.parse(r.refs) as string[],
     html: r.body_html,
     text: r.body_text,
-    attachments: r.attachments_json ? JSON.parse(r.attachments_json) : []
+    attachments: r.attachments_json ? JSON.parse(r.attachments_json) : [],
+    unavailable: !r.eml_path
   }))
 }

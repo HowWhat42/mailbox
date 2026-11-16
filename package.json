@@ -19,7 +19,9 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "test:e2e:reader": "electron-vite build && node tests/e2e-reader.mjs"
+    "test:e2e:reader": "electron-vite build && node tests/e2e-reader.mjs",
+    "check": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && oxlint --deny-warnings && oxfmt --check",
+    "test:e2e:offline": "electron-vite build && node tests/e2e-offline.mjs"
   },
   "dependencies": {
     "ical.js": "^2.2.1",

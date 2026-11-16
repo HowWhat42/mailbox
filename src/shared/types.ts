@@ -119,6 +119,8 @@ export interface MessageDetail {
   html: string | null
   text: string | null
   attachments: Attachment[]
+  /** Body not downloaded yet and the server can't be reached: shown once back online. */
+  unavailable: boolean
 }
 
 /** A list view: unified (all accounts) role-based box, or a specific folder. */
@@ -343,8 +345,20 @@ export interface Reminder {
 
 export interface SyncStatus {
   accountId: string
-  state: 'idle' | 'syncing' | 'error'
+  /** 'offline': the server can't be reached; changes are queued until it can. */
+  state: 'idle' | 'syncing' | 'error' | 'offline'
   message: string | null
+}
+
+/** A message waiting in the outbox for the connection to come back. */
+export interface QueuedSend {
+  id: number
+  accountId: string
+  to: string
+  subject: string
+  createdAt: number
+  /** Set when the server refused it (it stays until the user acts). */
+  lastError: string | null
 }
 
 export interface AppEvents {
@@ -356,6 +370,7 @@ export interface AppEvents {
   /** Ask the main window to show an event (from a reminder). */
   'calendar:open': { eventId: string; start: number }
   'settings:changed': AppSettings
+  'queue:changed': Record<string, never>
 }
 
 export interface MailboxApi {
@@ -380,7 +395,12 @@ export interface MailboxApi {
     thread(accountId: string, threadId: string): Promise<MessageDetail[]>
     act(messageIds: string[], action: MessageAction): Promise<void>
     actThread(accountId: string, threadId: string, folderId: string, action: MessageAction, destFolderId?: string): Promise<void>
-    send(msg: OutgoingMessage): Promise<void>
+    /** 'queued' when offline: the message waits in the outbox. */
+    send(msg: OutgoingMessage): Promise<'sent' | 'queued'>
+    queue(): Promise<{ actions: number; outbox: QueuedSend[] }>
+    /** Removes a message from the outbox and returns it, to edit or discard. */
+    takeFromOutbox(id: number): Promise<OutgoingMessage | null>
+    retryOutbox(): Promise<void>
     /** Saves (or replaces) a draft on the server; returns the new draft's local id, or null if the account has no Drafts folder. */
     saveDraft(msg: OutgoingMessage): Promise<{ id: string; attachments: OutgoingAttachment[] } | null>
     deleteDraft(messageId: string): Promise<void>

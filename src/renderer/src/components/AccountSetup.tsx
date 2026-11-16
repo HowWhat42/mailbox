@@ -3,6 +3,7 @@ import { ChevronRight, Mail } from 'lucide-react'
 import type { ImapAccountInput, ServerSettings } from '@shared/types'
 import { api, useStore } from '../store'
 import { Label, Modal, fieldCls } from './Modal'
+import { Select } from './ui/Controls'
 
 function GoogleMark() {
   return (
@@ -197,7 +198,7 @@ export function AccountSetup() {
           ) : (
             <p className="text-[12.5px] text-muted">Réglages non trouvés automatiquement : voici une proposition, à corriger si besoin.</p>
           )}
-          <div className="grid grid-cols-[1fr_88px] gap-2">
+          <div className="grid grid-cols-[1fr_88px_128px] gap-2">
             <Label text="Serveur IMAP">
               <input required value={form.imapHost} onChange={(e) => set('imapHost', e.target.value)} className={fieldCls} />
             </Label>
@@ -213,8 +214,20 @@ export function AccountSetup() {
                 className={fieldCls}
               />
             </Label>
+            <Label text="Chiffrement">
+              <Select
+                ariaLabel="Chiffrement IMAP"
+                className="w-full"
+                value={form.imapSecure ? 'tls' : 'starttls'}
+                onChange={(v) => set('imapSecure', v === 'tls')}
+                options={[
+                  { value: 'tls', label: 'SSL/TLS' },
+                  { value: 'starttls', label: 'STARTTLS' }
+                ]}
+              />
+            </Label>
           </div>
-          <div className="grid grid-cols-[1fr_88px] gap-2">
+          <div className="grid grid-cols-[1fr_88px_128px] gap-2">
             <Label text="Serveur SMTP">
               <input required value={form.smtpHost} onChange={(e) => set('smtpHost', e.target.value)} className={fieldCls} />
             </Label>
@@ -228,6 +241,18 @@ export function AccountSetup() {
                   setForm((f) => ({ ...f, smtpPort: port, smtpSecure: port === 465 }))
                 }}
                 className={fieldCls}
+              />
+            </Label>
+            <Label text="Chiffrement">
+              <Select
+                ariaLabel="Chiffrement SMTP"
+                className="w-full"
+                value={form.smtpSecure ? 'tls' : 'starttls'}
+                onChange={(v) => set('smtpSecure', v === 'tls')}
+                options={[
+                  { value: 'tls', label: 'SSL/TLS' },
+                  { value: 'starttls', label: 'STARTTLS' }
+                ]}
               />
             </Label>
           </div>

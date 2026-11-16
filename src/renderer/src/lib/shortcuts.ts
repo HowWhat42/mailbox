@@ -9,7 +9,7 @@ export function isTyping(e: KeyboardEvent): boolean {
 
 export function overlayOpen(): boolean {
   const s = useStore.getState()
-  return !!(s.paletteOpen || s.setupOpen || s.movePicker || s.dialog || document.querySelector('[role=menu]'))
+  return !!(s.paletteOpen || s.setupOpen || s.movePicker || s.dialog || document.querySelector('[role=menu], [data-modal]'))
 }
 
 /** Global keyboard map. Single keys only fire outside text fields; "g" starts a two-key jump. */

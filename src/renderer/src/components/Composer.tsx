@@ -291,10 +291,10 @@ export function Composer() {
     clearTimeout(timer.current)
     if (inflight.current) await inflight.current
     try {
-      await api.mail.send(message(latest.current))
+      const result = await api.mail.send(message(latest.current))
       done.current = true
       closeComposer()
-      toast('Message envoyé')
+      toast(result === 'queued' ? 'Hors ligne : le message partira dès le retour de la connexion' : 'Message envoyé')
     } catch (err) {
       toast((err as Error).message, 'error')
       setSending(false)

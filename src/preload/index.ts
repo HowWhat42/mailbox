@@ -25,7 +25,10 @@ const api = {
     'contacts',
     'unsubscribe',
     'bundles',
-    'bundleAct'
+    'bundleAct',
+    'queue',
+    'takeFromOutbox',
+    'retryOutbox'
   ]),
   calendar: invoker('calendar', [
     'sources',
