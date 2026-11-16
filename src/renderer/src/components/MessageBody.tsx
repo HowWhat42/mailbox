@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { ImageOff } from 'lucide-react'
 import { textToHtml } from '../lib/format'
+import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
 
 const REMOTE = /(<img[^>]+src=["']?https?:|url\(\s*["']?https?:|<image[^>]+href=["']?https?:)/i
 
@@ -33,8 +34,13 @@ function buildDoc(html: string, allowRemote: boolean): string {
       a { color: #0d7c72; }
       blockquote { margin: 8px 0; padding-left: 12px; border-left: 2px solid #d4d4db; color: #5c5c66; }
       ${allowRemote ? '' : 'img:not([src^="data:"]) { visibility: hidden; }'}
+      ${QUOTE_CSS}
     </style>`
-  return clean.replace(/<head>/i, `<head>${base}`)
+  // Fold the quoted history (Gmail-style "•••") before the document reaches the iframe.
+  const parsed = new DOMParser().parseFromString(clean, 'text/html')
+  foldQuotes(parsed)
+  parsed.head.insertAdjacentHTML('afterbegin', base)
+  return `<!doctype html>${parsed.documentElement.outerHTML}`
 }
 
 export function MessageBody({
@@ -49,7 +55,8 @@ export function MessageBody({
   const [allowRemote, setAllowRemote] = useState(allowRemoteByDefault)
   const frame = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(80)
-  const source = html ?? (text ? `<pre style="font:inherit;margin:0">${textToHtml(text)}</pre>` : '<p style="color:#888">(message vide)</p>')
+  const source =
+    html ?? (text ? `<pre style="font:inherit;margin:0">${quoteTextMail(textToHtml(text))}</pre>` : '<p style="color:#888">(message vide)</p>')
   const hasRemote = useMemo(() => REMOTE.test(source), [source])
   const doc = useMemo(() => buildDoc(source, allowRemote), [source, allowRemote])
 
@@ -66,6 +73,15 @@ export function MessageBody({
     const onLoad = (): void => {
       measure()
       const d = el.contentDocument
+      // The mail runs no script: the "•••" toggles are wired from here (same-origin, sandboxed).
+      d?.querySelectorAll<HTMLButtonElement>('.mb-quote-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const open = btn.nextElementSibling?.classList.toggle('mb-open') ?? false
+          btn.setAttribute('aria-expanded', String(open))
+          btn.title = open ? 'Masquer le message cité' : 'Afficher le message cité'
+          measure()
+        })
+      })
       if (d?.body) {
         observer = new ResizeObserver(measure)
         observer.observe(d.body)

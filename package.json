@@ -18,7 +18,8 @@
     "test:e2e:accounts": "electron-vite build && node tests/e2e-accounts.mjs",
     "lint": "oxlint",
     "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "format:check": "oxfmt --check",
+    "test:e2e:reader": "electron-vite build && node tests/e2e-reader.mjs"
   },
   "dependencies": {
     "ical.js": "^2.2.1",
