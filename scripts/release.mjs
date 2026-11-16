@@ -10,14 +10,15 @@ if (!['patch', 'minor', 'major'].includes(kind)) {
 }
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()
-const run = (cmd, args) => execFileSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' })
+// pnpm is a .cmd shim on Windows: it needs a shell, given as one command string (no user input here).
+const run = (command) => execFileSync(command, { stdio: 'inherit', shell: true })
 
 if (git('branch', '--show-current') !== 'main') throw new Error('Release from main.')
 if (git('status', '--porcelain')) throw new Error('Commit or stash your changes first.')
 git('fetch', 'origin', 'main')
 if (git('rev-parse', 'HEAD') !== git('rev-parse', 'origin/main')) throw new Error('main is not in sync with origin/main.')
 
-run('pnpm', ['check'])
+run('pnpm check')
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
 const [major, minor, patch] = pkg.version.split('.').map(Number)
