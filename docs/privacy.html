@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confidentialité · Mailbox</title>
+    <meta name="description" content="Ce que Mailbox fait de vos données : elles restent sur votre ordinateur." />
+    <link rel="icon" href="icon.png" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <main>
+      <header class="brand">
+        <img src="icon.png" alt="" />
+        <a href="./">Mailbox</a>
+      </header>
+
+      <h1>Règles de confidentialité</h1>
+      <p class="updated">Dernière mise à jour : 16 novembre 2026</p>
+
+      <p>
+        Mailbox est une application de bureau. Elle n’a pas de serveur : vos messages, vos agendas et vos réglages restent sur votre ordinateur, et
+        l’application ne communique qu’avec les services que vous lui avez connectés.
+      </p>
+
+      <h2>Ce que Mailbox stocke, et où</h2>
+      <p>
+        Les messages, pièces jointes, événements, contacts et réglages sont enregistrés dans le dossier de l’application sur votre ordinateur
+        (<code>%APPDATA%\Mailbox</code>). Les mots de passe et jetons d’accès sont chiffrés avec le coffre de Windows (DPAPI), liés à votre session.
+        Désinstaller Mailbox et supprimer ce dossier efface tout.
+      </p>
+
+      <h2>Données Google</h2>
+      <p>Si vous connectez un compte Google, Mailbox demande l’accès à :</p>
+      <ul>
+        <li>
+          <strong>Gmail</strong> (<code>https://mail.google.com/</code>) : lire, trier, archiver, supprimer et envoyer vos messages depuis
+          l’application.
+        </li>
+        <li><strong>Google Agenda</strong> : afficher vos événements, en créer, les modifier et répondre aux invitations.</li>
+        <li><strong>Votre nom et votre adresse e-mail</strong> : identifier le compte dans l’application.</li>
+      </ul>
+      <p>
+        Ces données ne servent qu’à afficher et gérer votre messagerie et votre agenda dans Mailbox, à votre demande. Elles transitent directement
+        entre votre ordinateur et Google. Elles ne sont jamais envoyées au développeur ni à un tiers, ni utilisées pour de la publicité, de l’analyse
+        ou l’entraînement de modèles d’IA, et aucun humain ne les lit.
+      </p>
+      <p>
+        L’utilisation et le transfert vers toute autre application des informations reçues des API Google respectent les
+        <a href="https://developers.google.com/terms/api-services-user-data-policy"
+          >Règles relatives aux données utilisateur des services API Google</a
+        >, y compris les exigences d’utilisation limitée (<i>Limited Use</i>).
+      </p>
+      <p>
+        Vous pouvez retirer l’accès à tout moment : supprimez le compte dans Mailbox, ou révoquez l’application sur
+        <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+      </p>
+
+      <h2>Avec qui Mailbox communique</h2>
+      <ul>
+        <li>Vos fournisseurs de messagerie et d’agenda (Google, serveurs IMAP/SMTP, CalDAV, abonnements .ics que vous ajoutez).</li>
+        <li>
+          À l’ajout d’un compte IMAP, l’annuaire de configuration de Thunderbird (<code>autoconfig.thunderbird.net</code>) et votre fournisseur
+          reçoivent le nom de domaine de votre adresse (la partie après « @ »), pour trouver les bons serveurs.
+        </li>
+        <li>GitHub, pour vérifier et télécharger les mises à jour de Mailbox. GitHub voit alors votre adresse IP, comme pour tout téléchargement.</li>
+        <li>
+          Les sites que vous ouvrez vous-même : liens dans un message, désabonnement, visioconférences. Les images distantes des messages sont
+          bloquées par défaut.
+        </li>
+      </ul>
+
+      <h2>Ce que Mailbox ne fait pas</h2>
+      <p>Pas de compte Mailbox, pas de statistiques d’usage, pas de rapports de plantage envoyés, pas de publicité, pas de revente de données.</p>
+
+      <h2>Contact</h2>
+      <p>
+        Une question sur ces règles : ouvrez une demande sur
+        <a href="https://github.com/HowWhat42/mailbox/issues">github.com/HowWhat42/mailbox/issues</a>.
+      </p>
+
+      <footer><a href="./">Accueil</a> · <a href="https://github.com/HowWhat42/mailbox">Code source</a></footer>
+    </main>
+  </body>
+</html>
