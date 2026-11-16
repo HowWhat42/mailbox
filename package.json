@@ -101,7 +101,7 @@
         "provider": "github",
         "owner": "HowWhat42",
         "repo": "mailbox",
-        "releaseType": "release"
+        "releaseType": "draft"
       }
     ]
   },

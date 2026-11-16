@@ -41,7 +41,15 @@ jobs:
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
-      - name: Package and publish
+      # One draft up front: electron-builder uploads into it instead of racing to create the
+      # release (it once made two, with the files split between them). Installed apps ignore drafts.
+      - name: Create draft release
+        shell: bash
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Mailbox ${GITHUB_REF_NAME#v}" --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package and upload
         run: pnpm exec electron-builder --win --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,3 +58,14 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: dist/Mailbox-Setup-*.exe
+
+      - name: Check and publish the release
+        shell: bash
+        run: |
+          assets=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[].name] | join(" ")')
+          for f in latest.yml "Mailbox-Setup-${GITHUB_REF_NAME#v}.exe" "Mailbox-Setup-${GITHUB_REF_NAME#v}.exe.blockmap"; do
+            [[ " $assets " == *" $f "* ]] || { echo "missing $f in the release (got: $assets)" >&2; exit 1; }
+          done
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
