@@ -23,7 +23,8 @@
     "check": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && oxlint --deny-warnings && oxfmt --check",
     "test:e2e:offline": "electron-vite build && node tests/e2e-offline.mjs",
     "test:e2e:update": "electron-vite build && node tests/e2e-update.mjs",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",

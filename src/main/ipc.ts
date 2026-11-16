@@ -33,6 +33,7 @@ import { activeReminders, dismissReminder, joinReminder, openReminder, snoozeRem
 import { getSettings, loginItemStatus, setSettings } from './settings'
 import { classifySender, listRules, reapplyRules, removeRule, reorderRules, saveRule } from './mail/rules'
 import { checkForUpdates, installUpdate, updateStatus } from './updater'
+import { listTemplates, removeTemplate, saveTemplate } from './templates'
 import { unsubscribe } from './mail/unsubscribe'
 
 const DAY = 86_400_000
@@ -147,6 +148,11 @@ const handlers: Handlers = {
       return ids.length
     },
     emptyFolder: (folderId) => emptyFolder(folderId)
+  },
+  templates: {
+    list: async (accountId) => listTemplates(accountId),
+    save: async (input) => saveTemplate(input),
+    remove: async (id) => removeTemplate(id)
   },
   rules: {
     list: async () => listRules(),

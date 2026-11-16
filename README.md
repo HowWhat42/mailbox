@@ -108,7 +108,9 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - Recherche plein texte locale instantanée (SQLite FTS5, insensible aux accents).
 - Lecture hors ligne des messages déjà ouverts.
 - HTML des mails isolé : DOMPurify + iframe sans scripts + CSP ; images distantes bloquées par défaut (pixels espions).
-- Éditeur riche, pièces jointes, signatures, réponses avec citation.
+- Éditeur riche, pièces jointes, réponses avec citation.
+- Signatures en texte ou en HTML (collé depuis un générateur), avec aperçu ; elles suivent le compte d’envoi choisi.
+- Modèles par compte : objet, destinataires et texte prêts à l’emploi, avec des champs `{{Prénom}}` demandés à l’insertion ; « Enregistrer ce message comme modèle » depuis le composeur.
 - Calendrier façon Outlook : plusieurs agendas (Google, CalDAV, abonnements .ics) superposés, vues jour / semaine / mois / agenda, mini-calendrier, couleur par agenda.
 - Réunions en ligne détectées (Teams, Meet, Zoom, Webex, Jitsi…) avec bouton **Rejoindre** sur l'événement, dans l'aperçu, la vue agenda et l'encart « prochain événement ».
 - Invitations : participants et leurs réponses, Accepter / Provisoire / Refuser (Google et CalDAV).
@@ -167,6 +169,7 @@ pnpm test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi
 pnpm test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
 pnpm test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
 pnpm test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
+pnpm test:e2e:templates  # signature HTML + aperçu, modèle avec champs inséré, envoyé et relu
 pnpm test:e2e:update     # installeur 9.9.9 servi en local : détection, téléchargement, « Mise à jour prête »
 ```
 

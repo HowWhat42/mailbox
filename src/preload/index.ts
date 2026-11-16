@@ -50,6 +50,7 @@ const api = {
     'respond'
   ]),
   settings: invoker('settings', ['get', 'set', 'loginItem']),
+  templates: invoker('templates', ['list', 'save', 'remove']),
   rules: invoker('rules', ['list', 'save', 'remove', 'reorder', 'reapply', 'classifySender']),
   updates: invoker('updates', ['status', 'check', 'install']),
   reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),

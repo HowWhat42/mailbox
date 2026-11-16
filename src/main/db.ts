@@ -233,6 +233,20 @@ const MIGRATIONS: string[] = [
     created_at INTEGER NOT NULL,
     last_error TEXT
   );
+  `,
+  // Reusable messages per account, with {{fields}} filled in when used.
+  `
+  CREATE TABLE templates (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    subject TEXT NOT NULL DEFAULT '',
+    html TEXT NOT NULL DEFAULT '',
+    to_json TEXT NOT NULL DEFAULT '[]',
+    cc_json TEXT NOT NULL DEFAULT '[]',
+    updated_at INTEGER NOT NULL
+  );
+  CREATE INDEX templates_account ON templates(account_id);
   `
 ]
 

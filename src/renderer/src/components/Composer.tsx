@@ -1,25 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import {
-  ArrowLeft,
-  Bold,
-  Italic,
-  Link2,
-  List,
-  ListOrdered,
-  Paperclip,
-  Quote,
-  Send,
-  Trash2,
-  Underline,
-  Upload,
-  X,
-  type LucideIcon
-} from 'lucide-react'
-import type { OutgoingAttachment, OutgoingMessage } from '@shared/types'
+import { ArrowLeft, FileText, Paperclip, Send, Trash2, Upload, X } from 'lucide-react'
+import type { MailTemplate, OutgoingAttachment, OutgoingMessage } from '@shared/types'
 import { api, confirmDialog, useStore, type ComposeDraft } from '../store'
-import { escapeHtml, formatAddresses, htmlToText } from '../lib/format'
+import { formatAddresses, htmlToText } from '../lib/format'
+import { SIGNATURE_ATTR, signatureBlock } from '../lib/signature'
+import { fillTemplate, templateFields } from '../lib/templates'
+import { Menu, type MenuEntry } from './ui/Menu'
+import { Modal, Label, fieldCls } from './Modal'
+import { TemplateFill } from './TemplateEditor'
 import { AttachmentCard } from './AttachmentCard'
+import { SelectionToolbar } from './SelectionToolbar'
 import { RecipientInput, isValidAddress } from './RecipientInput'
 import { Select } from './ui/Controls'
 import { useLayout } from '../lib/layout'
@@ -44,106 +35,56 @@ function Row({ label, children, trailing }: { label: string; children: React.Rea
   )
 }
 
-function FormatButton({ icon: Icon, label, onClick, active }: { icon: LucideIcon; label: string; onClick: () => void; active?: boolean }) {
-  return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={onClick}
-      className={`grid size-7 place-items-center rounded-md ${active ? 'bg-accent-soft text-accent' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
-    >
-      <Icon size={14} strokeWidth={2} />
-    </button>
-  )
+/** Top-level nodes the user writes: everything before the signature or the quoted history. */
+function ownNodes(editor: HTMLElement): ChildNode[] {
+  const out: ChildNode[] = []
+  for (const n of editor.childNodes) {
+    if (n instanceof HTMLElement && (n.hasAttribute(SIGNATURE_ATTR) || n.hasAttribute('data-mailbox-quote'))) break
+    out.push(n)
+  }
+  return out
 }
 
-/** Formatting bar that floats above the current text selection. */
-function SelectionToolbar({ editor }: { editor: React.RefObject<HTMLDivElement | null> }) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
-  const [, force] = useState(0)
-  const [link, setLink] = useState<{ url: string; range: Range } | null>(null)
+function ownHtml(editor: HTMLElement): string {
+  return ownNodes(editor)
+    .map((n) => (n instanceof Element ? n.outerHTML : (n.textContent ?? '')))
+    .join('')
+}
 
-  useEffect(() => {
-    const onChange = (): void => {
-      if (link) return
-      const sel = window.getSelection()
-      const el = editor.current
-      if (!sel || sel.isCollapsed || !sel.rangeCount || !el || !el.contains(sel.anchorNode)) {
-        setPos(null)
-        return
-      }
-      const r = sel.getRangeAt(0).getBoundingClientRect()
-      setPos({ x: r.left + r.width / 2, y: r.top })
-      force((n) => n + 1)
-    }
-    document.addEventListener('selectionchange', onChange)
-    return () => document.removeEventListener('selectionchange', onChange)
-  }, [editor, link])
-
-  if (!pos) return null
-  const cmd = (name: string, value?: string): void => {
-    document.execCommand(name, false, value)
-    force((n) => n + 1)
-  }
-  const state = (name: string): boolean => document.queryCommandState(name)
-
+/** Name of a new template, asked from the composer. */
+function SaveTemplateDialog({ onSave, onClose }: { onSave: (name: string) => void; onClose: () => void }) {
+  const [name, setName] = useState('')
   return (
-    <div
-      role="toolbar"
-      aria-label="Mise en forme"
-      tabIndex={-1}
-      className="pop-in fixed z-[65] flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-lg border border-line glass p-1"
-      style={{ left: pos.x, top: pos.y - 8 }}
-      onMouseDown={(e) => {
-        if (!(e.target instanceof HTMLInputElement)) e.preventDefault()
-      }}
-    >
-      {link ? (
-        <input
-          autoFocus
-          value={link.url}
-          onChange={(e) => setLink({ ...link, url: e.target.value })}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.stopPropagation()
-              setLink(null)
-            }
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              const url = link.url.trim()
-              const sel = window.getSelection()
-              sel?.removeAllRanges()
-              sel?.addRange(link.range)
-              if (/^(https?:\/\/|mailto:)./i.test(url)) document.execCommand('createLink', false, url)
-              setLink(null)
-            }
-          }}
-          onBlur={() => setLink(null)}
-          placeholder="https://"
-          className="h-7 w-60 rounded-md bg-panel px-2 text-[12.5px] text-fg focus:outline-none"
-        />
-      ) : (
-        <>
-          <FormatButton icon={Bold} label="Gras (Ctrl B)" active={state('bold')} onClick={() => cmd('bold')} />
-          <FormatButton icon={Italic} label="Italique (Ctrl I)" active={state('italic')} onClick={() => cmd('italic')} />
-          <FormatButton icon={Underline} label="Souligné (Ctrl U)" active={state('underline')} onClick={() => cmd('underline')} />
-          <span className="mx-0.5 h-4 w-px bg-line" />
-          <FormatButton
-            icon={Link2}
-            label="Lien"
-            onClick={() => {
-              const sel = window.getSelection()
-              if (sel?.rangeCount) setLink({ url: 'https://', range: sel.getRangeAt(0).cloneRange() })
-            }}
+    <Modal title="Enregistrer comme modèle" onClose={onClose} width={420}>
+      <form
+        className="space-y-3 px-5 pb-5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!name.trim()) return
+          onSave(name.trim())
+          onClose()
+        }}
+      >
+        <Label text="Nom du modèle" hint="L’objet, les destinataires et le texte (sans la signature ni la citation) sont repris.">
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={fieldCls}
+            placeholder="Relance devis"
+            aria-label="Nom du modèle"
           />
-          <FormatButton icon={List} label="Liste à puces" active={state('insertUnorderedList')} onClick={() => cmd('insertUnorderedList')} />
-          <FormatButton icon={ListOrdered} label="Liste numérotée" active={state('insertOrderedList')} onClick={() => cmd('insertOrderedList')} />
-          <FormatButton icon={Quote} label="Citation" onClick={() => cmd('formatBlock', 'blockquote')} />
-        </>
-      )}
-    </div>
+        </Label>
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-9 rounded-lg px-4 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+            Annuler
+          </button>
+          <button type="submit" disabled={!name.trim()} className="btn-primary h-9 rounded-lg px-4 text-[13px] font-medium disabled:opacity-50">
+            Enregistrer
+          </button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -171,6 +112,9 @@ export function Composer() {
   const [saving, setSaving] = useState(false)
   const editor = useRef<HTMLDivElement>(null)
   const { single } = useLayout()
+  const [templateMenu, setTemplateMenu] = useState<{ anchor: HTMLElement; items: MenuEntry[] } | null>(null)
+  const [filling, setFilling] = useState<{ template: MailTemplate; fields: string[] } | null>(null)
+  const [savingTemplate, setSavingTemplate] = useState(false)
 
   // Latest state for timers and unmount, without re-subscribing effects.
   const latest = useRef(draft)
@@ -238,8 +182,7 @@ export function Composer() {
 
   useEffect(() => {
     const account = accounts.find((a) => a.id === draft.accountId)
-    const signature =
-      account?.signature && draft.kind !== 'draft' ? `<p><br></p><p>-- <br>${escapeHtml(account.signature).replace(/\n/g, '<br>')}</p>` : ''
+    const signature = account?.signature && draft.kind !== 'draft' ? `<p><br></p>${signatureBlock(account.signature)}` : ''
     // Quoted mail comes from strangers: sanitize before it lands in a live contentEditable.
     const body = DOMPurify.sanitize(draft.html, { FORBID_TAGS: ['style', 'form', 'input', 'button', 'script'] })
     if (editor.current)
@@ -260,6 +203,99 @@ export function Composer() {
     // Mount/unmount only: the draft is the initial state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /** Puts a filled-in template above the signature and quoted history, and its subject and recipients in place. */
+  const applyTemplate = async (t: MailTemplate, values: Record<string, string>): Promise<void> => {
+    const el = editor.current
+    if (!el) return
+    const filled = fillTemplate(t.subject, t.html, values)
+    const written = ownNodes(el)
+    const hasText = written.some((n) => (n.textContent ?? '').trim() || (n instanceof Element && n.querySelector('img')))
+    if (
+      hasText &&
+      !(await confirmDialog({
+        title: 'Remplacer votre texte ?',
+        body: `Le modèle « ${t.name} » remplace ce que vous avez écrit. La signature et le message cité sont gardés.`,
+        confirmLabel: 'Remplacer'
+      }))
+    )
+      return
+    for (const n of written) n.remove()
+    const fragment = document
+      .createRange()
+      .createContextualFragment(`${DOMPurify.sanitize(filled.html, { FORBID_TAGS: ['style', 'form', 'input', 'button', 'script'] })}<p><br></p>`)
+    el.insertBefore(fragment, el.firstChild)
+    const d = latest.current
+    const known = new Set([...d.to, ...d.cc].map((a) => a.address.toLowerCase()))
+    const patch: Partial<ComposeDraft> = {}
+    if (filled.subject && !d.subject.trim()) patch.subject = filled.subject
+    const to = t.to.filter((a) => !known.has(a.address.toLowerCase()))
+    const cc = t.cc.filter((a) => !known.has(a.address.toLowerCase()))
+    if (to.length) patch.to = [...d.to, ...to]
+    if (cc.length) {
+      patch.cc = [...d.cc, ...cc]
+      setShowCc(true)
+    }
+    if (Object.keys(patch).length) updateComposer(patch)
+    touch()
+    el.focus()
+  }
+
+  const pickTemplate = (t: MailTemplate): void => {
+    const fields = templateFields(t.subject, t.html)
+    if (fields.length) setFilling({ template: t, fields })
+    else void applyTemplate(t, {})
+  }
+
+  const openTemplates = async (anchor: HTMLElement): Promise<void> => {
+    const d = latest.current
+    const list = await api.templates.list(d.accountId)
+    const account = accounts.find((a) => a.id === d.accountId)
+    setTemplateMenu({
+      anchor,
+      items: [
+        ...list.map((t): MenuEntry => ({ label: t.name, hint: t.subject || undefined, icon: FileText, onSelect: () => pickTemplate(t) })),
+        ...(list.length ? (['separator'] as MenuEntry[]) : []),
+        { label: 'Enregistrer ce message comme modèle…', onSelect: () => setSavingTemplate(true) },
+        {
+          label: list.length ? 'Gérer les modèles…' : 'Créer un modèle…',
+          onSelect: () => useStore.getState().openSettings(`account:${d.accountId}`),
+          hint: list.length ? undefined : account ? `pour ${account.email}` : undefined
+        }
+      ]
+    })
+  }
+
+  const saveAsTemplate = async (name: string): Promise<void> => {
+    const d = latest.current
+    try {
+      await api.templates.save({
+        accountId: d.accountId,
+        name,
+        subject: d.subject,
+        html: editor.current ? ownHtml(editor.current) : '',
+        to: d.to,
+        cc: d.cc
+      })
+      toast(`Modèle « ${name} » enregistré`)
+    } catch (err) {
+      toast((err as Error).message, 'error')
+    }
+  }
+
+  /** Sending account changed: its own signature replaces the previous one. */
+  const switchAccount = (accountId: string): void => {
+    const el = editor.current
+    const sig = accounts.find((a) => a.id === accountId)?.signature ?? ''
+    const current = el?.querySelector(`[${SIGNATURE_ATTR}]`)
+    if (el && current) {
+      if (sig) current.outerHTML = signatureBlock(sig)
+      else current.remove()
+    } else if (el && sig && draft.kind === 'new') {
+      el.insertAdjacentHTML('beforeend', `<p><br></p>${signatureBlock(sig)}`)
+    }
+    set('accountId', accountId)
+  }
 
   const addFiles = (files: OutgoingAttachment[]): void => {
     if (files.length) set('attachments', [...latest.current.attachments, ...files])
@@ -335,6 +371,8 @@ export function Composer() {
       role="presentation"
       className="@container relative flex min-w-0 flex-1 flex-col"
       onKeyDown={(e) => {
+        // Template dialogs live inside the composer: their Escape / Enter are theirs.
+        if ((e.target as HTMLElement).closest('[data-modal]')) return
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
           e.preventDefault()
           void send()
@@ -392,7 +430,7 @@ export function Composer() {
             <Select
               ariaLabel="Compte d’envoi"
               value={draft.accountId}
-              onChange={(v) => set('accountId', v)}
+              onChange={switchAccount}
               options={accounts.map((a) => ({ value: a.id, label: `${accountLabel(a)} · ${a.name} <${a.email}>`, swatch: a.color }))}
               className="max-w-[420px] flex-1"
             />
@@ -475,6 +513,15 @@ export function Composer() {
         >
           <Paperclip size={15} /> <span className="hidden @[480px]:inline">Joindre</span>
         </button>
+        <button
+          type="button"
+          onClick={(e) => void openTemplates(e.currentTarget)}
+          title="Insérer un modèle, ou enregistrer ce message comme modèle"
+          aria-haspopup="menu"
+          className="flex h-9 items-center gap-2 rounded-lg px-3 text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+        >
+          <FileText size={15} /> <span className="hidden @[480px]:inline">Modèles</span>
+        </button>
         <span className="ml-auto hidden text-[12px] text-faint @[720px]:inline">Sélectionnez du texte pour le mettre en forme</span>
         <button
           onClick={() => void discard()}
@@ -487,6 +534,16 @@ export function Composer() {
       </footer>
 
       <SelectionToolbar editor={editor} />
+      {templateMenu && <Menu anchor={templateMenu.anchor} items={templateMenu.items} onClose={() => setTemplateMenu(null)} minWidth={260} />}
+      {filling && (
+        <TemplateFill
+          template={filling.template}
+          fields={filling.fields}
+          onApply={(values) => void applyTemplate(filling.template, values)}
+          onClose={() => setFilling(null)}
+        />
+      )}
+      {savingTemplate && <SaveTemplateDialog onSave={(name) => void saveAsTemplate(name)} onClose={() => setSavingTemplate(false)} />}
 
       {dragging && (
         <div className="pointer-events-none absolute inset-3 z-10 grid place-items-center rounded-xl border-2 border-dashed border-accent bg-accent-soft backdrop-blur-[1px]">

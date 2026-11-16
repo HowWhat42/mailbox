@@ -1,5 +1,19 @@
 export type AccountKind = 'imap' | 'google'
 
+/** A reusable message of an account. `{{Field}}` in the subject or body is asked for when it's used. */
+export interface MailTemplate {
+  id: string
+  accountId: string
+  name: string
+  subject: string
+  html: string
+  to: Address[]
+  cc: Address[]
+  updatedAt: number
+}
+
+export type MailTemplateInput = Omit<MailTemplate, 'id' | 'updatedAt'> & { id?: string }
+
 export interface Account {
   id: string
   kind: AccountKind
@@ -429,6 +443,12 @@ export interface MailboxApi {
     markAllRead(view: MailView, scope: MailScope): Promise<number>
     /** Permanently deletes everything in Trash or Junk; returns how many. */
     emptyFolder(folderId: string): Promise<number>
+  }
+  templates: {
+    /** One account's templates, or all of them. */
+    list(accountId?: string): Promise<MailTemplate[]>
+    save(input: MailTemplateInput): Promise<MailTemplate>
+    remove(id: string): Promise<void>
   }
   rules: {
     list(): Promise<MailRule[]>

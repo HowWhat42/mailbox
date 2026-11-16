@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
-import type { Account } from '@shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import { FileText, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import type { Account, MailTemplate, MailTemplateInput } from '@shared/types'
 import { api, confirmDialog, useStore } from '../../store'
 import { Select, Toggle } from '../../components/ui/Controls'
 import { fieldCls } from '../../components/Modal'
@@ -8,6 +8,10 @@ import { Row, Section } from './parts'
 import { MarkerSample } from './MarkerPicker'
 import { accountLabel } from '../../lib/accounts'
 import { isHex } from '../../lib/appearance'
+import { isHtmlSignature, signatureHtml } from '../../lib/signature'
+import { templateFields } from '../../lib/templates'
+import { HtmlPreview } from '../../components/HtmlPreview'
+import { TemplateEditor } from '../../components/TemplateEditor'
 
 const COLORS = ['#8f86f0', '#5b8cff', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635', '#f5b041', '#fb7c5c', '#f87171', '#f472b6', '#c084fc', '#94a3b8']
 
@@ -74,14 +78,27 @@ export function AccountSettings({ account }: { account: Account }) {
         <Row label="Nom affiché aux destinataires" stack>
           <input value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} aria-label="Nom affiché" />
         </Row>
-        <Row label="Signature" hint="Ajoutée aux nouveaux messages, réponses et transferts." stack>
+        <Row
+          label="Signature"
+          hint="Ajoutée aux nouveaux messages, réponses et transferts. Texte simple, ou code HTML collé depuis un générateur de signature."
+          stack
+        >
           <textarea
             value={signature}
             onChange={(e) => setSignature(e.target.value)}
-            rows={4}
-            className={`${fieldCls} h-auto resize-y py-2`}
+            rows={isHtmlSignature(signature) ? 8 : 4}
+            spellCheck={!isHtmlSignature(signature)}
+            className={`${fieldCls} h-auto resize-y py-2 ${isHtmlSignature(signature) ? 'font-mono text-[12px]' : ''}`}
             aria-label="Signature"
           />
+          {signature.trim() && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[12px] text-muted">
+                Aperçu, tel que vos destinataires le verront{isHtmlSignature(signature) ? ' · HTML' : ''}
+              </p>
+              <HtmlPreview label="Aperçu de la signature" html={(isHtmlSignature(signature) ? '' : '-- <br>') + signatureHtml(signature)} />
+            </div>
+          )}
         </Row>
         {dirty && (
           <div className="flex justify-end px-4 py-3">
@@ -91,6 +108,8 @@ export function AccountSettings({ account }: { account: Account }) {
           </div>
         )}
       </Section>
+
+      <TemplatesSection account={account} />
 
       <Section title="Repère dans la boîte unifiée" description="Pour reconnaître d’un coup d’œil les messages de ce compte.">
         <Row label="Nom court" hint="Affiché sur l’étiquette et dans la barre latérale. Vide : déduit du nom du compte.">
@@ -191,5 +210,76 @@ export function AccountSettings({ account }: { account: Account }) {
         </Row>
       </Section>
     </>
+  )
+}
+
+/** Templates of this account: reusable messages with {{fields}} filled in when used. */
+function TemplatesSection({ account }: { account: Account }) {
+  const { toast } = useStore.getState()
+  const [templates, setTemplates] = useState<MailTemplate[]>([])
+  const [editing, setEditing] = useState<MailTemplateInput | null>(null)
+  const load = useCallback(() => void api.templates.list(account.id).then(setTemplates), [account.id])
+  useEffect(load, [load])
+
+  const remove = async (t: MailTemplate): Promise<void> => {
+    const ok = await confirmDialog({
+      title: `Supprimer « ${t.name} » ?`,
+      body: 'Ce modèle ne sera plus proposé.',
+      confirmLabel: 'Supprimer',
+      tone: 'danger'
+    })
+    if (!ok) return
+    await api.templates.remove(t.id)
+    toast('Modèle supprimé')
+    load()
+  }
+
+  return (
+    <Section
+      title="Modèles"
+      description="Des messages prêts à l’emploi pour ce compte. Les champs entre accolades, comme {{Prénom}}, sont demandés au moment de l’insérer depuis le bouton Modèles du composeur."
+    >
+      {templates.map((t) => {
+        const fields = templateFields(t.subject, t.html)
+        return (
+          <div key={t.id} className="flex items-center gap-3 px-4 py-3">
+            <FileText size={15} className="shrink-0 text-muted" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium">{t.name}</p>
+              <p className="truncate text-[12px] text-muted">
+                {[t.subject || 'Sans objet', fields.length ? `${fields.length} champ${fields.length > 1 ? 's' : ''} : ${fields.join(', ')}` : '']
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </div>
+            <button
+              onClick={() => setEditing(t)}
+              aria-label={`Modifier ${t.name}`}
+              title="Modifier"
+              className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => void remove(t)}
+              aria-label={`Supprimer ${t.name}`}
+              title="Supprimer"
+              className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-danger"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )
+      })}
+      <div className="px-4 py-3">
+        <button
+          onClick={() => setEditing({ accountId: account.id, name: '', subject: '', html: '', to: [], cc: [] })}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+        >
+          <Plus size={13} /> Nouveau modèle
+        </button>
+      </div>
+      {editing && <TemplateEditor initial={editing} onClose={() => setEditing(null)} onSaved={load} />}
+    </Section>
   )
 }

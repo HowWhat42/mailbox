@@ -28,9 +28,9 @@ export async function replyDraft(thread: ThreadSummary, kind: ReplyKind, message
       subject: prefixed(msg.subject, 'Fwd'),
       attachments: msg.attachments.map((a) => ({ kind: 'message', messageId: msg.id, attachmentId: a.id, name: a.filename, size: a.size })),
       html:
-        `<p><br></p><p>---------- Message transféré ----------<br>` +
+        `<p><br></p><div data-mailbox-quote=""><p>---------- Message transféré ----------<br>` +
         `De : ${escapeHtml(formatAddresses([msg.from]))}<br>Date : ${fullDate(msg.date)}<br>` +
-        `Objet : ${escapeHtml(msg.subject)}<br>À : ${escapeHtml(formatAddresses(msg.to))}</p>${body}`
+        `Objet : ${escapeHtml(msg.subject)}<br>À : ${escapeHtml(formatAddresses(msg.to))}</p>${body}</div>`
     }
   }
 
@@ -46,7 +46,8 @@ export async function replyDraft(thread: ThreadSummary, kind: ReplyKind, message
     subject: prefixed(msg.subject, 'Re'),
     inReplyTo: msg.messageIdHeader,
     references: [...msg.references, ...(msg.messageIdHeader ? [msg.messageIdHeader] : [])],
-    html: `<p><br></p><p>Le ${fullDate(msg.date)}, ${escapeHtml(displayName(msg.from))} a écrit :</p><blockquote>${body}</blockquote>`
+    // The quoted history is marked: the composer writes above it, and Mailbox folds it when reading.
+    html: `<p><br></p><div data-mailbox-quote=""><p>Le ${fullDate(msg.date)}, ${escapeHtml(displayName(msg.from))} a écrit :</p><blockquote>${body}</blockquote></div>`
   }
 }
 
