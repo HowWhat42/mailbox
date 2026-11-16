@@ -1,50 +1,79 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/geist';
 @import 'tailwindcss';
 
+/*
+ * Dark ("nuit") is the signature theme: pure black, a dithered pixel nebula
+ * behind translucent panels, violet light on whatever is selected.
+ */
 :root,
 [data-theme='dark'] {
-  --bg: #0f1013;
-  --panel: #15161a;
-  --raised: #1b1c21;
-  --hover: #1f2026;
-  --line: #24252b;
-  --line-strong: #31323a;
-  --fg: #e7e7ea;
-  --fg-2: #b4b4bc;
-  --muted: #8b8b94;
-  --faint: #5d5e66;
-  --accent: #2dd4bf;
-  --accent-fg: #04201c;
-  --accent-soft: rgb(45 212 191 / 0.12);
-  --danger: #f87171;
+  --shell: #000000;
+  --surface: rgb(4 4 12 / 0.7);
+  --surface-solid: #07070f;
+  --panel: rgb(255 255 255 / 0.02);
+  --raised: #0d0c1f;
+  --hover: rgb(180 170 255 / 0.07);
+  --selected: rgb(138 127 232 / 0.16);
+  --line: rgb(255 255 255 / 0.07);
+  --line-strong: rgb(180 170 255 / 0.16);
+  --fg: #f4f2fb;
+  --fg-2: #cdc8e4;
+  --muted: #9a94b8;
+  --faint: #5f5a7c;
+  --accent: #8f86f0;
+  --accent-fg: #0a0920;
+  --accent-soft: rgb(138 127 232 / 0.16);
+  --danger: #f07ba0;
   --paper: #ffffff;
-  --shadow: 0 24px 64px -16px rgb(0 0 0 / 0.6), 0 0 0 1px var(--line);
+  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 60px -20px rgb(0 0 0 / 0.9), 0 0 0 1px rgb(180 170 255 / 0.12);
+  --card-shadow: 0 0 0 1px var(--line);
+  --glow: inset 0 -14px 22px -16px rgb(120 100 255 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --selected-bg: linear-gradient(90deg, rgb(138 127 232 / 0.32), rgb(111 140 255 / 0.12) 60%, rgb(111 140 255 / 0));
+  --glass: linear-gradient(160deg, rgb(138 127 232 / 0.12), transparent 45%), rgb(11 10 30 / 0.92);
+  --primary-bg: radial-gradient(100% 60% at 50% 0%, rgb(255 255 255 / 0.14), transparent 70%),
+    linear-gradient(150deg, rgb(138 127 232 / 0.85), rgb(111 140 255 / 0.35) 60%, rgb(74 60 196 / 0.4)), #0d0b26;
+  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -8px 14px -10px rgb(169 159 255 / 0.8), 0 0 0 1px rgb(180 170 255 / 0.25),
+    0 4px 14px -6px rgb(120 100 255 / 0.6);
+  --primary-fg: #f6f4ff;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --bg: #fbfbfc;
-  --panel: #f4f4f6;
+  --shell: #e9e8f2;
+  --surface: #ffffff;
+  --surface-solid: #ffffff;
+  --panel: #f6f5fb;
   --raised: #ffffff;
-  --hover: #ececf0;
-  --line: #e4e4e9;
-  --line-strong: #d4d4db;
-  --fg: #18181b;
-  --fg-2: #3f3f46;
-  --muted: #71717a;
-  --faint: #a1a1aa;
-  --accent: #0d9488;
+  --hover: #f1f0f8;
+  --selected: #ecebfb;
+  --line: #e5e3ee;
+  --line-strong: #d3d0e2;
+  --fg: #16141f;
+  --fg-2: #3c3950;
+  --muted: #6f6b86;
+  --faint: #a29fb5;
+  --accent: #5b51d8;
   --accent-fg: #ffffff;
-  --accent-soft: rgb(13 148 136 / 0.1);
-  --danger: #dc2626;
+  --accent-soft: rgb(91 81 216 / 0.1);
+  --danger: #d23d6a;
   --paper: #ffffff;
-  --shadow: 0 24px 64px -16px rgb(15 15 30 / 0.25), 0 0 0 1px var(--line);
+  --shadow: 0 16px 48px -12px rgb(30 20 80 / 0.25), 0 0 0 1px var(--line);
+  --card-shadow: 0 1px 2px rgb(30 20 80 / 0.05), 0 0 0 1px var(--line);
+  --glow: inset 0 0 0 1px rgb(91 81 216 / 0.12);
+  --selected-bg: linear-gradient(90deg, rgb(91 81 216 / 0.14), rgb(91 81 216 / 0.04) 70%, transparent);
+  --glass: #ffffff;
+  --primary-bg: linear-gradient(160deg, #6d63ea, #4d43c8);
+  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px -4px rgb(77 67 200 / 0.5);
+  --primary-fg: #ffffff;
   color-scheme: light;
 }
 
 @theme inline {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
-  --color-bg: var(--bg);
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-shell: var(--shell);
+  --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
+  --color-selected: var(--selected);
   --color-panel: var(--panel);
   --color-raised: var(--raised);
   --color-hover: var(--hover);
@@ -60,6 +89,7 @@
   --color-danger: var(--danger);
   --color-paper: var(--paper);
   --shadow-pop: var(--shadow);
+  --shadow-card: var(--card-shadow);
 }
 
 html,
@@ -70,12 +100,11 @@ body,
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--shell);
   color: var(--fg);
   font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.45;
-  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   user-select: none;
   overflow: hidden;
@@ -85,6 +114,10 @@ input,
 textarea,
 [contenteditable] {
   user-select: text;
+}
+
+::selection {
+  background: rgb(143 134 240 / 0.4);
 }
 
 .tnum {
@@ -101,6 +134,100 @@ textarea,
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* --- Nyx-style backdrop: nebula + 1px black grid = LED mosaic ----------- */
+.backdrop {
+  --cell: max(4px, calc(max(1920px, 100vw) / 480));
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #000;
+  background-image:
+    linear-gradient(90deg, #000 1px, transparent 1px), linear-gradient(0deg, #000 1px, transparent 1px), var(--nebula, none);
+  background-size:
+    var(--cell) var(--cell),
+    var(--cell) var(--cell),
+    calc(var(--cell) * 320) auto;
+  background-position: right bottom;
+  background-repeat: repeat, repeat, no-repeat;
+  image-rendering: pixelated;
+}
+[data-theme='light'] .backdrop {
+  display: none;
+}
+
+/* Main content panel floating over the backdrop. */
+.panel {
+  background: var(--surface);
+  box-shadow: var(--card-shadow);
+}
+[data-theme='dark'] .panel {
+  backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.03);
+}
+
+/* Selected row / active nav: violet light seeping from the left, glow along the bottom. */
+.lit {
+  background: var(--selected-bg);
+  box-shadow: var(--glow);
+}
+
+.glass {
+  background: var(--glass);
+  box-shadow: var(--shadow);
+}
+[data-theme='dark'] .glass {
+  backdrop-filter: blur(20px) saturate(1.3);
+}
+
+.btn-primary {
+  background: var(--primary-bg);
+  box-shadow: var(--primary-shadow);
+  color: var(--primary-fg);
+  transition: filter 120ms;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+
+/* Big dithered wordmark for empty states (text clipped to a pixel grid). */
+.wordmark {
+  font-weight: 800;
+  letter-spacing: -0.07em;
+  line-height: 1;
+  color: transparent;
+  --cell: max(4px, calc(max(1920px, 100vw) / 480));
+  background:
+    linear-gradient(90deg, #000 1px, transparent 1px), linear-gradient(0deg, #000 1px, transparent 1px),
+    linear-gradient(170deg, #d6ceff, #8f86f0 55%, #6f8cff);
+  background-size:
+    var(--cell) var(--cell),
+    var(--cell) var(--cell),
+    100% 100%;
+  background-attachment: fixed, fixed, scroll;
+  background-position: right bottom, right bottom, 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  opacity: 0.55;
+  mix-blend-mode: plus-lighter;
+}
+[data-theme='light'] .wordmark {
+  background:
+    linear-gradient(90deg, #fff 1px, transparent 1px), linear-gradient(0deg, #fff 1px, transparent 1px),
+    linear-gradient(170deg, #b8b0ff, #5b51d8);
+  background-size:
+    var(--cell) var(--cell),
+    var(--cell) var(--cell),
+    100% 100%;
+  background-attachment: fixed, fixed, scroll;
+  background-position: right bottom, right bottom, 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  mix-blend-mode: normal;
+  opacity: 0.35;
 }
 
 ::-webkit-scrollbar {

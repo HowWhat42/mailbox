@@ -214,15 +214,16 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           snippet,
           unread,
           msg.flags?.has('\\Flagged') ? 1 : 0,
-          hasAttachment(msg.bodyStructure) ? 1 : 0
+          hasAttachment(msg.bodyStructure) ? 1 : 0,
+          JSON.stringify((env?.bcc ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' })))
         ])
         if (notifyNew && unread) newUnread.push({ from: from?.name || from?.address || '', subject: env?.subject ?? '' })
       }
       tx(() => {
         const insert = db.prepare(
           `INSERT OR IGNORE INTO messages (id, account_id, folder_id, uid, thread_id, message_id_header, refs, subject,
-             from_name, from_addr, to_json, cc_json, reply_to_json, date, snippet, unread, flagged, has_attachments)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+             from_name, from_addr, to_json, cc_json, reply_to_json, date, snippet, unread, flagged, has_attachments, bcc_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         for (const row of rows) insert.run(...(row as (string | number | null)[]))
       })

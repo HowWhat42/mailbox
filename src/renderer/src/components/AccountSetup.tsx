@@ -96,7 +96,7 @@ export function AccountSetup() {
   }
 
   const errorBox = error && <p className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{error}</p>
-  const primary = 'h-9 rounded-md bg-accent px-4 text-[13px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-60'
+  const primary = 'btn-primary h-9 rounded-md px-4 text-[13px] font-medium disabled:opacity-60'
 
   return (
     <Modal title={hasAccounts ? 'Ajouter un compte' : 'Bienvenue dans Mailbox'} onClose={close} closable={hasAccounts} width={480}>

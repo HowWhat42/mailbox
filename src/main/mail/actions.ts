@@ -18,8 +18,9 @@ interface Target {
 const MOVE_ROLE: Partial<Record<MessageAction, FolderRole>> = { archive: 'archive', trash: 'trash', junk: 'junk' }
 
 /** Applies `action` locally first (instant UI), then on the server; resyncs on failure. */
-export async function applyAction(messageIds: string[], action: MessageAction): Promise<void> {
+export async function applyAction(messageIds: string[], action: MessageAction, destFolderId?: string): Promise<void> {
   if (!messageIds.length) return
+  if (action === 'move' && !destFolderId) throw new Error('Dossier de destination manquant.')
   const db = getDb()
   const targets = db
     .prepare(`SELECT id, uid, account_id, folder_id, unread, flagged FROM messages WHERE id IN (${messageIds.map(() => '?').join(',')})`)
@@ -43,7 +44,8 @@ export async function applyAction(messageIds: string[], action: MessageAction): 
       else if (action === 'unflag') db.prepare('UPDATE messages SET flagged = 0 WHERE id = ?').run(t.id)
       else db.prepare('DELETE FROM messages WHERE id = ?').run(t.id)
       // Keep the sidebar's per-folder unread counter in step until the next sync.
-      const delta = action === 'read' ? -1 : action === 'unread' ? 1 : MOVE_ROLE[action] && t.unread ? -1 : 0
+      const moves = !!MOVE_ROLE[action] || action === 'move'
+      const delta = action === 'read' ? -1 : action === 'unread' ? 1 : moves && t.unread ? -1 : 0
       if (delta) db.prepare('UPDATE folders SET unread = max(0, unread + ?) WHERE id = ?').run(delta, t.folder_id)
     }
   })
@@ -61,14 +63,14 @@ export async function applyAction(messageIds: string[], action: MessageAction): 
         )) {
           const folder = folders.find((f) => f.id === folderId)
           if (!folder) continue
-          await inMailbox(client, folder.path, () => serverAction(client, account.kind, folders, folder, msgs, action))
+          await inMailbox(client, folder.path, () => serverAction(client, account.kind, folders, folder, msgs, action, destFolderId))
         }
       })
     } catch (err) {
       void syncAccount(accountId).catch(() => {})
       throw new Error(describeError(err))
     }
-    if (MOVE_ROLE[action]) void syncAccount(accountId).catch(() => {})
+    if (MOVE_ROLE[action] || action === 'move') void syncAccount(accountId).catch(() => {})
   }
 }
 
@@ -78,7 +80,8 @@ async function serverAction(
   folders: FolderRow[],
   folder: FolderRow,
   msgs: Target[],
-  action: MessageAction
+  action: MessageAction,
+  destFolderId?: string
 ): Promise<void> {
   const uids = msgs.map((m) => m.uid)
   const opts = { uid: true }
@@ -95,6 +98,13 @@ async function serverAction(
     case 'unflag':
       await client.messageFlagsRemove(uids, ['\\Flagged'], opts)
       return
+  }
+
+  if (action === 'move') {
+    const dest = folders.find((f) => f.id === destFolderId)
+    if (!dest) throw new Error('Dossier de destination introuvable.')
+    if (dest.path !== folder.path) await client.messageMove(uids, dest.path, opts)
+    return
   }
 
   const role = MOVE_ROLE[action]!

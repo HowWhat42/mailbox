@@ -69,3 +69,22 @@ export function htmlToText(html: string): string {
   doc.querySelectorAll('p, div, li, blockquote').forEach((el) => el.append('\n'))
   return (doc.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim()
 }
+
+/** Section a thread falls under in the list (Aujourd’hui, Hier, …). */
+export function dateGroup(ts: number, now = new Date()): string {
+  const d = new Date(ts)
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const day = 86_400_000
+  if (ts >= today) return 'Aujourd’hui'
+  if (ts >= today - day) return 'Hier'
+  const weekStart = today - ((now.getDay() + 6) % 7) * day
+  if (ts >= weekStart) return 'Cette semaine'
+  if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return 'Ce mois-ci'
+  const label = format(d, isSameYear(d, now) ? 'MMMM' : 'MMMM yyyy', { locale: fr })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+export function extensionOf(filename: string): string {
+  const ext = filename.includes('.') ? filename.split('.').pop()! : ''
+  return ext.slice(0, 4).toUpperCase() || 'FICH'
+}

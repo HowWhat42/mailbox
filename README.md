@@ -38,6 +38,10 @@ Adresse + mot de passe suffisent dans la plupart des cas : les serveurs sont dé
 | `S` | Suivre / ne plus suivre |
 | `U` | Lu / non lu |
 | `!` | Indésirable |
+| `V` | Déplacer vers un dossier |
+| `X` | Cocher la conversation |
+| `Z` | Annuler la dernière action |
+| `Ctrl \` | Afficher / masquer la barre latérale |
 | `R` / `A` / `F` | Répondre / répondre à tous / transférer |
 | `C` | Nouveau message |
 | `/` | Rechercher |
@@ -54,13 +58,15 @@ Adresse + mot de passe suffisent dans la plupart des cas : les serveurs sont dé
 - HTML des mails isolé : DOMPurify + iframe sans scripts + CSP ; images distantes bloquées par défaut (pixels espions).
 - Éditeur riche, pièces jointes, signatures, réponses avec citation.
 - Calendrier semaine / mois : Google Agenda et CalDAV, récurrences, création / modification / suppression.
-- Thème sombre et clair. Mots de passe et jetons chiffrés par le trousseau de l'OS (`safeStorage`).
+- Brouillons enregistrés automatiquement sur le serveur ; archiver, supprimer et abandonner un brouillon s'annulent (`Z`) pendant 5 s.
+- Destinataires en pastilles avec autocomplétion, déplacement vers un dossier, sélection multiple, menu contextuel.
+- Interface responsive : sidebar en rail puis en tiroir, un seul panneau sous 1100 px, calendrier en 3 jours sur fenêtre étroite.
+- Thème « nuit » (nébuleuse pixélisée générée au lancement) et thème clair. Mots de passe et jetons chiffrés par le trousseau de l'OS (`safeStorage`).
 
 ## Limites connues
 
 - Première synchro : les 400 messages les plus récents par dossier. La recherche ne couvre que ce qui est en local.
 - Gmail « Tous les messages » n'est pas synchronisé (doublons des libellés) ; l'archivage y déplace bien les messages.
-- Pas encore de brouillons enregistrés sur le serveur ni d'autocomplétion des contacts.
 - CalDAV : modifier une occurrence d'un événement récurrent n'est pas pris en charge ; la suppression supprime la série.
 - Pas d'installeur packagé pour l'instant.
 
@@ -70,6 +76,7 @@ Adresse + mot de passe suffisent dans la plupart des cas : les serveurs sont dé
 npm run typecheck
 npm run test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi, archive, recherche
 npm run test:e2e:calendar   # nécessite un Radicale local (voir l'en-tête du fichier)
+npm run test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
 ```
 
 ## Architecture

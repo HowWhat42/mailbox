@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Account } from '@shared/types'
-import { api, useStore } from '../store'
+import { api, confirmDialog, useStore } from '../store'
 import { Label, Modal, fieldCls } from './Modal'
 
 const COLORS = ['#2dd4bf', '#818cf8', '#f472b6', '#fbbf24', '#60a5fa', '#a3e635', '#fb923c', '#f87171']
@@ -19,7 +19,13 @@ function AccountForm({ account }: { account: Account }) {
   }
 
   const remove = async (): Promise<void> => {
-    if (!window.confirm(`Retirer ${account.email} ? Les messages restent sur le serveur ; seule la copie locale est effacée.`)) return
+    const ok = await confirmDialog({
+      title: `Retirer ${account.email} ?`,
+      body: 'Les messages et agendas restent sur le serveur ; seule la copie locale est effacée de cet ordinateur.',
+      confirmLabel: 'Retirer le compte',
+      tone: 'danger'
+    })
+    if (!ok) return
     await api.accounts.remove(account.id)
     toast('Compte retiré')
   }
@@ -65,7 +71,7 @@ function AccountForm({ account }: { account: Account }) {
         <button
           onClick={save}
           disabled={!dirty}
-          className="h-8 rounded-md bg-accent px-3.5 text-[12.5px] font-medium text-accent-fg hover:brightness-110 disabled:opacity-40"
+          className="h-8 rounded-md btn-primary px-3.5 text-[12.5px] font-medium disabled:opacity-40"
         >
           Enregistrer
         </button>
@@ -82,13 +88,13 @@ export function Settings() {
 
   return (
     <Modal title="Réglages" onClose={() => setSettings(false)} width={680}>
-      <div className="flex min-h-[380px] border-t border-line">
-        <div className="w-48 shrink-0 space-y-px border-r border-line p-2">
+      <div className="flex min-h-[380px] flex-col border-t border-line sm:flex-row">
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 sm:w-48 sm:flex-col sm:gap-0 sm:space-y-px sm:border-b-0 sm:border-r">
           {accounts.map((a) => (
             <button
               key={a.id}
               onClick={() => setCurrent(a.id)}
-              className={`flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[12.5px] ${a.id === account?.id ? 'bg-hover text-fg' : 'text-fg-2 hover:bg-hover/60'}`}
+              className={`flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-[12.5px] sm:w-full ${a.id === account?.id ? 'bg-hover text-fg' : 'text-fg-2 hover:bg-hover/60'}`}
             >
               <span className="size-2 shrink-0 rounded-[3px]" style={{ background: a.color }} />
               <span className="truncate">{a.name}</span>
@@ -99,7 +105,7 @@ export function Settings() {
               setSettings(false)
               setSetup(true)
             }}
-            className="flex h-8 w-full items-center rounded-md px-2 text-left text-[12.5px] text-muted hover:bg-hover/60 hover:text-fg"
+            className="flex h-8 shrink-0 items-center rounded-md px-2 text-left text-[12.5px] text-muted sm:w-full hover:bg-hover/60 hover:text-fg"
           >
             Ajouter un compte…
           </button>

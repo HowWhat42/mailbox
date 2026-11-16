@@ -1,15 +1,15 @@
 import { statSync } from 'node:fs'
 import { basename } from 'node:path'
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
-import type { ImapAccountInput, MailboxApi } from '@shared/types'
+import type { ImapAccountInput, MailboxApi, OutgoingAttachment } from '@shared/types'
 import { emit } from './events'
 import { deleteAccount, insertAccount, listAccounts, updateAccount } from './accounts/store'
 import { authorizeGoogle, googleConfigured } from './accounts/google'
 import { discoverSettings } from './accounts/discover'
 import { describeError, syncAccount } from './mail/sync'
-import { listFolders, listThreads, threadMessages, unifiedCounts } from './mail/query'
+import { listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
 import { applyAction, threadTargets } from './mail/actions'
-import { sendMessage } from './mail/send'
+import { deleteDraft, saveDraft, sendMessage } from './mail/send'
 import { openAttachment, saveAttachment } from './mail/attachments'
 import { unwatch, watch } from './mail/watch'
 import { forgetCaldav } from './calendar/caldav'
@@ -71,12 +71,15 @@ const handlers: Handlers = {
   },
   mail: {
     folders: async () => listFolders(),
-    list: async (view, limit) => listThreads(view, limit),
+    list: async (view, filter, limit) => listThreads(view, filter, limit),
     thread: (accountId, threadId) => threadMessages(accountId, threadId),
     act: (ids, action) => applyAction(ids, action),
-    actThread: (accountId, threadId, folderId, action) =>
-      applyAction(threadTargets(accountId, threadId, folderId, action), action),
+    actThread: (accountId, threadId, folderId, action, destFolderId) =>
+      applyAction(threadTargets(accountId, threadId, folderId, action), action, destFolderId),
     send: (msg) => sendMessage(msg),
+    saveDraft: (msg) => saveDraft(msg),
+    deleteDraft: (id) => deleteDraft(id),
+    contacts: async (query) => searchContacts(query),
     sync: async (accountId) => {
       const ids = accountId ? [accountId] : listAccounts().map((a) => a.id)
       const results = await Promise.allSettled(ids.map((id) => syncAccount(id)))
@@ -89,8 +92,9 @@ const handlers: Handlers = {
       const win = BrowserWindow.getFocusedWindow()
       const opts = { properties: ['openFile', 'multiSelections'] as ('openFile' | 'multiSelections')[] }
       const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
-      return res.filePaths.map((p) => ({ path: p, name: basename(p), size: statSync(p).size }))
+      return fileInfo(res.filePaths)
     },
+    fileInfo: async (paths) => fileInfo(paths),
     counts: async () => unifiedCounts()
   },
   calendar: {
@@ -139,6 +143,18 @@ function imapDraft(input: ImapAccountInput) {
     username: input.username.trim() || input.email.trim(),
     caldavUrl: input.caldavUrl?.trim() || null
   }
+}
+
+function fileInfo(paths: string[]): OutgoingAttachment[] {
+  return paths
+    .filter((p) => {
+      try {
+        return statSync(p).isFile()
+      } catch {
+        return false
+      }
+    })
+    .map((p) => ({ kind: 'file', path: p, name: basename(p), size: statSync(p).size }))
 }
 
 export function registerIpc(): void {

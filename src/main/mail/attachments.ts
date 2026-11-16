@@ -6,7 +6,7 @@ import { getDb } from '../db'
 import { parseFull } from './parse'
 import { ensureBodies } from './sync'
 
-async function loadAttachment(messageId: string, attachmentId: string): Promise<{ filename: string; content: Buffer }> {
+export async function loadAttachment(messageId: string, attachmentId: string): Promise<{ filename: string; content: Buffer }> {
   await ensureBodies([messageId])
   const row = getDb().prepare('SELECT eml_path FROM messages WHERE id = ?').get(messageId) as { eml_path: string | null } | undefined
   if (!row?.eml_path) throw new Error('Message introuvable.')

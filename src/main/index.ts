@@ -5,21 +5,21 @@ import { registerIpc } from './ipc'
 import { startWatching, stopWatching } from './mail/watch'
 
 const TITLEBAR = {
-  dark: { color: '#0c0c0e', symbolColor: '#8b8b94' },
-  light: { color: '#fbfbfc', symbolColor: '#5c5c66' }
+  dark: { color: '#000000', symbolColor: '#cdc8e4' },
+  light: { color: '#e9e8f2', symbolColor: '#3c3950' }
 }
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 960,
-    minHeight: 600,
+    minWidth: 480,
+    minHeight: 520,
     show: false,
     backgroundColor: TITLEBAR.dark.color,
     titleBarStyle: 'hidden',
-    titleBarOverlay: { ...TITLEBAR.dark, height: 40 },
-    trafficLightPosition: { x: 14, y: 13 },
+    titleBarOverlay: { ...TITLEBAR.dark, height: 48 },
+    trafficLightPosition: { x: 14, y: 17 },
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -65,7 +65,7 @@ app.whenReady().then(() => {
   ipcMain.handle('app:setTheme', (event, theme: 'dark' | 'light') => {
     nativeTheme.themeSource = theme
     const win = BrowserWindow.fromWebContents(event.sender)
-    if (process.platform !== 'darwin') win?.setTitleBarOverlay({ ...TITLEBAR[theme], height: 40 })
+    if (process.platform !== 'darwin') win?.setTitleBarOverlay({ ...TITLEBAR[theme], height: 48 })
     win?.setBackgroundColor(TITLEBAR[theme].color)
   })
   createWindow()

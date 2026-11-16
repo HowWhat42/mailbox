@@ -76,6 +76,7 @@ export interface ThreadSummary {
   hasAttachments: boolean
   count: number
   folderId: string
+  folderRole: FolderRole
 }
 
 export interface Attachment {
@@ -94,6 +95,7 @@ export interface MessageDetail {
   from: Address
   to: Address[]
   cc: Address[]
+  bcc: Address[]
   replyTo: Address[]
   date: number
   unread: boolean
@@ -111,11 +113,14 @@ export type MailView =
   | { type: 'folder'; folderId: string }
   | { type: 'search'; query: string }
 
-export type MessageAction = 'read' | 'unread' | 'flag' | 'unflag' | 'archive' | 'trash' | 'junk'
+export type MessageAction = 'read' | 'unread' | 'flag' | 'unflag' | 'archive' | 'trash' | 'junk' | 'move'
 
-export interface OutgoingAttachment {
-  path: string
-}
+export type MailFilter = 'all' | 'unread' | 'flagged' | 'attachments'
+
+/** A file from disk, or an attachment of an existing message (forward, reopened draft). */
+export type OutgoingAttachment =
+  | { kind: 'file'; path: string; name: string; size: number }
+  | { kind: 'message'; messageId: string; attachmentId: string; name: string; size: number }
 
 export interface OutgoingMessage {
   accountId: string
@@ -128,6 +133,8 @@ export interface OutgoingMessage {
   inReplyTo: string | null
   references: string[]
   attachments: OutgoingAttachment[]
+  /** Local id of the server-side draft this message replaces, if any. */
+  draftId: string | null
 }
 
 export interface Calendar {
@@ -187,15 +194,20 @@ export interface MailboxApi {
   }
   mail: {
     folders(): Promise<Folder[]>
-    list(view: MailView, limit: number): Promise<ThreadSummary[]>
+    list(view: MailView, filter: MailFilter, limit: number): Promise<ThreadSummary[]>
     thread(accountId: string, threadId: string): Promise<MessageDetail[]>
     act(messageIds: string[], action: MessageAction): Promise<void>
-    actThread(accountId: string, threadId: string, folderId: string, action: MessageAction): Promise<void>
+    actThread(accountId: string, threadId: string, folderId: string, action: MessageAction, destFolderId?: string): Promise<void>
     send(msg: OutgoingMessage): Promise<void>
+    /** Saves (or replaces) a draft on the server; returns the new draft's local id, or null if the account has no Drafts folder. */
+    saveDraft(msg: OutgoingMessage): Promise<{ id: string; attachments: OutgoingAttachment[] } | null>
+    deleteDraft(messageId: string): Promise<void>
+    contacts(query: string): Promise<Address[]>
     sync(accountId?: string): Promise<void>
     openAttachment(messageId: string, attachmentId: string): Promise<void>
     saveAttachment(messageId: string, attachmentId: string): Promise<void>
-    pickFiles(): Promise<{ path: string; name: string; size: number }[]>
+    pickFiles(): Promise<OutgoingAttachment[]>
+    fileInfo(paths: string[]): Promise<OutgoingAttachment[]>
     counts(): Promise<{ inbox: number; flagged: number }>
   }
   calendar: {
@@ -210,6 +222,8 @@ export interface MailboxApi {
   app: {
     openExternal(url: string): Promise<void>
     setTheme(theme: 'dark' | 'light'): Promise<void>
+    /** Absolute path of a dropped File (sync, via webUtils). */
+    pathForFile(file: File): string
     on<K extends keyof AppEvents>(event: K, cb: (payload: AppEvents[K]) => void): () => void
   }
 }

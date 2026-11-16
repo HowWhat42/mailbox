@@ -1,4 +1,4 @@
-import type { Address, Folder, MailView, MessageDetail, ThreadSummary } from '@shared/types'
+import type { Address, Folder, MailFilter, MailView, MessageDetail, ThreadSummary } from '@shared/types'
 import { getDb } from '../db'
 import { ensureBodies } from './sync'
 
@@ -18,6 +18,7 @@ interface SummaryRow {
   any_flagged: number
   any_att: number
   senders: string | null
+  role: Folder['role']
 }
 
 /** Groups the matching messages by thread and keeps the newest one per thread. */
@@ -25,7 +26,7 @@ function summaries(where: string, params: (string | number)[], limit: number): T
   const rows = getDb()
     .prepare(
       `WITH v AS (
-         SELECT m.* FROM messages m JOIN folders f ON f.id = m.folder_id WHERE ${where}
+         SELECT m.*, f.role FROM messages m JOIN folders f ON f.id = m.folder_id WHERE ${where}
        ), ranked AS (
          SELECT v.*,
            row_number() OVER w_desc AS rn,
@@ -46,6 +47,7 @@ function summaries(where: string, params: (string | number)[], limit: number): T
     accountId: r.account_id,
     messageId: r.id,
     folderId: r.folder_id,
+    folderRole: r.role,
     subject: r.subject,
     snippet: r.snippet,
     from: { name: r.from_name, address: r.from_addr },
@@ -69,19 +71,60 @@ function ftsQuery(input: string): string {
     .join(' ')
 }
 
-export function listThreads(view: MailView, limit: number): ThreadSummary[] {
+const FILTERS: Record<MailFilter, string> = {
+  all: '1',
+  unread: 'm.unread = 1',
+  flagged: 'm.flagged = 1',
+  attachments: 'm.has_attachments = 1'
+}
+
+/**
+ * Note: filters apply per message, so a thread shows up under "Non lus" when any
+ * of its messages in the view is unread, and the row then shows that message.
+ */
+export function listThreads(view: MailView, filter: MailFilter, limit: number): ThreadSummary[] {
+  const f = FILTERS[filter] ?? '1'
   switch (view.type) {
     case 'folder':
-      return summaries('m.folder_id = ?', [view.folderId], limit)
+      return summaries(`m.folder_id = ? AND ${f}`, [view.folderId], limit)
     case 'unified':
-      if (view.role === 'flagged') return summaries("m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk')", [], limit)
-      return summaries('f.role = ?', [view.role], limit)
+      if (view.role === 'flagged') return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${f}`, [], limit)
+      return summaries(`f.role = ? AND ${f}`, [view.role], limit)
     case 'search': {
       const q = ftsQuery(view.query)
       if (!q) return []
-      return summaries('m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)', [q], limit)
+      return summaries(`m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, [q], limit)
     }
   }
+}
+
+/** Correspondents matching `query`, most frequent first: the composer's autocomplete. */
+export function searchContacts(query: string): Address[] {
+  const q = `%${query.trim().replace(/[%_]/g, '')}%`
+  if (q === '%%') return []
+  const own = new Set(
+    (getDb().prepare('SELECT lower(email) AS e FROM accounts').all() as { e: string }[]).map((r) => r.e)
+  )
+  const rows = getDb()
+    .prepare(
+      `WITH a AS (
+         SELECT from_name AS name, from_addr AS address, date FROM messages
+         UNION ALL
+         SELECT json_extract(j.value, '$.name'), json_extract(j.value, '$.address'), m.date
+           FROM messages m, json_each(m.to_json) j
+         UNION ALL
+         SELECT json_extract(j.value, '$.name'), json_extract(j.value, '$.address'), m.date
+           FROM messages m, json_each(m.cc_json) j
+       )
+       SELECT lower(address) AS address, max(coalesce(name, '')) AS name, count(*) AS n, max(date) AS last
+       FROM a
+       WHERE address <> '' AND (address LIKE ? OR name LIKE ?)
+       GROUP BY lower(address)
+       ORDER BY n DESC, last DESC
+       LIMIT 12`
+    )
+    .all(q, q) as { address: string; name: string }[]
+  return rows.filter((r) => !own.has(r.address)).slice(0, 8).map((r) => ({ name: r.name, address: r.address }))
 }
 
 export function listFolders(): Folder[] {
@@ -126,6 +169,7 @@ interface DetailRow {
   from_addr: string
   to_json: string
   cc_json: string
+  bcc_json: string
   reply_to_json: string
   date: number
   unread: number
@@ -168,6 +212,7 @@ export async function threadMessages(accountId: string, threadId: string): Promi
     from: { name: r.from_name, address: r.from_addr },
     to: JSON.parse(r.to_json) as Address[],
     cc: JSON.parse(r.cc_json) as Address[],
+    bcc: JSON.parse(r.bcc_json) as Address[],
     replyTo: JSON.parse(r.reply_to_json) as Address[],
     date: r.date,
     unread: !!r.unread,

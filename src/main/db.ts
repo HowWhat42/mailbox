@@ -128,7 +128,9 @@ const MIGRATIONS: string[] = [
     recurring INTEGER NOT NULL DEFAULT 0
   );
   CREATE INDEX events_range ON events (start, end);
-  `
+  `,
+  // Drafts keep their Bcc so it survives reopening.
+  `ALTER TABLE messages ADD COLUMN bcc_json TEXT NOT NULL DEFAULT '[]';`
 ]
 
 function migrate(d: DatabaseSync): void {

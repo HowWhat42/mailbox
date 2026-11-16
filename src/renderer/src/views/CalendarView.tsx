@@ -13,17 +13,22 @@ import {
   startOfWeek
 } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, Repeat } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Layers, Plus, RefreshCw, Repeat } from 'lucide-react'
 import type { Calendar, CalendarEvent } from '@shared/types'
 import { api, useStore } from '../store'
 import { isTyping } from '../lib/shortcuts'
 import { EventEditor, type EditorState } from './EventEditor'
+import { Checkbox } from '../components/ui/Controls'
+import { Menu } from '../components/ui/Menu'
+import { useLayout } from '../lib/layout'
 
 type Range = 'week' | 'month'
 const HOUR = 52
 const WEEK_OPTS = { weekStartsOn: 1 as const, locale: fr }
 
-function rangeOf(anchor: Date, range: Range): [Date, Date] {
+/** `dayCount` < 7 is the narrow-window week: a few days starting at the anchor. */
+function rangeOf(anchor: Date, range: Range, dayCount: number): [Date, Date] {
+  if (range === 'week' && dayCount < 7) return [startOfDay(anchor), addDays(startOfDay(anchor), dayCount)]
   if (range === 'week') return [startOfWeek(anchor, WEEK_OPTS), addDays(startOfWeek(anchor, WEEK_OPTS), 7)]
   return [startOfWeek(startOfMonth(anchor), WEEK_OPTS), addDays(endOfWeek(endOfMonth(anchor), WEEK_OPTS), 1)]
 }
@@ -78,7 +83,7 @@ function EventChip({ e, color, onOpen, style }: { e: CalendarEvent; color: strin
       }}
       title={`${e.title}${e.location ? `\n${e.location}` : ''}`}
       className="absolute overflow-hidden rounded-[5px] px-1.5 py-1 text-left text-[11.5px] leading-tight transition-[filter] hover:brightness-110"
-      style={{ ...style, background: `color-mix(in oklch, ${color} 22%, var(--bg))`, boxShadow: `inset 2px 0 0 ${color}`, color: 'var(--fg)' }}
+      style={{ ...style, background: `color-mix(in oklch, ${color} 22%, var(--surface-solid))`, boxShadow: `inset 2px 0 0 ${color}`, color: 'var(--fg)' }}
     >
       <span className={`block truncate font-medium ${short ? 'inline' : ''}`}>{e.title || '(sans titre)'}</span>
       <span className={`tnum truncate text-[10.5px] text-fg-2 ${short ? 'ml-1 inline' : 'block'}`}>
@@ -103,7 +108,7 @@ function WeekGrid({ days, events, colorOf, onCreate, onOpen }: { days: Date[]; e
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid shrink-0 grid-cols-[56px_repeat(7,1fr)] border-b border-line pr-[10px]">
+      <div className="grid shrink-0 border-b border-line pr-[10px]" style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
         <div />
         {days.map((d) => (
           <div key={d.getTime()} className="flex items-baseline gap-1.5 px-2 py-2">
@@ -121,7 +126,7 @@ function WeekGrid({ days, events, colorOf, onCreate, onOpen }: { days: Date[]; e
                     key={e.id}
                     onClick={() => onOpen(e)}
                     className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[11.5px] font-medium"
-                    style={{ background: `color-mix(in oklch, ${colorOf(e.calendarId)} 28%, var(--bg))` }}
+                    style={{ background: `color-mix(in oklch, ${colorOf(e.calendarId)} 28%, var(--surface-solid))` }}
                   >
                     {e.title || '(sans titre)'}
                   </button>
@@ -132,7 +137,7 @@ function WeekGrid({ days, events, colorOf, onCreate, onOpen }: { days: Date[]; e
         )}
       </div>
       <div ref={scroller} className="min-h-0 flex-1 overflow-y-scroll">
-        <div className="relative grid grid-cols-[56px_repeat(7,1fr)]" style={{ height: 24 * HOUR }}>
+        <div className="relative grid" style={{ height: 24 * HOUR, gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
           <div className="relative">
             {Array.from({ length: 23 }, (_, i) => (
               <span key={i} className="tnum absolute right-2 -translate-y-1/2 text-[10.5px] text-muted" style={{ top: (i + 1) * HOUR }}>
@@ -184,7 +189,7 @@ function MonthGrid({ anchor, days, events, colorOf, onCreate, onOpen }: { anchor
       <div className="grid shrink-0 grid-cols-7 border-b border-line">
         {days.slice(0, 7).map((d) => (
           <div key={d.getTime()} className="px-2 py-2 text-[12px] text-muted">
-            {format(d, 'EEEE', { locale: fr })}
+            {format(d, 'EEE', { locale: fr })}
           </div>
         ))}
       </div>
@@ -223,8 +228,24 @@ export function CalendarView() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [editor, setEditor] = useState<EditorState | null>(null)
+  const [calMenu, setCalMenu] = useState<HTMLElement | null>(null)
+  const { single } = useLayout()
+  const body = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(1200)
 
-  const [start, end] = useMemo(() => rangeOf(anchor, range), [anchor, range])
+  useEffect(() => {
+    const el = body.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  // Narrow: week view shows 3 days (or 1 on a very small window) so columns stay readable.
+  const compact = width < 760
+  const dayCount = width < 460 ? 1 : compact ? 3 : 7
+
+  const [start, end] = useMemo(() => rangeOf(anchor, range, dayCount), [anchor, range, dayCount])
   const days = useMemo(() => {
     const out: Date[] = []
     for (let d = start; d < end; d = addDays(d, 1)) out.push(d)
@@ -256,7 +277,8 @@ export function CalendarView() {
 
   useEffect(() => api.app.on('calendar:changed', () => void reload()), [reload])
 
-  const step = (dir: 1 | -1): void => setAnchor((a) => (range === 'week' ? addWeeks(a, dir) : addMonths(a, dir)))
+  const step = (dir: 1 | -1): void =>
+    setAnchor((a) => (range === 'week' ? (dayCount < 7 ? addDays(a, dir * dayCount) : addWeeks(a, dir)) : addMonths(a, dir)))
   const colorOf = useCallback((id: string) => calendars.find((c) => c.id === id)?.color ?? 'var(--accent)', [calendars])
   const writable = calendars.filter((c) => !c.readOnly && c.enabled)
 
@@ -287,16 +309,20 @@ export function CalendarView() {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const title = range === 'week' && !isSameMonth(start, addDays(end, -1))
+  const title = range === 'week' && dayCount < 7
+    ? dayCount === 1
+      ? format(start, 'EEE d MMM', { locale: fr })
+      : `${format(start, 'd', { locale: fr })}–${format(addDays(end, -1), 'd MMM', { locale: fr })}`
+    : range === 'week' && !isSameMonth(start, addDays(end, -1))
     ? `${format(start, 'MMM', { locale: fr })} – ${format(addDays(end, -1), 'MMM yyyy', { locale: fr })}`
     : format(range === 'week' ? start : anchor, 'MMMM yyyy', { locale: fr })
 
   const byAccount = accounts.map((a) => ({ account: a, cals: calendars.filter((c) => c.accountId === a.id) })).filter((g) => g.cals.length)
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <aside className="flex w-[212px] shrink-0 flex-col border-r border-line">
-        <div className="drag h-10 shrink-0" />
+    <div className="flex min-h-0 min-w-0 flex-1">
+      <aside className={`w-[212px] shrink-0 flex-col border-r border-line ${single ? 'hidden' : 'flex'}`}>
+        <div className="h-4 shrink-0" />
         <div className="space-y-4 overflow-y-auto px-3 pb-4">
           {byAccount.length === 0 && (
             <p className="px-1 text-[12.5px] leading-5 text-muted">
@@ -307,32 +333,31 @@ export function CalendarView() {
             <div key={account.id}>
               <div className="mb-1 truncate px-1 text-[12px] font-medium text-muted">{account.name}</div>
               {cals.map((c) => (
-                <label key={c.id} className="flex h-7 cursor-pointer items-center gap-2.5 rounded-md px-1 text-[12.5px] text-fg-2 hover:bg-hover/60">
-                  <input
-                    type="checkbox"
+                <div key={c.id} className="flex h-8 items-center gap-2.5 rounded-lg px-1.5 text-[13px] text-fg-2 hover:bg-hover">
+                  <Checkbox
                     checked={c.enabled}
-                    onChange={async (e) => {
-                      await api.calendar.setEnabled(c.id, e.target.checked)
-                      if (e.target.checked) void refresh()
+                    color={c.color}
+                    label={`Afficher ${c.name}`}
+                    onChange={async (checked) => {
+                      await api.calendar.setEnabled(c.id, checked)
+                      if (checked) void refresh()
                       else void reload()
                     }}
-                    className="size-3.5 cursor-pointer rounded-sm"
-                    style={{ accentColor: c.color }}
                   />
                   <span className="truncate">{c.name}</span>
-                </label>
+                </div>
               ))}
             </div>
           ))}
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="drag flex h-12 shrink-0 items-center gap-2 border-b border-line pl-4 pr-[150px]">
-          <h1 className="min-w-44 text-[16px] font-semibold capitalize tracking-[-0.015em]">{title}</h1>
-          <div className="no-drag flex items-center gap-1">
+      <div ref={body} className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
+          <h1 className={`min-w-0 truncate font-semibold capitalize tracking-[-0.015em] ${compact ? 'text-[14px]' : 'min-w-44 text-[16px]'}`}>{title}</h1>
+          <div className="flex shrink-0 items-center gap-1">
             <button onClick={() => setAnchor(new Date())} className="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg" title="Aujourd’hui (T)">
-              Aujourd’hui
+              {compact ? 'Auj.' : 'Aujourd’hui'}
             </button>
             <button onClick={() => step(-1)} aria-label="Précédent" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
               <ChevronLeft size={16} />
@@ -344,14 +369,42 @@ export function CalendarView() {
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
-          <div className="no-drag ml-auto flex rounded-md border border-line p-0.5">
+          {single && (
+            <button
+              onClick={(e) => setCalMenu(e.currentTarget)}
+              aria-label="Agendas affichés"
+              title="Agendas affichés"
+              className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
+              <Layers size={15} />
+            </button>
+          )}
+          {calMenu && (
+            <Menu
+              anchor={calMenu}
+              align="end"
+              onClose={() => setCalMenu(null)}
+              items={
+                calendars.length
+                  ? calendars.map((c) => ({
+                      label: c.name,
+                      swatch: c.color,
+                      checked: c.enabled,
+                      onSelect: () =>
+                        void api.calendar.setEnabled(c.id, !c.enabled).then(() => (c.enabled ? reload() : refresh()))
+                    }))
+                  : [{ label: 'Aucun agenda configuré', disabled: true, onSelect: () => {} }]
+              }
+            />
+          )}
+          <div className={`flex shrink-0 rounded-md border border-line p-0.5 ${single ? '' : 'ml-auto'}`}>
             {(['week', 'month'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
                 className={`h-6 rounded px-2.5 text-[12px] ${range === r ? 'bg-hover text-fg' : 'text-muted hover:text-fg'}`}
               >
-                {r === 'week' ? 'Semaine' : 'Mois'}
+                {r === 'week' ? (dayCount < 7 ? `${dayCount} j` : 'Semaine') : 'Mois'}
               </button>
             ))}
           </div>
@@ -360,9 +413,10 @@ export function CalendarView() {
               const s = Math.ceil(Date.now() / 1_800_000) * 1_800_000
               create(s, s + 3_600_000, false)
             }}
-            className="no-drag flex h-7 items-center gap-1.5 rounded-md bg-accent px-2.5 text-[12.5px] font-medium text-accent-fg hover:brightness-110"
+            aria-label="Nouvel événement (N)"
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-md btn-primary px-2.5 text-[12.5px] font-medium"
           >
-            <Plus size={14} /> Événement
+            <Plus size={14} /> {!compact && 'Événement'}
           </button>
         </header>
         {range === 'week' ? (

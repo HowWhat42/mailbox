@@ -1,8 +1,8 @@
 import { Command } from 'cmdk'
-import { Archive, CalendarDays, File, Folder, Inbox, Moon, PenSquare, Plus, RefreshCw, Reply, Search, Send, Settings, Star, Trash2, type LucideIcon } from 'lucide-react'
+import { Archive, CalendarDays, File, Folder, FolderInput, Inbox, Moon, PanelLeft, PenSquare, Plus, RefreshCw, Reply, Search, Send, Settings, Star, Trash2, type LucideIcon } from 'lucide-react'
 import { api, threadKey, useStore } from '../store'
 import { ROLE_LABEL } from '../lib/format'
-import { replyDraft } from '../lib/reply'
+import { startReply } from '../lib/threadActions'
 
 function Item({ icon: Icon, label, hint, onSelect }: { icon: LucideIcon; label: string; hint?: string; onSelect: () => void }) {
   return (
@@ -34,7 +34,7 @@ export function CommandPalette() {
       <Command
         label="Commandes"
         loop
-        className="pop-in mx-auto w-full max-w-[580px] overflow-hidden rounded-xl bg-raised shadow-pop"
+        className="pop-in mx-auto w-full max-w-[580px] overflow-hidden rounded-xl glass"
         onKeyDown={(e) => e.key === 'Escape' && s.setPalette(false)}
       >
         <div className="flex items-center gap-3 border-b border-line px-4">
@@ -46,10 +46,11 @@ export function CommandPalette() {
 
           {current && (
             <Command.Group heading="Conversation sélectionnée" className={groupCls}>
-              <Item icon={Reply} label="Répondre" hint="R" onSelect={run(() => void replyDraft(current, 'reply').then((d) => s.compose(d)))} />
-              <Item icon={Archive} label="Archiver" hint="E" onSelect={run(() => void s.act(current, 'archive'))} />
-              <Item icon={Trash2} label="Supprimer" hint="#" onSelect={run(() => void s.act(current, 'trash'))} />
-              <Item icon={Star} label={current.flagged ? 'Ne plus suivre' : 'Suivre'} hint="S" onSelect={run(() => void s.act(current, current.flagged ? 'unflag' : 'flag'))} />
+              <Item icon={Reply} label="Répondre" hint="R" onSelect={run(() => startReply(current, 'reply'))} />
+              <Item icon={FolderInput} label="Déplacer vers…" hint="V" onSelect={run(() => s.openMovePicker([current]))} />
+              <Item icon={Archive} label="Archiver" hint="E" onSelect={run(() => void s.act([current], 'archive'))} />
+              <Item icon={Trash2} label="Supprimer" hint="#" onSelect={run(() => void s.act([current], 'trash'))} />
+              <Item icon={Star} label={current.flagged ? 'Ne plus suivre' : 'Suivre'} hint="S" onSelect={run(() => void s.act([current], current.flagged ? 'unflag' : 'flag'))} />
             </Command.Group>
           )}
 
@@ -57,6 +58,7 @@ export function CommandPalette() {
             <Item icon={PenSquare} label="Nouveau message" hint="C" onSelect={run(() => s.compose())} />
             <Item icon={RefreshCw} label="Synchroniser maintenant" onSelect={run(() => void api.mail.sync().catch((e: Error) => s.toast(e.message, 'error')))} />
             <Item icon={Moon} label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'} onSelect={run(() => s.setTheme(theme === 'dark' ? 'light' : 'dark'))} />
+            <Item icon={PanelLeft} label="Afficher ou masquer la barre latérale" hint="Ctrl \" onSelect={run(() => s.toggleSidebar())} />
             <Item icon={Plus} label="Ajouter un compte" onSelect={run(() => s.setSetup(true))} />
             <Item icon={Settings} label="Réglages des comptes" onSelect={run(() => s.setSettings(true))} />
           </Command.Group>

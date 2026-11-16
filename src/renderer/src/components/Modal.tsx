@@ -19,7 +19,7 @@ export function Modal({
       onMouseDown={(e) => closable && e.target === e.currentTarget && onClose()}
       onKeyDown={(e) => closable && e.key === 'Escape' && onClose()}
     >
-      <div role="dialog" aria-label={title} className="pop-in w-full rounded-xl bg-raised shadow-pop" style={{ maxWidth: width }}>
+      <div role="dialog" aria-label={title} className="pop-in w-full rounded-xl glass" style={{ maxWidth: width }}>
         <div className="flex h-12 items-center px-5">
           <h2 className="text-[14px] font-semibold tracking-[-0.01em]">{title}</h2>
           {closable && (

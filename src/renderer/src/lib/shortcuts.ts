@@ -1,15 +1,15 @@
 import { useEffect } from 'react'
 import { threadKey, useStore } from '../store'
-import { replyDraft } from './reply'
+import { startReply } from './threadActions'
 
 export function isTyping(e: KeyboardEvent): boolean {
   const el = e.target as HTMLElement | null
   return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
 }
 
-function modalOpen(): boolean {
+export function overlayOpen(): boolean {
   const s = useStore.getState()
-  return !!(s.composer || s.paletteOpen || s.setupOpen || s.settingsOpen)
+  return !!(s.paletteOpen || s.setupOpen || s.settingsOpen || s.movePicker || s.dialog || document.querySelector('[role=menu]'))
 }
 
 /** Global keyboard map. Single keys only fire outside text fields; "g" starts a two-key jump. */
@@ -25,7 +25,12 @@ export function useMailShortcuts(): void {
         s.setPalette(!s.paletteOpen)
         return
       }
-      if (isTyping(e) || modalOpen() || e.ctrlKey || e.metaKey || e.altKey) return
+      if ((e.ctrlKey || e.metaKey) && e.key === '\\') {
+        e.preventDefault()
+        s.toggleSidebar()
+        return
+      }
+      if (isTyping(e) || overlayOpen() || e.ctrlKey || e.metaKey || e.altKey) return
 
       if (pendingG && Date.now() - pendingG < 1000) {
         pendingG = 0
@@ -44,7 +49,10 @@ export function useMailShortcuts(): void {
         pendingG = Date.now()
         return
       }
-
+      if (e.key === 'z') {
+        s.undoLast()
+        return
+      }
       if (e.key === 'c') {
         e.preventDefault()
         s.compose()
@@ -55,9 +63,8 @@ export function useMailShortcuts(): void {
         document.getElementById('search-input')?.focus()
         return
       }
-      if (s.mode !== 'mail') return
+      if (s.mode !== 'mail' || s.composer) return
 
-      const current = s.threads.find((t) => threadKey(t) === s.selected)
       switch (e.key) {
         case 'j':
         case 'ArrowDown':
@@ -70,32 +77,43 @@ export function useMailShortcuts(): void {
           s.move(-1)
           return
         case 'Escape':
-          s.select(null)
+          if (s.checked.size) s.setChecked([])
+          else s.select(null)
+          return
+        case 'x':
+          if (s.selected) s.toggleCheck(s.selected)
           return
       }
-      if (!current) return
+
+      const targets = s.targets()
+      if (!targets.length) return
+      const current = s.threads.find((t) => threadKey(t) === s.selected)
       switch (e.key) {
         case 'e':
-          void s.act(current, 'archive')
+          void s.act(targets, 'archive')
           break
         case '#':
         case 'Delete':
-          void s.act(current, 'trash')
-          break
-        case 's':
-          void s.act(current, current.flagged ? 'unflag' : 'flag')
-          break
-        case 'u':
-          void s.act(current, current.unread ? 'read' : 'unread')
+          void s.act(targets, 'trash')
           break
         case '!':
-          void s.act(current, 'junk')
+          void s.act(targets, 'junk')
+          break
+        case 's':
+          void s.act(targets, targets.every((t) => t.flagged) ? 'unflag' : 'flag')
+          break
+        case 'u':
+          void s.act(targets, targets.some((t) => t.unread) ? 'read' : 'unread')
+          break
+        case 'v':
+          e.preventDefault()
+          if (new Set(targets.map((t) => t.accountId)).size === 1) s.openMovePicker(targets)
           break
         case 'r':
         case 'a':
         case 'f':
           e.preventDefault()
-          void replyDraft(current, e.key === 'r' ? 'reply' : e.key === 'a' ? 'replyAll' : 'forward').then((d) => s.compose(d))
+          if (current) startReply(current, e.key === 'r' ? 'reply' : e.key === 'a' ? 'replyAll' : 'forward')
           break
       }
     }

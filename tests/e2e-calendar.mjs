@@ -46,7 +46,6 @@ const app = await electron.launch({ args: ['.', `--user-data-dir=${userData}`] }
 const page = await app.firstWindow()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
-page.on('dialog', (d) => d.accept())
 
 await page.click('text=Autre adresse (IMAP)')
 await page.fill('input[placeholder="Camille Martin"]', 'Agenda Test')
@@ -63,13 +62,14 @@ await inputs.nth(5).fill(`${DAV}/`)
 await page.click('button:has-text("Connecter le compte")')
 await page.waitForSelector('text=Bienvenue dans Mailbox', { state: 'detached', timeout: 60_000 })
 
-await page.click('text=Calendrier')
-await page.waitForSelector('label:has-text("Perso")', { timeout: 30_000 })
+await page.click('nav button[aria-label=Calendrier]')
+await page.waitForSelector('[role=checkbox][aria-label="Afficher Perso"]', { timeout: 30_000 })
 await page.waitForFunction(() => [...document.querySelectorAll('button')].filter((b) => b.textContent?.startsWith('Stand-up')).length >= 5, null, { timeout: 30_000 })
 step('5 occurrences of the recurring event shown')
 
 await page.keyboard.press('n')
 await page.waitForSelector('text=Nouvel événement')
+await page.screenshot({ path: join(shots, '10b-event-editor.png') })
 await page.fill('input[placeholder=Titre]', 'Déjeuner client')
 await page.click('button:has-text("Enregistrer")')
 await page.waitForSelector('text=Événement créé', { timeout: 30_000 })
@@ -89,7 +89,10 @@ await page.waitForSelector('button:has-text("Déjeuner client (déplacé)")', { 
 step('event renamed')
 
 await page.click('button:has-text("Déjeuner client (déplacé)")')
-await page.click('button:has-text("Supprimer")')
+await page.click('form button:has-text("Supprimer")')
+await page.waitForSelector('[role=alertdialog]')
+await page.screenshot({ path: join(shots, '11-confirm-dialog.png') })
+await page.click('[role=alertdialog] button:has-text("Supprimer")')
 await page.waitForSelector('text=Événement supprimé', { timeout: 30_000 })
 if ((await report()) !== 1) throw new Error('deleted event still on server')
 step('event deleted on the server')

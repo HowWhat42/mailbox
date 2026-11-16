@@ -10,10 +10,11 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "test:e2e": "electron-vite build && node tests/e2e.mjs",
-    "test:e2e:calendar": "electron-vite build && node tests/e2e-calendar.mjs"
+    "test:e2e:calendar": "electron-vite build && node tests/e2e-calendar.mjs",
+    "test:e2e:responsive": "electron-vite build && node tests/e2e-responsive.mjs"
   },
   "devDependencies": {
-    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/geist": "^5.3.0",
     "@tailwindcss/vite": "^4.3.5",
     "@tanstack/react-virtual": "^3.14.26",
     "@types/mailparser": "^3.9.0",

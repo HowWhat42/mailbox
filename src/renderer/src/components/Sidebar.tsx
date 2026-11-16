@@ -4,7 +4,6 @@ import {
   CalendarDays,
   ChevronRight,
   File,
-  Folder as FolderIcon,
   Inbox,
   Moon,
   OctagonAlert,
@@ -15,12 +14,14 @@ import {
   Settings as SettingsIcon,
   Star,
   Sun,
+  Tag,
   Trash2,
   type LucideIcon
 } from 'lucide-react'
 import type { Folder, FolderRole, MailView } from '@shared/types'
 import { api, useStore } from '../store'
-import { ROLE_LABEL } from '../lib/format'
+import { avatarColor, ROLE_LABEL } from '../lib/format'
+import { useLayout } from '../lib/layout'
 
 const ROLE_ICON: Partial<Record<Exclude<FolderRole, null>, LucideIcon>> = {
   inbox: Inbox,
@@ -43,42 +44,60 @@ function Item({
   count,
   active,
   onClick,
-  dot,
-  depth = 0
+  color,
+  emphasize,
+  collapsed
 }: {
   icon: LucideIcon
   label: string
   count?: number
   active?: boolean
   onClick: () => void
-  dot?: string
-  depth?: number
+  color?: string
+  emphasize?: boolean
+  collapsed?: boolean
 }) {
   return (
     <button
       onClick={onClick}
-      className={`group flex h-7 w-full items-center gap-2.5 rounded-md pr-2 text-left text-[13px] transition-colors ${
-        active ? 'bg-hover text-fg' : 'text-fg-2 hover:bg-hover/60 hover:text-fg'
+      title={collapsed ? (count ? `${label} (${count})` : label) : undefined}
+      aria-label={label}
+      className={`group relative flex h-8 w-full items-center gap-2.5 rounded-lg text-left text-[13px] transition-colors ${collapsed ? 'justify-center' : 'px-2.5'} ${
+        active ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'
       }`}
-      style={{ paddingLeft: 8 + depth * 12 }}
     >
-      <Icon size={15} strokeWidth={1.75} className={active ? 'text-fg' : 'text-muted group-hover:text-fg-2'} />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {dot && <span className="size-1.5 rounded-full" style={{ background: dot }} />}
-      {!!count && <span className="tnum text-[11.5px] text-muted">{count}</span>}
+      <Icon
+        size={16}
+        strokeWidth={1.75}
+        className={color ? '' : active ? 'text-fg' : 'text-muted group-hover:text-fg-2'}
+        style={color ? { color, fill: color } : undefined}
+      />
+      {!collapsed && <span className={`min-w-0 flex-1 truncate ${emphasize ? 'font-semibold text-fg' : ''}`}>{label}</span>}
+      {!collapsed && !!count && <span className={`tnum text-[12px] ${emphasize ? 'text-fg-2' : 'text-muted'}`}>{count}</span>}
+      {collapsed && !!count && emphasize && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-accent" />}
     </button>
   )
 }
 
-export function Sidebar() {
+export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) {
   const { mode, view, accounts, folders, counts, syncing, theme } = useStore()
-  const { setView, setMode, compose, setSetup, setSettings, setTheme, toast } = useStore.getState()
+  const layout = useLayout()
+  const collapsed = !forceExpanded && layout.rail
+  const { compose, setSetup, setSettings, setTheme, toast } = useStore.getState()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
   const errored = accounts.filter((a) => a.syncError)
 
-  const go = (v: MailView): void => setView(v)
   const active = (v: MailView): boolean => mode === 'mail' && sameView(view, v)
+  // In the drawer, any navigation closes it.
+  const setView = (v: MailView): void => {
+    useStore.getState().setView(v)
+    useStore.getState().setDrawer(false)
+  }
+  const setMode = (m: 'mail' | 'calendar'): void => {
+    useStore.getState().setMode(m)
+    useStore.getState().setDrawer(false)
+  }
 
   const sync = async (): Promise<void> => {
     try {
@@ -88,128 +107,133 @@ export function Sidebar() {
     }
   }
 
-  const foldersFor = (accountId: string): Folder[] => {
-    const own = folders.filter((f) => f.accountId === accountId && f.role !== 'all' && f.role !== 'flagged')
-    const special = ROLE_ORDER.flatMap((r) => own.filter((f) => f.role === r))
-    const custom = own.filter((f) => !f.role)
-    return [...special, ...custom]
+  const systemFolders = (accountId: string): Folder[] => {
+    const own = folders.filter((f) => f.accountId === accountId)
+    return ROLE_ORDER.flatMap((r) => own.filter((f) => f.role === r))
   }
+  const customFolders = folders.filter((f) => !f.role)
 
   return (
-    <aside className="flex w-[232px] shrink-0 flex-col border-r border-line bg-panel">
-      <div className="drag flex h-10 shrink-0 items-center pl-3 pr-2">
-        <span className="text-[13px] font-semibold tracking-[-0.01em] text-fg">Mailbox</span>
+    <aside className={`flex shrink-0 flex-col transition-[width] duration-150 ${forceExpanded ? 'h-full w-full' : collapsed ? 'w-[60px]' : 'w-[232px]'}`}>
+      <div className={collapsed ? 'px-2.5 pb-3' : 'px-3 pb-3'}>
         <button
-          onClick={sync}
-          title="Synchroniser"
-          className="no-drag ml-auto grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
-        >
-          <RefreshCw size={14} strokeWidth={1.75} className={isSyncing ? 'animate-spin' : ''} />
-        </button>
-      </div>
-
-      <div className="px-2 pb-2">
-        <button
-          onClick={() => compose()}
-          className="flex h-8 w-full items-center gap-2 rounded-md bg-accent px-2.5 text-[13px] font-medium text-accent-fg shadow-sm transition-[filter] hover:brightness-110"
+          onClick={() => {
+            compose()
+            useStore.getState().setDrawer(false)
+          }}
+          title={collapsed ? 'Nouveau message (C)' : undefined}
+          aria-label="Nouveau message"
+          className={`flex h-9 w-full items-center gap-2 rounded-lg btn-primary text-[13px] font-medium ${collapsed ? 'justify-center' : 'px-3'}`}
         >
           <PenSquare size={15} strokeWidth={2} />
-          Nouveau message
-          <kbd className="ml-auto text-[11px] opacity-60">C</kbd>
+          {!collapsed && (
+            <>
+              Nouveau message
+              <kbd className="ml-auto text-[11px] opacity-60">C</kbd>
+            </>
+          )}
         </button>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 pb-3">
-        <div className="space-y-px">
-          <Item
-            icon={Inbox}
-            label="Réception"
-            count={counts.inbox}
-            active={active({ type: 'unified', role: 'inbox' })}
-            onClick={() => go({ type: 'unified', role: 'inbox' })}
-          />
-          <Item
-            icon={Star}
-            label="Suivis"
-            count={counts.flagged}
-            active={active({ type: 'unified', role: 'flagged' })}
-            onClick={() => go({ type: 'unified', role: 'flagged' })}
-          />
-          <Item icon={Send} label="Envoyés" active={active({ type: 'unified', role: 'sent' })} onClick={() => go({ type: 'unified', role: 'sent' })} />
-          <Item
-            icon={File}
-            label="Brouillons"
-            active={active({ type: 'unified', role: 'drafts' })}
-            onClick={() => go({ type: 'unified', role: 'drafts' })}
-          />
-          <Item icon={CalendarDays} label="Calendrier" active={mode === 'calendar'} onClick={() => setMode('calendar')} />
+      <nav className={`min-h-0 flex-1 space-y-5 overflow-y-auto pb-3 ${collapsed ? 'px-2.5' : 'px-3'}`}>
+        <div className="space-y-0.5">
+          <Item collapsed={collapsed} icon={Inbox} label="Réception" count={counts.inbox} emphasize={counts.inbox > 0} active={active({ type: 'unified', role: 'inbox' })} onClick={() => setView({ type: 'unified', role: 'inbox' })} />
+          <Item collapsed={collapsed} icon={Star} label="Suivis" count={counts.flagged} active={active({ type: 'unified', role: 'flagged' })} onClick={() => setView({ type: 'unified', role: 'flagged' })} />
+          <Item collapsed={collapsed} icon={Send} label="Envoyés" active={active({ type: 'unified', role: 'sent' })} onClick={() => setView({ type: 'unified', role: 'sent' })} />
+          <Item collapsed={collapsed} icon={File} label="Brouillons" active={active({ type: 'unified', role: 'drafts' })} onClick={() => setView({ type: 'unified', role: 'drafts' })} />
+          <Item collapsed={collapsed} icon={CalendarDays} label="Calendrier" active={mode === 'calendar'} onClick={() => setMode('calendar')} />
         </div>
 
-        {accounts.map((account) => {
-          const expanded = open[account.id] ?? accounts.length === 1
-          return (
-            <div key={account.id}>
-              <button
-                onClick={() => setOpen({ ...open, [account.id]: !expanded })}
-                className="group flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-[12px] text-muted hover:text-fg-2"
-              >
-                <span className="size-2 shrink-0 rounded-[3px]" style={{ background: account.color }} />
-                <span className="min-w-0 flex-1 truncate font-medium">{account.name}</span>
-                {account.syncError && <OctagonAlert size={13} className="text-danger" />}
-                <ChevronRight size={13} className={`transition-transform ${expanded ? 'rotate-90' : ''}`} />
-              </button>
-              {expanded && (
-                <div className="space-y-px">
-                  {foldersFor(account.id).map((f) => (
-                    <Item
-                      key={f.id}
-                      icon={(f.role && ROLE_ICON[f.role]) || FolderIcon}
-                      label={f.role ? ROLE_LABEL[f.role] : f.name}
-                      count={f.role === 'inbox' || !f.role ? f.unread : undefined}
-                      active={active({ type: 'folder', folderId: f.id })}
-                      onClick={() => go({ type: 'folder', folderId: f.id })}
-                      depth={f.role ? 0 : Math.max(0, f.path.split(/[/.]/).length - 1)}
-                    />
-                  ))}
-                </div>
-              )}
+        {!collapsed && customFolders.length > 0 && (
+          <div>
+            <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Dossiers</div>
+            <div className="space-y-0.5">
+              {customFolders.map((f) => {
+                const account = accounts.find((a) => a.id === f.accountId)
+                return (
+                  <Item
+                    key={f.id}
+                    icon={Tag}
+                    color={avatarColor(f.path)}
+                    label={accounts.length > 1 ? `${f.name} · ${account?.name ?? ''}` : f.name}
+                    count={f.unread}
+                    emphasize={f.unread > 0}
+                    active={active({ type: 'folder', folderId: f.id })}
+                    onClick={() => setView({ type: 'folder', folderId: f.id })}
+                  />
+                )
+              })}
             </div>
-          )
-        })}
+          </div>
+        )}
 
-        <Item icon={Plus} label="Ajouter un compte" onClick={() => setSetup(true)} />
+        {!collapsed && (
+          <div>
+            <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Comptes</div>
+            {accounts.map((account) => {
+              const expanded = open[account.id] ?? false
+              return (
+                <div key={account.id}>
+                  <button
+                    onClick={() => setOpen({ ...open, [account.id]: !expanded })}
+                    className="group flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+                  >
+                    <span className="grid size-4 place-items-center">
+                      <span className="size-2.5 rounded-[3px]" style={{ background: account.color }} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{account.name}</span>
+                    {account.syncError && <OctagonAlert size={13} className="text-danger" />}
+                    <ChevronRight size={14} className={`text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
+                  </button>
+                  {expanded && (
+                    <div className="ml-4 space-y-0.5 border-l border-line pl-2">
+                      {systemFolders(account.id).map((f) => (
+                        <Item
+                          key={f.id}
+                          icon={(f.role && ROLE_ICON[f.role]) || Inbox}
+                          label={f.role ? ROLE_LABEL[f.role] : f.name}
+                          count={f.role === 'inbox' ? f.unread : undefined}
+                          emphasize={f.role === 'inbox' && f.unread > 0}
+                          active={active({ type: 'folder', folderId: f.id })}
+                          onClick={() => setView({ type: 'folder', folderId: f.id })}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+            <Item icon={Plus} label="Ajouter un compte" onClick={() => setSetup(true)} />
+          </div>
+        )}
       </nav>
 
-      {errored.length > 0 && (
-        <button
-          onClick={() => setSettings(true)}
-          className="mx-2 mb-2 rounded-md border border-danger/30 bg-danger/10 px-2.5 py-2 text-left text-[12px] text-danger"
-        >
+      {!collapsed && errored.length > 0 && (
+        <button onClick={() => setSettings(true)} className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger">
           {errored.length === 1 ? `${errored[0].email} : ${errored[0].syncError}` : `${errored.length} comptes en erreur`}
         </button>
       )}
 
-      <div className="flex h-10 shrink-0 items-center gap-1 border-t border-line px-2">
-        <button
-          onClick={() => setSettings(true)}
-          className="flex h-7 items-center gap-2 rounded-md px-2 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
-        >
-          <SettingsIcon size={14} strokeWidth={1.75} />
-          Réglages
+      <div className={`flex shrink-0 items-center gap-1 pb-2 ${collapsed ? 'flex-col px-2.5' : 'h-11 px-3'}`}>
+        <button onClick={() => setSettings(true)} title="Réglages" aria-label="Réglages" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+          <SettingsIcon size={15} strokeWidth={1.75} />
         </button>
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           title={theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
-          className="ml-auto grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+          aria-label={theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
+          className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
         >
-          {theme === 'dark' ? <Sun size={14} strokeWidth={1.75} /> : <Moon size={14} strokeWidth={1.75} />}
+          {theme === 'dark' ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
         </button>
-        <kbd
-          onClick={() => useStore.getState().setPalette(true)}
-          className="cursor-pointer rounded border border-line px-1.5 py-0.5 text-[11px] text-muted hover:text-fg"
-        >
-          Ctrl K
-        </kbd>
+        <button onClick={sync} title="Synchroniser" aria-label="Synchroniser" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+          <RefreshCw size={14} strokeWidth={1.75} className={isSyncing ? 'animate-spin' : ''} />
+        </button>
+        {!collapsed && (
+          <kbd onClick={() => useStore.getState().setPalette(true)} className="ml-auto cursor-pointer rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted hover:text-fg">
+            Ctrl K
+          </kbd>
+        )}
       </div>
     </aside>
   )
