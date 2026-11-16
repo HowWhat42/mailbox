@@ -232,7 +232,9 @@ export function searchContacts(query: string): Address[] {
 }
 
 export function listFolders(): Folder[] {
-  const rows = getDb().prepare('SELECT id, account_id, path, name, role, unread, total FROM folders ORDER BY path COLLATE NOCASE').all() as {
+  const rows = getDb()
+    .prepare('SELECT id, account_id, path, name, role, unread, total, parent_path, favorite FROM folders ORDER BY path COLLATE NOCASE')
+    .all() as {
     id: string
     account_id: string
     path: string
@@ -240,6 +242,8 @@ export function listFolders(): Folder[] {
     role: Folder['role']
     unread: number
     total: number
+    parent_path: string | null
+    favorite: number
   }[]
   return rows.map((r) => ({
     id: r.id,
@@ -248,7 +252,9 @@ export function listFolders(): Folder[] {
     name: r.name,
     role: r.role,
     unread: r.unread,
-    total: r.total
+    total: r.total,
+    parentPath: r.parent_path,
+    favorite: !!r.favorite
   }))
 }
 

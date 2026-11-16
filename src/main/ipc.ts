@@ -6,7 +6,8 @@ import { emit } from './events'
 import { deleteAccount, insertAccount, listAccounts, updateAccount } from './accounts/store'
 import { authorizeGoogle, googleConfigured } from './accounts/google'
 import { discoverSettings } from './accounts/discover'
-import { describeError, syncAccount } from './mail/sync'
+import { createFolder, describeError, syncAccount } from './mail/sync'
+import { getDb } from './db'
 import { bundleMessageIds, listBundles, unreadIdsOf, listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
 import { applyAction, emptyFolder, threadTargets } from './mail/actions'
 import { deleteDraft, saveDraft, sendOrQueue } from './mail/send'
@@ -147,7 +148,19 @@ const handlers: Handlers = {
       await applyAction(ids, 'read')
       return ids.length
     },
-    emptyFolder: (folderId) => emptyFolder(folderId)
+    emptyFolder: (folderId) => emptyFolder(folderId),
+    createFolder: async (accountId, name, parentId) => {
+      const id = await createFolder(accountId, name, parentId)
+      const folder = listFolders().find((f) => f.id === id)
+      if (!folder) throw new Error('Le dossier a été créé mais n’apparaît pas encore : synchronisez le compte.')
+      return folder
+    },
+    setFolderFavorite: async (folderId, favorite) => {
+      getDb()
+        .prepare('UPDATE folders SET favorite = ? WHERE id = ?')
+        .run(favorite ? 1 : 0, folderId)
+      emit('mail:changed', { accountId: '' })
+    }
   },
   templates: {
     list: async (accountId) => listTemplates(accountId),

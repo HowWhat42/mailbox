@@ -24,7 +24,8 @@
     "test:e2e:offline": "electron-vite build && node tests/e2e-offline.mjs",
     "test:e2e:update": "electron-vite build && node tests/e2e-update.mjs",
     "release": "node scripts/release.mjs",
-    "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs"
+    "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs",
+    "test:e2e:folders": "electron-vite build && node tests/e2e-folders.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",

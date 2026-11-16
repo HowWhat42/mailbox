@@ -78,6 +78,10 @@ export interface Folder {
   role: FolderRole
   unread: number
   total: number
+  /** Path of the parent folder on the server, for nested folders and Gmail sub-labels. */
+  parentPath: string | null
+  /** Pinned to the "Favoris" section of the sidebar. */
+  favorite: boolean
 }
 
 export interface Address {
@@ -443,6 +447,9 @@ export interface MailboxApi {
     markAllRead(view: MailView, scope: MailScope): Promise<number>
     /** Permanently deletes everything in Trash or Junk; returns how many. */
     emptyFolder(folderId: string): Promise<number>
+    /** Creates a folder on the server, at the top of the account or inside `parentId`. */
+    createFolder(accountId: string, name: string, parentId?: string): Promise<Folder>
+    setFolderFavorite(folderId: string, favorite: boolean): Promise<void>
   }
   templates: {
     /** One account's templates, or all of them. */

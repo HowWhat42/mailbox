@@ -247,6 +247,11 @@ const MIGRATIONS: string[] = [
     updated_at INTEGER NOT NULL
   );
   CREATE INDEX templates_account ON templates(account_id);
+  `,
+  // Folder tree (parent on the server) and folders pinned to the top of the sidebar.
+  `
+  ALTER TABLE folders ADD COLUMN parent_path TEXT;
+  ALTER TABLE folders ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
   `
 ]
 

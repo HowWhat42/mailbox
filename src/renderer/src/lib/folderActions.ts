@@ -1,4 +1,4 @@
-import { CheckCheck, Trash2 } from 'lucide-react'
+import { CheckCheck, FolderPlus, Star, StarOff, Trash2 } from 'lucide-react'
 import type { Folder, MailScope, MailView } from '@shared/types'
 import { api, confirmDialog, useStore } from '../store'
 import type { MenuEntry } from '../components/ui/Menu'
@@ -33,10 +33,28 @@ export async function emptyFolder(folder: Folder): Promise<void> {
   }
 }
 
-/** Menu for a folder or box: mark all read, and empty for Trash / Junk. */
-export function folderMenu(view: MailView, folder?: Folder, scope: MailScope = 'all'): MenuEntry[] {
+export async function setFavorite(folder: Folder, favorite: boolean): Promise<void> {
+  await api.mail.setFolderFavorite(folder.id, favorite)
+  await useStore.getState().refreshMail()
+}
+
+/**
+ * Menu for a folder or box: mark all read, favourite, new subfolder (custom folders), and empty for
+ * Trash / Junk. `onNewSubfolder` is given by the sidebar, which owns the naming dialog.
+ */
+export function folderMenu(view: MailView, folder?: Folder, scope: MailScope = 'all', onNewSubfolder?: (parent: Folder) => void): MenuEntry[] {
   return [
     { label: 'Tout marquer comme lu', icon: CheckCheck, onSelect: () => void markAllRead(view, scope) },
+    ...(folder
+      ? ([
+          folder.favorite
+            ? { label: 'Retirer des favoris', icon: StarOff, onSelect: () => void setFavorite(folder, false) }
+            : { label: 'Ajouter aux favoris', icon: Star, onSelect: () => void setFavorite(folder, true) }
+        ] satisfies MenuEntry[])
+      : []),
+    ...(folder && !folder.role && onNewSubfolder
+      ? ([{ label: 'Nouveau sous-dossier…', icon: FolderPlus, onSelect: () => onNewSubfolder(folder) }] satisfies MenuEntry[])
+      : []),
     ...(folder && (folder.role === 'trash' || folder.role === 'junk')
       ? ([
           'separator',

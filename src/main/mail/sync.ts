@@ -147,16 +147,40 @@ function folderId(accountId: string, path: string): string {
   return createHash('sha1').update(`${accountId}\0${path}`).digest('hex').slice(0, 16)
 }
 
+/**
+ * Creates a folder on the server: under `parent`, or at the top of the account (inside the personal
+ * namespace when the server has one, like "INBOX." on Courier/Dovecot setups). Returns its id.
+ */
+export async function createFolder(accountId: string, name: string, parentId?: string): Promise<string> {
+  const clean = name.trim()
+  if (!clean) throw new Error('Donnez un nom au dossier.')
+  const account = getAccount(accountId)
+  const parent = parentId ? (getDb().prepare('SELECT * FROM folders WHERE id = ?').get(parentId) as unknown as FolderRow | undefined) : undefined
+  if (parentId && !parent) throw new Error('Dossier parent introuvable.')
+  return withImap(account, async (client) => {
+    const list = await client.list()
+    const delimiter = list.find((f) => f.delimiter)?.delimiter ?? '/'
+    if (clean.includes(delimiter)) throw new Error(`Le nom ne peut pas contenir « ${delimiter} ».`)
+    const prefix = parent ? `${parent.path}${delimiter}` : (client.namespace?.prefix ?? '')
+    const path = `${prefix}${clean}`
+    if (list.some((f) => f.path.toLowerCase() === path.toLowerCase())) throw new Error(`« ${clean} » existe déjà ici.`)
+    await client.mailboxCreate(path)
+    await syncFolderList(client, account)
+    emit('mail:changed', { accountId })
+    return folderId(accountId, path)
+  })
+}
+
 async function syncFolderList(client: ImapFlow, account: Account): Promise<FolderRow[]> {
   const remote = (await client.list()).filter((f: ListResponse) => !f.flags.has('\\Noselect') && !f.flags.has('\\NonExistent'))
   const db = getDb()
   tx(() => {
     const upsert = db.prepare(
-      `INSERT INTO folders (id, account_id, path, name, role) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT (account_id, path) DO UPDATE SET name = excluded.name, role = excluded.role`
+      `INSERT INTO folders (id, account_id, path, name, role, parent_path) VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (account_id, path) DO UPDATE SET name = excluded.name, role = excluded.role, parent_path = excluded.parent_path`
     )
     const roles = folderRoles(remote)
-    for (const f of remote) upsert.run(folderId(account.id, f.path), account.id, f.path, f.name, roles.get(f.path) ?? null)
+    for (const f of remote) upsert.run(folderId(account.id, f.path), account.id, f.path, f.name, roles.get(f.path) ?? null, f.parentPath || null)
     // Mirrors are never synced: drop copies stored back when they were taken for ordinary folders.
     db.prepare(
       `DELETE FROM messages WHERE folder_id IN (SELECT id FROM folders WHERE account_id = ? AND role IN (${[...MIRROR_ROLES].map(() => '?').join(',')}))`

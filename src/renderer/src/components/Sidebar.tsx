@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   CircleArrowUp,
+  FolderPlus,
   Archive,
   CalendarDays,
   ChevronRight,
@@ -29,6 +30,7 @@ import { useFolderDrop } from '../lib/dnd'
 import { NextUp } from './NextUp'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
+import { Modal, fieldCls } from './Modal'
 import { accountLabel } from '../lib/accounts'
 
 const ROLE_ICON: Partial<Record<Exclude<FolderRole, null>, LucideIcon>> = {
@@ -123,6 +125,80 @@ function InboxDrop({ folder, children }: { folder: Folder; children: React.React
   )
 }
 
+/** A folder in the tree: a chevron slot (when it has subfolders), then the entry itself, indented by depth. */
+function TreeRow({ depth, open, onToggle, children }: { depth: number; open?: boolean; onToggle?: () => void; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center" style={{ paddingLeft: depth * 12 }}>
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={open ? 'Replier les sous-dossiers' : 'Déplier les sous-dossiers'}
+          aria-expanded={open}
+          className="grid size-5 shrink-0 place-items-center rounded text-muted hover:bg-hover hover:text-fg"
+        >
+          <ChevronRight size={12} className={`transition-transform ${open ? 'rotate-90' : ''}`} />
+        </button>
+      ) : (
+        <span className="size-5 shrink-0" />
+      )}
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
+/** Names a new folder, at the top of an account or inside `parent`, and creates it on the server. */
+function NewFolderDialog({ accountId, parent, onClose }: { accountId: string; parent?: Folder; onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const account = useStore((s) => s.accounts.find((a) => a.id === accountId))
+  const create = async (): Promise<void> => {
+    setBusy(true)
+    try {
+      const folder = await api.mail.createFolder(accountId, name, parent?.id)
+      await useStore.getState().refreshMail()
+      useStore.getState().toast(`Dossier « ${folder.name} » créé`)
+      onClose()
+    } catch (err) {
+      useStore.getState().toast((err as Error).message, 'error')
+      setBusy(false)
+    }
+  }
+  return (
+    <Modal title={parent ? `Nouveau dossier dans « ${parent.name} »` : 'Nouveau dossier'} onClose={onClose} width={420}>
+      <form
+        className="space-y-3 px-5 pb-5"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (name.trim() && !busy) void create()
+        }}
+      >
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={fieldCls}
+          placeholder="Nom du dossier"
+          aria-label="Nom du dossier"
+        />
+        {account && <p className="text-[12px] text-muted">Créé sur le serveur de {account.email}.</p>}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-9 rounded-lg px-4 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={!name.trim() || busy}
+            className="btn-primary h-9 rounded-lg px-4 text-[13px] font-medium disabled:opacity-50"
+          >
+            Créer
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) {
   const { mode, view, accounts, folders, counts, syncing, theme } = useStore()
   const layout = useLayout()
@@ -131,7 +207,27 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
   const [menu, setMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
-  const menuFor = (target: MailView, folder?: Folder) => (anchor: { x: number; y: number }) => setMenu({ anchor, items: folderMenu(target, folder) })
+  const [creating, setCreating] = useState<{ accountId: string; parent?: Folder } | null>(null)
+  const menuFor = (target: MailView, folder?: Folder) => (anchor: { x: number; y: number }) =>
+    setMenu({ anchor, items: folderMenu(target, folder, 'all', (parent) => setCreating({ accountId: parent.accountId, parent })) })
+  const [treeOpen, setTreeOpen] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('folderTree') ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
+  const toggleTree = (id: string): void => {
+    const next = new Set(treeOpen)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setTreeOpen(next)
+    try {
+      localStorage.setItem('folderTree', JSON.stringify([...next]))
+    } catch {
+      // Not kept between launches then; the tree still works.
+    }
+  }
   const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
   const queue = useStore((st) => st.queue)
   const update = useStore((st) => st.update)
@@ -161,6 +257,34 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
     return ROLE_ORDER.flatMap((r) => own.filter((f) => f.role === r))
   }
   const customFolders = folders.filter((f) => !f.role)
+  const favorites = folders.filter((f) => f.favorite && f.role !== 'all' && f.role !== 'flagged' && f.role !== 'important')
+
+  /** Custom folders of an account as a tree: roots are those whose parent isn't a custom folder too. */
+  const folderTree = (accountId: string, parentPath: string | null = null, depth = 0): React.ReactNode[] => {
+    const own = customFolders.filter((f) => f.accountId === accountId)
+    const paths = new Set(own.map((f) => f.path))
+    const level = own.filter((f) => (parentPath === null ? !f.parentPath || !paths.has(f.parentPath) : f.parentPath === parentPath))
+    return level.flatMap((f) => {
+      const hasChildren = own.some((c) => c.parentPath === f.path)
+      const isOpen = treeOpen.has(f.id)
+      return [
+        <TreeRow key={f.id} depth={depth} open={hasChildren ? isOpen : undefined} onToggle={hasChildren ? () => toggleTree(f.id) : undefined}>
+          <Item
+            icon={Tag}
+            color={avatarColor(f.path)}
+            label={f.name}
+            count={f.unread}
+            emphasize={f.unread > 0}
+            active={active({ type: 'folder', folderId: f.id })}
+            onClick={() => setView({ type: 'folder', folderId: f.id })}
+            onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
+            dropFolder={f}
+          />
+        </TreeRow>,
+        ...(hasChildren && isOpen ? folderTree(accountId, f.path, depth + 1) : [])
+      ]
+    })
+  }
 
   return (
     <aside
@@ -263,17 +387,18 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           <Item collapsed={collapsed} icon={CalendarDays} label="Calendrier" active={mode === 'calendar'} onClick={() => setMode('calendar')} />
         </div>
 
-        {!collapsed && accounts.length === 1 && customFolders.length > 0 && (
+        {!collapsed && favorites.length > 0 && (
           <div>
-            <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Dossiers</div>
+            <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Favoris</div>
             <div className="space-y-0.5">
-              {customFolders.map((f) => {
+              {favorites.map((f) => {
+                const account = accounts.find((a) => a.id === f.accountId)
                 return (
                   <Item
                     key={f.id}
-                    icon={Tag}
-                    color={avatarColor(f.path)}
-                    label={f.name}
+                    icon={(f.role && ROLE_ICON[f.role]) || Tag}
+                    color={accounts.length > 1 ? account?.color : f.role ? undefined : avatarColor(f.path)}
+                    label={f.role ? `${ROLE_LABEL[f.role]}${accounts.length > 1 && account ? ` · ${accountLabel(account)}` : ''}` : f.name}
                     count={f.unread}
                     emphasize={f.unread > 0}
                     active={active({ type: 'folder', folderId: f.id })}
@@ -284,6 +409,13 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {!collapsed && accounts.length === 1 && customFolders.length > 0 && (
+          <div>
+            <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Dossiers</div>
+            <div className="space-y-0.5">{folderTree(accounts[0].id)}</div>
           </div>
         )}
 
@@ -322,23 +454,8 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                           dropFolder={f}
                         />
                       ))}
-                      {accounts.length > 1 &&
-                        customFolders
-                          .filter((f) => f.accountId === account.id)
-                          .map((f) => (
-                            <Item
-                              key={f.id}
-                              icon={Tag}
-                              color={avatarColor(f.path)}
-                              label={f.name}
-                              count={f.unread}
-                              emphasize={f.unread > 0}
-                              active={active({ type: 'folder', folderId: f.id })}
-                              onClick={() => setView({ type: 'folder', folderId: f.id })}
-                              onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
-                              dropFolder={f}
-                            />
-                          ))}
+                      {accounts.length > 1 && folderTree(account.id)}
+                      <Item icon={FolderPlus} label="Nouveau dossier" onClick={() => setCreating({ accountId: account.id })} />
                     </div>
                   )}
                 </div>
@@ -441,6 +558,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
         )}
       </div>
       {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={220} />}
+      {creating && <NewFolderDialog accountId={creating.accountId} parent={creating.parent} onClose={() => setCreating(null)} />}
     </aside>
   )
 }

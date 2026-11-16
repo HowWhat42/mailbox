@@ -26,6 +26,8 @@ const api = {
     'unsubscribe',
     'markAllRead',
     'emptyFolder',
+    'createFolder',
+    'setFolderFavorite',
     'bundles',
     'bundleAct',
     'queue',
