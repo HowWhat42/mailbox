@@ -96,6 +96,14 @@ const expectRows = async (label, texts) => {
 
 await expectRows('Personnes', ['On déjeune', 'Facture du traiteur'])
 for (const c of ['notifications', 'newsletters', 'invitations']) await bundle(c).waitFor()
+// Bundles are pinned on top, in a fixed order, above every conversation.
+const top = await page.$$eval('[data-index]', (els) =>
+  els
+    .toSorted((a, b) => Number(a.dataset.index) - Number(b.dataset.index))
+    .slice(0, 3)
+    .map((e) => e.querySelector('[data-bundle]')?.getAttribute('data-bundle') ?? 'other')
+)
+if (top.join() !== 'notifications,invitations,newsletters') throw new Error(`bundles not pinned on top: ${top.join()}`)
 await page.screenshot({ path: join(shots, 't-01-bundles.png') })
 // No row may spill over the next one (bundles wrap their senders and are measured, not estimated).
 const overlaps = await page.$$eval('[data-index]', (els) =>

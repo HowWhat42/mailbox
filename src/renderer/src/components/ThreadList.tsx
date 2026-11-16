@@ -194,6 +194,9 @@ const FILTERS: { value: MailFilter; label: string }[] = [
   { value: 'attachments', label: 'Pièces jointes' }
 ]
 
+/** Order of the pinned bundles at the top of the smart inbox. */
+const BUNDLE_ORDER: MailCategory[] = ['notifications', 'invitations', 'newsletters']
+
 export function ThreadList() {
   const threads = useStore((s) => s.threads)
   const selected = useStore((s) => s.selected)
@@ -221,19 +224,17 @@ export function ThreadList() {
   const markers = useAccountMarker(view.type !== 'folder')
 
   const items = useMemo<Item[]>(() => {
-    // Bundles sit among the conversations at the date of their latest message.
-    const shown = bundles.filter((b) => filter === 'all' || (filter === 'unread' && b.unread > 0))
-    const merged: ({ date: number } & ({ type: 'thread'; t: ThreadSummary } | { type: 'bundle'; b: Bundle }))[] = [
-      ...threads.map((t) => ({ type: 'thread' as const, t, date: t.date })),
-      ...shown.map((b) => ({ type: 'bundle' as const, b, date: b.latest }))
-    ].toSorted((a, b) => b.date - a.date)
-    const out: Item[] = []
+    // Bundles stay pinned on top, in a fixed order, as long as they hold something; conversations follow by date.
+    const shown = bundles
+      .filter((b) => b.threads > 0 && (filter === 'all' || (filter === 'unread' && b.unread > 0)))
+      .toSorted((a, b) => BUNDLE_ORDER.indexOf(a.category) - BUNDLE_ORDER.indexOf(b.category))
+    const out: Item[] = shown.map((b) => ({ type: 'bundle', b }))
     let last = ''
-    for (const it of merged) {
-      const g = dateGroup(it.date)
+    for (const t of threads) {
+      const g = dateGroup(t.date)
       if (g !== last) out.push({ type: 'header', label: g })
       last = g
-      out.push(it.type === 'thread' ? { type: 'thread', t: it.t } : { type: 'bundle', b: it.b })
+      out.push({ type: 'thread', t })
     }
     return out
   }, [threads, bundles, filter])
@@ -423,16 +424,16 @@ export function ThreadList() {
               return (
                 <div
                   key={v.key}
-                  // Bundles wrap their senders over one or two lines: measure them instead of trusting the estimate,
-                  // or a taller bundle spills over the next row. Threads and headers keep a fixed height.
+                  // Rows are measured, not trusted to the estimate: fonts, display scaling, density, labels and
+                  // wrapped bundle senders all change their height, and an underestimated row spills over the next.
                   data-index={v.index}
-                  ref={it.type === 'bundle' ? virtual.measureElement : undefined}
+                  ref={it.type === 'header' ? undefined : virtual.measureElement}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     right: 0,
-                    height: it.type === 'bundle' ? undefined : v.size,
+                    height: it.type === 'header' ? v.size : undefined,
                     transform: `translateY(${v.start}px)`
                   }}
                 >
