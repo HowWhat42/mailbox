@@ -1,5 +1,7 @@
-import { useState } from 'react'
-import type { Account } from '@shared/types'
+import { useEffect, useState } from 'react'
+import type { Account, AppSettings } from '@shared/types'
+import { SlidersHorizontal } from 'lucide-react'
+import { Select, Toggle } from './ui/Controls'
 import { api, confirmDialog, useStore } from '../store'
 import { Label, Modal, fieldCls } from './Modal'
 
@@ -80,22 +82,74 @@ function AccountForm({ account }: { account: Account }) {
   )
 }
 
+function General() {
+  const [settings, setLocal] = useState<AppSettings | null>(null)
+  useEffect(() => {
+    void api.settings.get().then(setLocal)
+  }, [])
+  if (!settings) return null
+  const set = async (patch: Partial<AppSettings>): Promise<void> => setLocal(await api.settings.set(patch))
+  const row = 'flex items-start justify-between gap-6 py-3'
+
+  return (
+    <div className="divide-y divide-line">
+      <div className={row}>
+        <div>
+          <p className="text-[13px] font-medium">Rester actif en arrière-plan</p>
+          <p className="mt-0.5 text-[12px] text-muted">Fermer la fenêtre garde Mailbox dans la barre des tâches : nouveaux messages et rappels continuent d’arriver.</p>
+        </div>
+        <Toggle label="" checked={settings.backgroundMode} onChange={(v) => void set({ backgroundMode: v })} />
+      </div>
+      <div className={row}>
+        <div>
+          <p className="text-[13px] font-medium">Lancer au démarrage de la session</p>
+          <p className="mt-0.5 text-[12px] text-muted">Démarre directement dans la barre des tâches. Version installée uniquement.</p>
+        </div>
+        <Toggle label="" checked={settings.launchAtLogin} onChange={(v) => void set({ launchAtLogin: v })} />
+      </div>
+      <div className={row}>
+        <div>
+          <p className="text-[13px] font-medium">Rappel par défaut</p>
+          <p className="mt-0.5 text-[12px] text-muted">Pour les événements sans rappel défini. Les réunions en ligne sonnent aussi à l’heure du début.</p>
+        </div>
+        <Select
+          ariaLabel="Rappel par défaut"
+          className="w-40 shrink-0"
+          value={String(settings.reminderMinutes)}
+          onChange={(v) => void set({ reminderMinutes: Number(v) })}
+          options={[0, 5, 10, 15, 30, 60].map((m) => ({ value: String(m), label: m === 0 ? 'Au début' : m === 60 ? '1 heure avant' : `${m} min avant` }))}
+        />
+      </div>
+      <div className={row}>
+        <div>
+          <p className="text-[13px] font-medium">Son des rappels</p>
+          <p className="mt-0.5 text-[12px] text-muted">Un carillon discret quand un rappel apparaît.</p>
+        </div>
+        <Toggle label="" checked={settings.reminderSound} onChange={(v) => void set({ reminderSound: v })} />
+      </div>
+    </div>
+  )
+}
+
 export function Settings() {
   const accounts = useStore((s) => s.accounts)
   const { setSettings, setSetup } = useStore.getState()
-  const [current, setCurrent] = useState(accounts[0]?.id ?? null)
-  const account = accounts.find((a) => a.id === current) ?? accounts[0]
+  const [current, setCurrent] = useState<string>('general')
+  const account = accounts.find((a) => a.id === current)
+  const tab = (active: boolean): string =>
+    `flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-[12.5px] sm:w-full ${active ? 'lit text-fg' : 'text-fg-2 hover:bg-hover'}`
 
   return (
-    <Modal title="Réglages" onClose={() => setSettings(false)} width={680}>
-      <div className="flex min-h-[380px] flex-col border-t border-line sm:flex-row">
-        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 sm:w-48 sm:flex-col sm:gap-0 sm:space-y-px sm:border-b-0 sm:border-r">
+    <Modal title="Réglages" onClose={() => setSettings(false)} width={720}>
+      <div className="flex min-h-[400px] flex-col border-t border-line sm:flex-row">
+        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2 sm:w-52 sm:flex-col sm:gap-0 sm:space-y-px sm:border-b-0 sm:border-r">
+          <button onClick={() => setCurrent('general')} className={tab(current === 'general')}>
+            <SlidersHorizontal size={13} className="text-muted" />
+            Général
+          </button>
+          <span className="hidden px-2 pb-1 pt-3 text-[11.5px] font-medium text-muted sm:block">Comptes</span>
           {accounts.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => setCurrent(a.id)}
-              className={`flex h-8 shrink-0 items-center gap-2 rounded-md px-2 text-left text-[12.5px] sm:w-full ${a.id === account?.id ? 'bg-hover text-fg' : 'text-fg-2 hover:bg-hover/60'}`}
-            >
+            <button key={a.id} onClick={() => setCurrent(a.id)} className={tab(a.id === current)}>
               <span className="size-2 shrink-0 rounded-[3px]" style={{ background: a.color }} />
               <span className="truncate">{a.name}</span>
             </button>
@@ -105,13 +159,13 @@ export function Settings() {
               setSettings(false)
               setSetup(true)
             }}
-            className="flex h-8 shrink-0 items-center rounded-md px-2 text-left text-[12.5px] text-muted sm:w-full hover:bg-hover/60 hover:text-fg"
+            className="flex h-8 shrink-0 items-center rounded-md px-2 text-left text-[12.5px] text-muted sm:w-full hover:bg-hover hover:text-fg"
           >
             Ajouter un compte…
           </button>
         </div>
         <div className="min-w-0 flex-1 p-5">
-          {account ? <AccountForm key={account.id} account={account} /> : <p className="text-[13px] text-muted">Aucun compte configuré.</p>}
+          {account ? <AccountForm key={account.id} account={account} /> : <General />}
         </div>
       </div>
     </Modal>

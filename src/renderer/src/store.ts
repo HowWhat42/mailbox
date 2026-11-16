@@ -63,6 +63,8 @@ interface State {
   /** Window width, drives the responsive layout (see lib/layout). */
   viewport: number
   drawerOpen: boolean
+  /** Event the calendar should jump to and open (from a reminder or the "next up" card). */
+  calendarFocus: { eventId: string; start: number } | null
   accounts: Account[]
   folders: Folder[]
   counts: { inbox: number; flagged: number }
@@ -89,6 +91,7 @@ interface State {
   setTheme(theme: Theme): void
   toggleSidebar(): void
   setDrawer(open: boolean): void
+  focusEvent(focus: { eventId: string; start: number } | null): void
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
   loadMore(): void
@@ -158,6 +161,7 @@ export const useStore = create<State>((set, get) => ({
   sidebarCollapsed: readPref('sidebar', ['open', 'collapsed'], 'open') === 'collapsed',
   viewport: window.innerWidth,
   drawerOpen: false,
+  calendarFocus: null,
   accounts: [],
   folders: [],
   counts: { inbox: 0, flagged: 0 },
@@ -189,6 +193,7 @@ export const useStore = create<State>((set, get) => ({
       refreshTimer = setTimeout(() => void get().refreshMail(), 150)
     })
     api.app.on('accounts:changed', () => void get().refreshAccounts())
+    api.app.on('calendar:open', (focus) => get().focusEvent(focus.eventId ? focus : { eventId: '', start: focus.start }))
     api.app.on('sync:status', (s) => {
       set({ syncing: { ...get().syncing, [s.accountId]: s.state === 'syncing' } })
       if (s.state !== 'syncing') void get().refreshAccounts()
@@ -229,6 +234,10 @@ export const useStore = create<State>((set, get) => ({
 
   setDrawer(open) {
     set({ drawerOpen: open })
+  },
+
+  focusEvent(focus) {
+    set(focus ? { calendarFocus: focus, mode: 'calendar', composer: null } : { calendarFocus: null })
   },
 
   toggleSidebar() {

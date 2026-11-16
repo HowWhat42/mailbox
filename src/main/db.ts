@@ -130,7 +130,75 @@ const MIGRATIONS: string[] = [
   CREATE INDEX events_range ON events (start, end);
   `,
   // Drafts keep their Bcc so it survives reopening.
-  `ALTER TABLE messages ADD COLUMN bcc_json TEXT NOT NULL DEFAULT '[]';`
+  `ALTER TABLE messages ADD COLUMN bcc_json TEXT NOT NULL DEFAULT '[]';`,
+  // Calendars get their own sources (Google, CalDAV, ICS), independent from mail accounts.
+  // Calendar data is only a cache, so the old tables are simply rebuilt.
+  `
+  DROP TABLE events;
+  DROP TABLE calendars;
+
+  CREATE TABLE cal_sources (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    account_id TEXT REFERENCES accounts(id) ON DELETE CASCADE,
+    url TEXT,
+    username TEXT,
+    secret BLOB,
+    sync_error TEXT,
+    last_sync_at INTEGER,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE calendars (
+    id TEXT PRIMARY KEY,
+    source_id TEXT NOT NULL REFERENCES cal_sources(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    user_color TEXT,
+    read_only INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    default_reminders TEXT NOT NULL DEFAULT '[]',
+    UNIQUE (source_id, remote_id)
+  );
+
+  CREATE TABLE events (
+    id TEXT PRIMARY KEY,
+    calendar_id TEXT NOT NULL REFERENCES calendars(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES cal_sources(id) ON DELETE CASCADE,
+    remote_id TEXT NOT NULL,
+    etag TEXT,
+    ical TEXT,
+    title TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    start INTEGER NOT NULL,
+    end INTEGER NOT NULL,
+    all_day INTEGER NOT NULL DEFAULT 0,
+    recurring INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'confirmed',
+    meeting_url TEXT,
+    meeting_provider TEXT,
+    attendees_json TEXT NOT NULL DEFAULT '[]',
+    organizer TEXT,
+    my_status TEXT,
+    reminders_json TEXT,
+    web_link TEXT
+  );
+  CREATE INDEX events_range ON events (start, end);
+
+  CREATE TABLE reminders_fired (
+    key TEXT PRIMARY KEY,
+    fired_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `
 ]
 
 function migrate(d: DatabaseSync): void {

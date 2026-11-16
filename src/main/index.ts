@@ -1,66 +1,23 @@
-import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { getDb } from './db'
 import { registerIpc } from './ipc'
+import { applyLoginItem, getSettings } from './settings'
 import { startWatching, stopWatching } from './mail/watch'
-
-const TITLEBAR = {
-  dark: { color: '#000000', symbolColor: '#cdc8e4' },
-  light: { color: '#e9e8f2', symbolColor: '#3c3950' }
-}
-
-function createWindow(): BrowserWindow {
-  const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 480,
-    minHeight: 520,
-    show: false,
-    backgroundColor: TITLEBAR.dark.color,
-    titleBarStyle: 'hidden',
-    titleBarOverlay: { ...TITLEBAR.dark, height: 48 },
-    trafficLightPosition: { x: 14, y: 17 },
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      sandbox: true,
-      nodeIntegration: false,
-      spellcheck: true
-    }
-  })
-  win.once('ready-to-show', () => win.show())
-
-  // Links (including those clicked inside message bodies) open in the system browser.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^(https?|mailto):/i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
-  win.webContents.on('will-navigate', (event, url) => {
-    if (url !== win.webContents.getURL()) {
-      event.preventDefault()
-      if (/^(https?|mailto):/i.test(url)) void shell.openExternal(url)
-    }
-  })
-
-  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else void win.loadFile(join(__dirname, '../renderer/index.html'))
-  return win
-}
+import { startCalendarSync, stopCalendarSync } from './calendar'
+import { syncAccountSources } from './calendar/sources'
+import { startReminders, stopReminders } from './calendar/reminders'
+import { createMainWindow, showMainWindow, TITLEBAR } from './windows'
+import { createTray } from './tray'
 
 if (!app.requestSingleInstanceLock()) app.quit()
 
-app.on('second-instance', () => {
-  const win = BrowserWindow.getAllWindows()[0]
-  if (win) {
-    if (win.isMinimized()) win.restore()
-    win.focus()
-  }
-})
+app.on('second-instance', () => showMainWindow())
 
 app.whenReady().then(() => {
   app.setAppUserModelId('app.mailbox.desktop')
   nativeTheme.themeSource = 'dark'
   getDb()
+  syncAccountSources()
   registerIpc()
   ipcMain.handle('app:setTheme', (event, theme: 'dark' | 'light') => {
     nativeTheme.themeSource = theme
@@ -68,15 +25,23 @@ app.whenReady().then(() => {
     if (process.platform !== 'darwin') win?.setTitleBarOverlay({ ...TITLEBAR[theme], height: 48 })
     win?.setBackgroundColor(TITLEBAR[theme].color)
   })
-  createWindow()
+  applyLoginItem()
+
+  createMainWindow({ hidden: process.argv.includes('--hidden') })
+  createTray()
   startWatching()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+  startCalendarSync()
+  startReminders()
+  app.on('activate', () => showMainWindow())
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // With background mode on, the main window only hides and this never fires.
+  if (!getSettings().backgroundMode) app.quit()
 })
 
-app.on('before-quit', () => stopWatching())
+app.on('before-quit', () => {
+  stopWatching()
+  stopCalendarSync()
+  stopReminders()
+})

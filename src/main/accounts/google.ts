@@ -7,7 +7,10 @@ import { getSecret } from './store'
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo'
-const SCOPES = ['openid', 'email', 'profile', 'https://mail.google.com/', 'https://www.googleapis.com/auth/calendar']
+const SCOPES = {
+  mail: ['openid', 'email', 'profile', 'https://mail.google.com/', 'https://www.googleapis.com/auth/calendar'],
+  calendar: ['openid', 'email', 'profile', 'https://www.googleapis.com/auth/calendar']
+}
 
 const clientId = import.meta.env.MAIN_VITE_GOOGLE_CLIENT_ID ?? ''
 const clientSecret = import.meta.env.MAIN_VITE_GOOGLE_CLIENT_SECRET ?? ''
@@ -41,7 +44,7 @@ async function tokenRequest(params: Record<string, string>): Promise<TokenRespon
  * Runs the installed-app OAuth flow: opens the system browser and receives the
  * code on a one-shot loopback server (RFC 8252), protected by PKCE + state.
  */
-export async function authorizeGoogle(): Promise<{ email: string; name: string; refreshToken: string }> {
+export async function authorizeGoogle(scope: keyof typeof SCOPES = 'mail'): Promise<{ email: string; name: string; refreshToken: string }> {
   if (!googleConfigured()) {
     throw new Error('Client OAuth Google non configuré : renseigner MAIN_VITE_GOOGLE_CLIENT_ID / SECRET dans .env.')
   }
@@ -80,7 +83,7 @@ export async function authorizeGoogle(): Promise<{ email: string; name: string; 
         client_id: clientId,
         redirect_uri: redirectUri,
         response_type: 'code',
-        scope: SCOPES.join(' '),
+        scope: SCOPES[scope].join(' '),
         code_challenge: challenge,
         code_challenge_method: 'S256',
         access_type: 'offline',
@@ -105,12 +108,17 @@ export async function authorizeGoogle(): Promise<{ email: string; name: string; 
 }
 
 export async function googleAccessToken(accountId: string): Promise<string> {
-  const cached = tokenCache.get(accountId)
+  return googleTokenFor(accountId, () => getSecret(accountId).refreshToken)
+}
+
+/** Access token for any holder of a refresh token (mail account or standalone calendar), cached until expiry. */
+export async function googleTokenFor(cacheKey: string, refreshToken: () => string | undefined): Promise<string> {
+  const cached = tokenCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token
-  const { refreshToken } = getSecret(accountId)
-  if (!refreshToken) throw new Error('Refresh token manquant : reconnecter le compte Google.')
-  const tokens = await tokenRequest({ refresh_token: refreshToken, grant_type: 'refresh_token' })
-  tokenCache.set(accountId, { token: tokens.access_token, expiresAt: Date.now() + tokens.expires_in * 1000 })
+  const token = refreshToken()
+  if (!token) throw new Error('Refresh token manquant : reconnecter le compte Google.')
+  const tokens = await tokenRequest({ refresh_token: token, grant_type: 'refresh_token' })
+  tokenCache.set(cacheKey, { token: tokens.access_token, expiresAt: Date.now() + tokens.expires_in * 1000 })
   return tokens.access_token
 }
 

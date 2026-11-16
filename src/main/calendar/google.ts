@@ -1,14 +1,15 @@
-import type { Account, EventInput } from '@shared/types'
-import { googleAccessToken } from '../accounts/google'
+import type { Attendee, CalendarSource, EventInput, ResponseStatus } from '@shared/types'
+import { findMeeting } from '@shared/meeting'
+import { googleTokenForSource } from './sources'
 import type { RemoteCalendar, RemoteEvent } from './types'
 
 const API = 'https://www.googleapis.com/calendar/v3'
 
-async function call<T>(account: Account, path: string, init: RequestInit = {}): Promise<T> {
+async function call<T>(source: CalendarSource, path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${await googleAccessToken(account.id)}`,
+      Authorization: `Bearer ${await googleTokenForSource(source)}`,
       'Content-Type': 'application/json',
       ...init.headers
     }
@@ -23,6 +24,33 @@ async function call<T>(account: Account, path: string, init: RequestInit = {}): 
 interface GTime {
   date?: string
   dateTime?: string
+}
+
+interface GAttendee {
+  email: string
+  displayName?: string
+  responseStatus?: ResponseStatus
+  self?: boolean
+  organizer?: boolean
+  resource?: boolean
+}
+
+interface GEvent {
+  id: string
+  status: string
+  summary?: string
+  location?: string
+  description?: string
+  start: GTime
+  end: GTime
+  recurringEventId?: string
+  etag: string
+  htmlLink?: string
+  hangoutLink?: string
+  conferenceData?: { entryPoints?: { entryPointType: string; uri: string }[]; conferenceSolution?: { name?: string } }
+  attendees?: GAttendee[]
+  organizer?: { email?: string; displayName?: string; self?: boolean }
+  reminders?: { useDefault?: boolean; overrides?: { method: string; minutes: number }[] }
 }
 
 function parseTime(t: GTime): { ts: number; allDay: boolean } {
@@ -40,20 +68,60 @@ function toGTime(ts: number, allDay: boolean): GTime {
   return { date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` }
 }
 
-export async function googleCalendars(account: Account): Promise<RemoteCalendar[]> {
-  const res = await call<{ items: { id: string; summary: string; backgroundColor?: string; accessRole: string; primary?: boolean }[] }>(
-    account,
-    '/users/me/calendarList'
-  )
+function toRemote(e: GEvent): RemoteEvent {
+  const s = parseTime(e.start)
+  const video = e.conferenceData?.entryPoints?.find((p) => p.entryPointType === 'video')?.uri ?? e.hangoutLink
+  const meeting = video
+    ? { url: video, provider: findMeeting(video)?.provider ?? e.conferenceData?.conferenceSolution?.name ?? 'Visio' }
+    : findMeeting(e.location, e.description)
+  const attendees: Attendee[] = (e.attendees ?? [])
+    .filter((a) => !a.resource)
+    .map((a) => ({ name: a.displayName ?? '', email: a.email, status: a.responseStatus ?? 'needsAction', organizer: !!a.organizer, self: !!a.self }))
+  const me = attendees.find((a) => a.self)
+  return {
+    remoteId: e.id,
+    etag: e.etag,
+    ical: null,
+    title: e.summary ?? '',
+    location: e.location ?? '',
+    description: e.description ?? '',
+    start: s.ts,
+    end: parseTime(e.end).ts,
+    allDay: s.allDay,
+    recurring: !!e.recurringEventId,
+    status: e.status === 'tentative' ? 'tentative' : 'confirmed',
+    meetingUrl: meeting?.url ?? null,
+    meetingProvider: meeting?.provider ?? null,
+    attendees,
+    organizer: e.organizer?.displayName ?? e.organizer?.email ?? null,
+    myStatus: me && !me.organizer && !e.organizer?.self ? me.status : null,
+    reminders: e.reminders?.useDefault === false ? (e.reminders.overrides ?? []).filter((r) => r.method === 'popup').map((r) => r.minutes) : null,
+    webLink: e.htmlLink ?? null
+  }
+}
+
+export async function googleCalendars(source: CalendarSource): Promise<RemoteCalendar[]> {
+  const res = await call<{
+    items: {
+      id: string
+      summary: string
+      summaryOverride?: string
+      backgroundColor?: string
+      accessRole: string
+      primary?: boolean
+      defaultReminders?: { method: string; minutes: number }[]
+    }[]
+  }>(source, '/users/me/calendarList')
   return res.items.map((c) => ({
     remoteId: c.id,
-    name: c.primary ? account.email : c.summary,
-    color: c.backgroundColor ?? account.color,
-    readOnly: !['owner', 'writer'].includes(c.accessRole)
+    name: c.summaryOverride ?? (c.primary ? (source.username ?? c.summary) : c.summary),
+    color: c.backgroundColor ?? source.color,
+    readOnly: !['owner', 'writer'].includes(c.accessRole),
+    defaultReminders: (c.defaultReminders ?? []).filter((r) => r.method === 'popup').map((r) => r.minutes)
   }))
 }
 
-export async function googleEvents(account: Account, calendarRemoteId: string, start: number, end: number): Promise<RemoteEvent[]> {
+export async function googleEvents(source: CalendarSource, calendarId: string, start: number, end: number): Promise<RemoteEvent[]> {
   const out: RemoteEvent[] = []
   let pageToken: string | undefined
   do {
@@ -61,39 +129,12 @@ export async function googleEvents(account: Account, calendarRemoteId: string, s
       timeMin: new Date(start).toISOString(),
       timeMax: new Date(end).toISOString(),
       singleEvents: 'true',
-      maxResults: '2500'
+      maxResults: '2500',
+      conferenceDataVersion: '1'
     })
     if (pageToken) params.set('pageToken', pageToken)
-    const res = await call<{
-      items: {
-        id: string
-        status: string
-        summary?: string
-        location?: string
-        description?: string
-        start: GTime
-        end: GTime
-        recurringEventId?: string
-        etag: string
-      }[]
-      nextPageToken?: string
-    }>(account, `/calendars/${encodeURIComponent(calendarRemoteId)}/events?${params}`)
-    for (const e of res.items) {
-      if (e.status === 'cancelled') continue
-      const s = parseTime(e.start)
-      out.push({
-        remoteId: e.id,
-        etag: e.etag,
-        ical: null,
-        title: e.summary ?? '',
-        location: e.location ?? '',
-        description: e.description ?? '',
-        start: s.ts,
-        end: parseTime(e.end).ts,
-        allDay: s.allDay,
-        recurring: !!e.recurringEventId
-      })
-    }
+    const res = await call<{ items: GEvent[]; nextPageToken?: string }>(source, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`)
+    for (const e of res.items) if (e.status !== 'cancelled') out.push(toRemote(e))
     pageToken = res.nextPageToken
   } while (pageToken)
   return out
@@ -109,19 +150,24 @@ function body(input: EventInput): string {
   })
 }
 
-export async function googleCreate(account: Account, calendarRemoteId: string, input: EventInput): Promise<void> {
-  await call(account, `/calendars/${encodeURIComponent(calendarRemoteId)}/events`, { method: 'POST', body: body(input) })
+const eventPath = (calendarId: string, eventId: string): string => `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`
+
+export async function googleCreate(source: CalendarSource, calendarId: string, input: EventInput): Promise<void> {
+  await call(source, `/calendars/${encodeURIComponent(calendarId)}/events`, { method: 'POST', body: body(input) })
 }
 
-export async function googleUpdate(account: Account, calendarRemoteId: string, eventId: string, input: EventInput): Promise<void> {
-  await call(account, `/calendars/${encodeURIComponent(calendarRemoteId)}/events/${encodeURIComponent(eventId)}`, {
-    method: 'PATCH',
-    body: body(input)
-  })
+export async function googleUpdate(source: CalendarSource, calendarId: string, eventId: string, input: EventInput): Promise<void> {
+  await call(source, eventPath(calendarId, eventId), { method: 'PATCH', body: body(input) })
 }
 
-export async function googleDelete(account: Account, calendarRemoteId: string, eventId: string): Promise<void> {
-  await call(account, `/calendars/${encodeURIComponent(calendarRemoteId)}/events/${encodeURIComponent(eventId)}`, {
-    method: 'DELETE'
-  })
+export async function googleDelete(source: CalendarSource, calendarId: string, eventId: string): Promise<void> {
+  await call(source, eventPath(calendarId, eventId), { method: 'DELETE' })
+}
+
+/** Accept / decline / tentative: rewrites our own attendee entry and notifies the organizer. */
+export async function googleRespond(source: CalendarSource, calendarId: string, eventId: string, status: ResponseStatus): Promise<void> {
+  const event = await call<GEvent>(source, eventPath(calendarId, eventId))
+  const attendees = (event.attendees ?? []).map((a) => (a.self ? { ...a, responseStatus: status } : a))
+  if (!attendees.some((a) => a.self)) throw new Error('Vous ne figurez pas parmi les invités de cet événement.')
+  await call(source, `${eventPath(calendarId, eventId)}?sendUpdates=all`, { method: 'PATCH', body: JSON.stringify({ attendees }) })
 }

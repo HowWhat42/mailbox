@@ -16,6 +16,15 @@ export default defineConfig({
     resolve: {
       alias: { ...shared, '@': resolve(__dirname, 'src/renderer/src') }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    build: {
+      rollupOptions: {
+        // Main window + the floating reminder window.
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          notify: resolve(__dirname, 'src/renderer/notify.html')
+        }
+      }
+    }
   }
 })

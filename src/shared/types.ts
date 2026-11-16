@@ -137,19 +137,50 @@ export interface OutgoingMessage {
   draftId: string | null
 }
 
+export type CalendarSourceKind = 'google' | 'caldav' | 'ics'
+
+/** Where calendars come from: a mail account's Google/CalDAV, or a standalone connection. */
+export interface CalendarSource {
+  id: string
+  kind: CalendarSourceKind
+  name: string
+  color: string
+  /** Set when the source rides on a mail account's credentials. */
+  accountId: string | null
+  url: string | null
+  username: string | null
+  syncError: string | null
+  lastSyncAt: number | null
+}
+
+export type CalendarSourceInput =
+  | { kind: 'google' }
+  | { kind: 'caldav'; name: string; url: string; username: string; password: string }
+  | { kind: 'ics'; name: string; url: string }
+
 export interface Calendar {
   id: string
-  accountId: string
+  sourceId: string
   name: string
   color: string
   readOnly: boolean
   enabled: boolean
 }
 
+export type ResponseStatus = 'accepted' | 'tentative' | 'declined' | 'needsAction'
+
+export interface Attendee {
+  name: string
+  email: string
+  status: ResponseStatus
+  organizer: boolean
+  self: boolean
+}
+
 export interface CalendarEvent {
   id: string
   calendarId: string
-  accountId: string
+  sourceId: string
   title: string
   location: string
   description: string
@@ -157,6 +188,16 @@ export interface CalendarEvent {
   end: number
   allDay: boolean
   recurring: boolean
+  status: 'confirmed' | 'tentative' | 'cancelled'
+  meetingUrl: string | null
+  meetingProvider: string | null
+  attendees: Attendee[]
+  organizer: string | null
+  /** The user's own answer when invited; null when they are the organizer or not on the list. */
+  myStatus: ResponseStatus | null
+  /** Minutes before start, from the event or its calendar's defaults. */
+  reminders: number[]
+  webLink: string | null
 }
 
 export interface EventInput {
@@ -169,6 +210,30 @@ export interface EventInput {
   allDay: boolean
 }
 
+export interface AppSettings {
+  /** Keep running in the tray when the window is closed (needed for reminders). */
+  backgroundMode: boolean
+  launchAtLogin: boolean
+  /** Used when an event carries no reminder of its own. */
+  reminderMinutes: number
+  reminderSound: boolean
+}
+
+/** An event reminder currently shown in the floating notification window. */
+export interface Reminder {
+  key: string
+  eventId: string
+  title: string
+  start: number
+  end: number
+  allDay: boolean
+  location: string
+  meetingUrl: string | null
+  meetingProvider: string | null
+  color: string
+  calendarName: string
+}
+
 export interface SyncStatus {
   accountId: string
   state: 'idle' | 'syncing' | 'error'
@@ -178,8 +243,11 @@ export interface SyncStatus {
 export interface AppEvents {
   'mail:changed': { accountId: string }
   'sync:status': SyncStatus
-  'calendar:changed': { accountId: string }
+  'calendar:changed': { sourceId: string }
   'accounts:changed': Record<string, never>
+  'reminders:changed': Record<string, never>
+  /** Ask the main window to show an event (from a reminder). */
+  'calendar:open': { eventId: string; start: number }
 }
 
 export interface MailboxApi {
@@ -211,13 +279,32 @@ export interface MailboxApi {
     counts(): Promise<{ inbox: number; flagged: number }>
   }
   calendar: {
+    sources(): Promise<CalendarSource[]>
+    addSource(input: CalendarSourceInput): Promise<CalendarSource>
+    updateSource(id: string, patch: { name?: string; color?: string }): Promise<void>
+    removeSource(id: string): Promise<void>
     calendars(): Promise<Calendar[]>
     setEnabled(id: string, enabled: boolean): Promise<void>
+    setCalendarColor(id: string, color: string): Promise<void>
     events(start: number, end: number): Promise<CalendarEvent[]>
+    /** Next events (today and tomorrow) for the "next up" card. */
+    upcoming(limit: number): Promise<CalendarEvent[]>
     refresh(start: number, end: number): Promise<void>
     create(input: EventInput): Promise<void>
     update(id: string, input: EventInput): Promise<void>
     remove(id: string): Promise<void>
+    respond(id: string, status: Exclude<ResponseStatus, 'needsAction'>): Promise<void>
+  }
+  settings: {
+    get(): Promise<AppSettings>
+    set(patch: Partial<AppSettings>): Promise<AppSettings>
+  }
+  reminders: {
+    list(): Promise<Reminder[]>
+    join(key: string): Promise<void>
+    snooze(key: string, minutes: number): Promise<void>
+    dismiss(key: string): Promise<void>
+    open(key: string): Promise<void>
   }
   app: {
     openExternal(url: string): Promise<void>

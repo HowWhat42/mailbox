@@ -126,6 +126,11 @@ export function AccountSetup() {
             <ChevronRight size={15} className="text-muted" />
           </button>
           {errorBox}
+          {!hasAccounts && (
+            <button onClick={close} className="mt-2 w-full pt-2 text-center text-[12.5px] text-muted hover:text-fg">
+              Passer pour l’instant (calendrier seul)
+            </button>
+          )}
         </div>
       )}
 

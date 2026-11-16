@@ -24,7 +24,24 @@ const api = {
     'deleteDraft',
     'contacts'
   ]),
-  calendar: invoker('calendar', ['calendars', 'setEnabled', 'events', 'refresh', 'create', 'update', 'remove']),
+  calendar: invoker('calendar', [
+    'sources',
+    'addSource',
+    'updateSource',
+    'removeSource',
+    'calendars',
+    'setEnabled',
+    'setCalendarColor',
+    'events',
+    'upcoming',
+    'refresh',
+    'create',
+    'update',
+    'remove',
+    'respond'
+  ]),
+  settings: invoker('settings', ['get', 'set']),
+  reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
     setTheme: (theme: 'dark' | 'light') => ipcRenderer.invoke('app:setTheme', theme),

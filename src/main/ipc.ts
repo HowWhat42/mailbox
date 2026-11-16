@@ -13,7 +13,32 @@ import { deleteDraft, saveDraft, sendMessage } from './mail/send'
 import { openAttachment, saveAttachment } from './mail/attachments'
 import { unwatch, watch } from './mail/watch'
 import { forgetCaldav } from './calendar/caldav'
-import { createEvent, deleteEvent, listCalendars, listEvents, refreshCalendars, setCalendarEnabled, updateEvent } from './calendar'
+import {
+  createEvent,
+  deleteEvent,
+  listCalendars,
+  listEvents,
+  refreshCalendars,
+  refreshSource,
+  respondToEvent,
+  setCalendarColor,
+  setCalendarEnabled,
+  upcomingEvents,
+  updateEvent
+} from './calendar'
+import { addSource, listSources, removeSource, syncAccountSources, updateSource } from './calendar/sources'
+import { activeReminders, dismissReminder, joinReminder, openReminder, snoozeReminder } from './calendar/reminders'
+import { applyLoginItem, getSettings, setSettings } from './settings'
+
+const DAY = 86_400_000
+
+/** Linked calendar sources follow their mail account; refresh them in the background. */
+function accountsChanged(): void {
+  syncAccountSources()
+  for (const s of listSources()) forgetCaldav(s.id)
+  const now = Date.now()
+  void refreshCalendars(now - 7 * DAY, now + 35 * DAY).catch(() => {})
+}
 
 type Handlers = {
   [NS in keyof MailboxApi as NS extends 'app' ? never : NS]: {
@@ -32,6 +57,7 @@ const handlers: Handlers = {
       const account = insertAccount(draft, { password: input.password })
       emit('accounts:changed', {})
       watch(account.id)
+      accountsChanged()
       return account
     },
     addGoogle: async () => {
@@ -54,17 +80,18 @@ const handlers: Handlers = {
       )
       emit('accounts:changed', {})
       watch(account.id)
+      accountsChanged()
       return account
     },
     update: async (id, patch) => {
       updateAccount(id, patch)
-      if ('caldavUrl' in patch) forgetCaldav(id)
+      if ('caldavUrl' in patch) accountsChanged()
       emit('accounts:changed', {})
     },
     remove: async (id) => {
       unwatch(id)
-      forgetCaldav(id)
       deleteAccount(id)
+      syncAccountSources()
       emit('accounts:changed', {})
       emit('mail:changed', { accountId: id })
     }
@@ -98,13 +125,55 @@ const handlers: Handlers = {
     counts: async () => unifiedCounts()
   },
   calendar: {
+    sources: async () => listSources(),
+    addSource: async (input) => {
+      const source = await addSource(input)
+      const now = Date.now()
+      try {
+        await refreshSource(source.id, now - 7 * DAY, now + 35 * DAY)
+        // An unnamed subscription takes the name its feed publishes.
+        if (input.kind === 'ics' && !input.name.trim()) {
+          const published = listCalendars().find((c) => c.sourceId === source.id)?.name
+          if (published) updateSource(source.id, { name: published })
+        }
+      } catch (err) {
+        // A source that can't be read on first try is not kept: the user fixes the details and retries.
+        removeSource(source.id)
+        throw err
+      }
+      return source
+    },
+    updateSource: async (id, patch) => updateSource(id, patch),
+    removeSource: async (id) => {
+      forgetCaldav(id)
+      removeSource(id)
+      emit('calendar:changed', { sourceId: id })
+    },
     calendars: async () => listCalendars(),
     setEnabled: async (id, enabled) => setCalendarEnabled(id, enabled),
+    setCalendarColor: async (id, color) => setCalendarColor(id, color),
     events: async (start, end) => listEvents(start, end),
+    upcoming: async (limit) => upcomingEvents(limit),
     refresh: (start, end) => refreshCalendars(start, end),
     create: (input) => createEvent(input),
     update: (id, input) => updateEvent(id, input),
-    remove: (id) => deleteEvent(id)
+    remove: (id) => deleteEvent(id),
+    respond: (id, status) => respondToEvent(id, status)
+  },
+  settings: {
+    get: async () => getSettings(),
+    set: async (patch) => {
+      const next = setSettings(patch)
+      if ('launchAtLogin' in patch) applyLoginItem()
+      return next
+    }
+  },
+  reminders: {
+    list: async () => activeReminders(),
+    join: (key) => joinReminder(key),
+    snooze: async (key, minutes) => snoozeReminder(key, minutes),
+    dismiss: async (key) => dismissReminder(key),
+    open: async (key) => openReminder(key)
   }
 }
 

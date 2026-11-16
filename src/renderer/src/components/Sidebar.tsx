@@ -22,6 +22,7 @@ import type { Folder, FolderRole, MailView } from '@shared/types'
 import { api, useStore } from '../store'
 import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { useLayout } from '../lib/layout'
+import { NextUp } from './NextUp'
 
 const ROLE_ICON: Partial<Record<Exclude<FolderRole, null>, LucideIcon>> = {
   inbox: Inbox,
@@ -207,6 +208,8 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           </div>
         )}
       </nav>
+
+      {!collapsed && <NextUp />}
 
       {!collapsed && errored.length > 0 && (
         <button onClick={() => setSettings(true)} className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger">

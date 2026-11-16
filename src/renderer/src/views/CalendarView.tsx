@@ -1,234 +1,57 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  addDays,
-  addMonths,
-  addWeeks,
-  endOfMonth,
-  endOfWeek,
-  format,
-  isSameMonth,
-  isToday,
-  startOfDay,
-  startOfMonth,
-  startOfWeek
-} from 'date-fns'
+import { addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isSameMonth, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Layers, Plus, RefreshCw, Repeat } from 'lucide-react'
-import type { Calendar, CalendarEvent } from '@shared/types'
-import { api, useStore } from '../store'
-import { isTyping } from '../lib/shortcuts'
-import { EventEditor, type EditorState } from './EventEditor'
-import { Checkbox } from '../components/ui/Controls'
-import { Menu } from '../components/ui/Menu'
+import { ChevronLeft, ChevronRight, Globe, Layers, Link2, MoreHorizontal, OctagonAlert, Plus, RefreshCw, Server } from 'lucide-react'
+import type { Calendar, CalendarEvent, CalendarSource } from '@shared/types'
+import { api, confirmDialog, useStore } from '../store'
+import { isTyping, overlayOpen } from '../lib/shortcuts'
 import { useLayout } from '../lib/layout'
+import { Checkbox } from '../components/ui/Controls'
+import { Menu, type MenuEntry } from '../components/ui/Menu'
+import type { Anchor } from '../components/ui/Popover'
+import { EventEditor, type EditorState } from './EventEditor'
+import { MonthGrid, TimeGrid } from './calendar/Grids'
+import { AgendaList } from './calendar/AgendaList'
+import { EventPeek } from './calendar/EventPeek'
+import { MiniMonth } from './calendar/MiniMonth'
+import { AddSourceDialog } from './calendar/AddSourceDialog'
 
-type Range = 'week' | 'month'
-const HOUR = 52
+type Range = 'day' | 'week' | 'month' | 'agenda'
 const WEEK_OPTS = { weekStartsOn: 1 as const, locale: fr }
+const AGENDA_DAYS = 30
+const SWATCHES = ['#8f86f0', '#6f8cff', '#38bdf8', '#2dd4bf', '#a3e635', '#fbbf24', '#fb923c', '#f87171', '#f472b6', '#c084fc']
+const RANGE_LABEL: Record<Range, string> = { day: 'Jour', week: 'Semaine', month: 'Mois', agenda: 'Agenda' }
 
-/** `dayCount` < 7 is the narrow-window week: a few days starting at the anchor. */
 function rangeOf(anchor: Date, range: Range, dayCount: number): [Date, Date] {
+  if (range === 'day') return [startOfDay(anchor), addDays(startOfDay(anchor), 1)]
+  if (range === 'agenda') return [startOfDay(anchor), addDays(startOfDay(anchor), AGENDA_DAYS)]
   if (range === 'week' && dayCount < 7) return [startOfDay(anchor), addDays(startOfDay(anchor), dayCount)]
   if (range === 'week') return [startOfWeek(anchor, WEEK_OPTS), addDays(startOfWeek(anchor, WEEK_OPTS), 7)]
   return [startOfWeek(startOfMonth(anchor), WEEK_OPTS), addDays(endOfWeek(endOfMonth(anchor), WEEK_OPTS), 1)]
 }
 
-/** Assigns side-by-side columns to overlapping timed events of one day. */
-function layoutDay(events: CalendarEvent[]): { e: CalendarEvent; col: number; cols: number }[] {
-  const sorted = [...events].sort((a, b) => a.start - b.start || b.end - a.end)
-  const out: { e: CalendarEvent; col: number; cols: number }[] = []
-  let cluster: { e: CalendarEvent; col: number; cols: number }[] = []
-  let clusterEnd = 0
-  const flush = (): void => {
-    const cols = Math.max(1, ...cluster.map((c) => c.col + 1))
-    for (const c of cluster) out.push({ ...c, cols })
-    cluster = []
-  }
-  for (const e of sorted) {
-    if (cluster.length && e.start >= clusterEnd) flush()
-    const used = new Set(cluster.filter((c) => c.e.end > e.start).map((c) => c.col))
-    let col = 0
-    while (used.has(col)) col++
-    cluster.push({ e, col, cols: 1 })
-    clusterEnd = Math.max(clusterEnd, e.end)
-  }
-  flush()
-  return out
-}
-
-function NowLine() {
-  const [now, setNow] = useState(Date.now())
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(t)
-  }, [])
-  const d = new Date(now)
-  const top = (d.getHours() + d.getMinutes() / 60) * HOUR
-  return (
-    <div className="pointer-events-none absolute inset-x-0 z-10" style={{ top }}>
-      <div className="relative h-px bg-accent">
-        <span className="absolute -left-1 -top-[3px] size-[7px] rounded-full bg-accent" />
-      </div>
-    </div>
-  )
-}
-
-function EventChip({ e, color, onOpen, style }: { e: CalendarEvent; color: string; onOpen: () => void; style?: React.CSSProperties }) {
-  const short = e.end - e.start <= 45 * 60_000
-  return (
-    <button
-      onClick={(ev) => {
-        ev.stopPropagation()
-        onOpen()
-      }}
-      title={`${e.title}${e.location ? `\n${e.location}` : ''}`}
-      className="absolute overflow-hidden rounded-[5px] px-1.5 py-1 text-left text-[11.5px] leading-tight transition-[filter] hover:brightness-110"
-      style={{ ...style, background: `color-mix(in oklch, ${color} 22%, var(--surface-solid))`, boxShadow: `inset 2px 0 0 ${color}`, color: 'var(--fg)' }}
-    >
-      <span className={`block truncate font-medium ${short ? 'inline' : ''}`}>{e.title || '(sans titre)'}</span>
-      <span className={`tnum truncate text-[10.5px] text-fg-2 ${short ? 'ml-1 inline' : 'block'}`}>
-        {format(e.start, 'HH:mm')}
-        {!short && ` – ${format(e.end, 'HH:mm')}`}
-        {e.recurring && <Repeat size={9} className="ml-1 inline" />}
-      </span>
-    </button>
-  )
-}
-
-function WeekGrid({ days, events, colorOf, onCreate, onOpen }: { days: Date[]; events: CalendarEvent[]; colorOf: (id: string) => string; onCreate: (start: number, end: number, allDay: boolean) => void; onOpen: (e: CalendarEvent) => void }) {
-  const scroller = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    scroller.current?.scrollTo({ top: 7.5 * HOUR })
-  }, [])
-
-  const allDay = (day: Date): CalendarEvent[] => events.filter((e) => (e.allDay || e.end - e.start >= 86_400_000) && e.start < addDays(day, 1).getTime() && e.end > day.getTime())
-  const timed = (day: Date): CalendarEvent[] =>
-    events.filter((e) => !e.allDay && e.end - e.start < 86_400_000 && e.start < addDays(day, 1).getTime() && e.end > day.getTime())
-  const hasAllDay = days.some((d) => allDay(d).length > 0)
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid shrink-0 border-b border-line pr-[10px]" style={{ gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
-        <div />
-        {days.map((d) => (
-          <div key={d.getTime()} className="flex items-baseline gap-1.5 px-2 py-2">
-            <span className={`text-[12px] ${isToday(d) ? 'text-accent' : 'text-muted'}`}>{format(d, 'EEE', { locale: fr })}</span>
-            <span className={`tnum text-[15px] font-semibold ${isToday(d) ? 'text-accent' : ''}`}>{format(d, 'd')}</span>
-          </div>
-        ))}
-        {hasAllDay && (
-          <>
-            <div className="pr-2 pt-1 text-right text-[10.5px] text-muted">jour</div>
-            {days.map((d) => (
-              <div key={d.getTime()} className="min-h-7 space-y-0.5 border-l border-line p-0.5" onDoubleClick={() => onCreate(d.getTime(), addDays(d, 1).getTime(), true)}>
-                {allDay(d).map((e) => (
-                  <button
-                    key={e.id}
-                    onClick={() => onOpen(e)}
-                    className="block w-full truncate rounded px-1.5 py-0.5 text-left text-[11.5px] font-medium"
-                    style={{ background: `color-mix(in oklch, ${colorOf(e.calendarId)} 28%, var(--surface-solid))` }}
-                  >
-                    {e.title || '(sans titre)'}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </>
-        )}
-      </div>
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-scroll">
-        <div className="relative grid" style={{ height: 24 * HOUR, gridTemplateColumns: `56px repeat(${days.length}, 1fr)` }}>
-          <div className="relative">
-            {Array.from({ length: 23 }, (_, i) => (
-              <span key={i} className="tnum absolute right-2 -translate-y-1/2 text-[10.5px] text-muted" style={{ top: (i + 1) * HOUR }}>
-                {String(i + 1).padStart(2, '0')}:00
-              </span>
-            ))}
-          </div>
-          {days.map((day) => (
-            <div
-              key={day.getTime()}
-              className="relative border-l border-line"
-              style={{ backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 ${HOUR - 1}px, var(--line) ${HOUR - 1}px ${HOUR}px)` }}
-              onClick={(ev) => {
-                const y = ev.clientY - (ev.currentTarget as HTMLElement).getBoundingClientRect().top
-                const minutes = Math.floor((y / HOUR) * 2) * 30
-                const start = startOfDay(day).getTime() + minutes * 60_000
-                onCreate(start, start + 3_600_000, false)
-              }}
-            >
-              {isToday(day) && <NowLine />}
-              {layoutDay(timed(day)).map(({ e, col, cols }) => {
-                const dayStart = startOfDay(day).getTime()
-                const s = Math.max(e.start, dayStart)
-                const en = Math.min(e.end, dayStart + 86_400_000)
-                const top = ((s - dayStart) / 3_600_000) * HOUR
-                const height = Math.max(20, ((en - s) / 3_600_000) * HOUR - 2)
-                return (
-                  <EventChip
-                    key={e.id}
-                    e={e}
-                    color={colorOf(e.calendarId)}
-                    onOpen={() => onOpen(e)}
-                    style={{ top, height, left: `calc(${(col / cols) * 100}% + 2px)`, width: `calc(${100 / cols}% - 4px)` }}
-                  />
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MonthGrid({ anchor, days, events, colorOf, onCreate, onOpen }: { anchor: Date; days: Date[]; events: CalendarEvent[]; colorOf: (id: string) => string; onCreate: (start: number, end: number, allDay: boolean) => void; onOpen: (e: CalendarEvent) => void }) {
-  const weeks = days.length / 7
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="grid shrink-0 grid-cols-7 border-b border-line">
-        {days.slice(0, 7).map((d) => (
-          <div key={d.getTime()} className="px-2 py-2 text-[12px] text-muted">
-            {format(d, 'EEE', { locale: fr })}
-          </div>
-        ))}
-      </div>
-      <div className="grid min-h-0 flex-1 grid-cols-7" style={{ gridTemplateRows: `repeat(${weeks}, minmax(0, 1fr))` }}>
-        {days.map((d) => {
-          const dayEvents = events.filter((e) => e.start < addDays(d, 1).getTime() && e.end > d.getTime())
-          return (
-            <div
-              key={d.getTime()}
-              onDoubleClick={() => onCreate(d.getTime() + 9 * 3_600_000, d.getTime() + 10 * 3_600_000, false)}
-              className={`min-h-0 overflow-hidden border-b border-l border-line p-1 ${isSameMonth(d, anchor) ? '' : 'bg-panel/60'}`}
-            >
-              <div className={`tnum mb-0.5 px-1 text-[12px] ${isToday(d) ? 'font-semibold text-accent' : isSameMonth(d, anchor) ? 'text-fg-2' : 'text-faint'}`}>{format(d, 'd')}</div>
-              {dayEvents.slice(0, 4).map((e) => (
-                <button key={e.id} onClick={() => onOpen(e)} className="flex w-full items-center gap-1.5 truncate rounded px-1 py-px text-left text-[11.5px] hover:bg-hover">
-                  <span className="size-1.5 shrink-0 rounded-full" style={{ background: colorOf(e.calendarId) }} />
-                  {!e.allDay && <span className="tnum text-muted">{format(e.start, 'HH:mm')}</span>}
-                  <span className="truncate">{e.title || '(sans titre)'}</span>
-                </button>
-              ))}
-              {dayEvents.length > 4 && <div className="px-1 text-[11px] text-muted">+{dayEvents.length - 4} autres</div>}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
+const SOURCE_ICON = { google: Globe, caldav: Server, ics: Link2 }
 
 export function CalendarView() {
-  const accounts = useStore((s) => s.accounts)
   const { toast } = useStore.getState()
+  const focus = useStore((s) => s.calendarFocus)
   const [anchor, setAnchor] = useState(() => new Date())
-  const [range, setRange] = useState<Range>('week')
+  const [range, setRange] = useState<Range>(() => {
+    try {
+      const v = localStorage.getItem('calendar-range') as Range | null
+      return v && v in RANGE_LABEL ? v : 'week'
+    } catch {
+      return 'week'
+    }
+  })
+  const [sources, setSources] = useState<CalendarSource[]>([])
   const [calendars, setCalendars] = useState<Calendar[]>([])
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [editor, setEditor] = useState<EditorState | null>(null)
-  const [calMenu, setCalMenu] = useState<HTMLElement | null>(null)
+  const [peek, setPeek] = useState<{ id: string; anchor: Anchor } | null>(null)
+  const [menu, setMenu] = useState<{ anchor: Anchor; items: MenuEntry[] } | null>(null)
+  const [adding, setAdding] = useState(false)
   const { single } = useLayout()
   const body = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(1200)
@@ -241,9 +64,16 @@ export function CalendarView() {
     return () => ro.disconnect()
   }, [])
 
-  // Narrow: week view shows 3 days (or 1 on a very small window) so columns stay readable.
   const compact = width < 760
   const dayCount = width < 460 ? 1 : compact ? 3 : 7
+  const pickRange = (r: Range): void => {
+    setRange(r)
+    try {
+      localStorage.setItem('calendar-range', r)
+    } catch {
+      // not persisted
+    }
+  }
 
   const [start, end] = useMemo(() => rangeOf(anchor, range, dayCount), [anchor, range, dayCount])
   const days = useMemo(() => {
@@ -253,7 +83,8 @@ export function CalendarView() {
   }, [start, end])
 
   const reload = useCallback(async () => {
-    const [cals, evs] = await Promise.all([api.calendar.calendars(), api.calendar.events(start.getTime(), end.getTime())])
+    const [srcs, cals, evs] = await Promise.all([api.calendar.sources(), api.calendar.calendars(), api.calendar.events(start.getTime(), end.getTime())])
+    setSources(srcs)
     setCalendars(cals)
     setEvents(evs)
   }, [start, end])
@@ -277,82 +108,221 @@ export function CalendarView() {
 
   useEffect(() => api.app.on('calendar:changed', () => void reload()), [reload])
 
+  // Coming from a reminder or the "next up" card: go to that day and open the event.
+  useEffect(() => {
+    if (!focus) return
+    setAnchor(new Date(focus.start))
+    if (range === 'month' || range === 'agenda') pickRange('week')
+    if (!focus.eventId) {
+      useStore.getState().focusEvent(null)
+      return
+    }
+    const t = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-event-id="${focus.eventId}"]`)
+      setPeek({ id: focus.eventId, anchor: el ?? { x: window.innerWidth / 2 - 200, y: 120 } })
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      useStore.getState().focusEvent(null)
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus])
+
   const step = (dir: 1 | -1): void =>
-    setAnchor((a) => (range === 'week' ? (dayCount < 7 ? addDays(a, dir * dayCount) : addWeeks(a, dir)) : addMonths(a, dir)))
-  const colorOf = useCallback((id: string) => calendars.find((c) => c.id === id)?.color ?? 'var(--accent)', [calendars])
+    setAnchor((a) =>
+      range === 'day'
+        ? addDays(a, dir)
+        : range === 'agenda'
+          ? addDays(a, dir * 7)
+          : range === 'week'
+            ? dayCount < 7
+              ? addDays(a, dir * dayCount)
+              : addWeeks(a, dir)
+            : addMonths(a, dir)
+    )
+
+  const calById = useMemo(() => new Map(calendars.map((c) => [c.id, c])), [calendars])
+  const colorOf = useCallback((id: string) => calById.get(id)?.color ?? 'var(--accent)', [calById])
+  const nameOf = useCallback((id: string) => calById.get(id)?.name ?? '', [calById])
   const writable = calendars.filter((c) => !c.readOnly && c.enabled)
+  const busyDays = useMemo(() => new Set(events.map((e) => startOfDay(e.start).getTime())), [events])
 
   const create = (s: number, e: number, allDay: boolean): void => {
     if (!writable.length) {
-      toast(accounts.some((a) => a.kind === 'google' || a.caldavUrl) ? 'Aucun agenda modifiable.' : 'Ajoutez un compte Google ou une URL CalDAV dans les réglages pour utiliser le calendrier.', 'error')
+      if (!sources.length) setAdding(true)
+      else toast('Aucun agenda modifiable : les abonnements sont en lecture seule.', 'error')
       return
     }
     setEditor({ id: null, input: { calendarId: writable[0].id, title: '', location: '', description: '', start: s, end: e, allDay } })
   }
+  const newNow = (): void => {
+    const s = Math.ceil(Date.now() / 1_800_000) * 1_800_000
+    create(s, s + 3_600_000, false)
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (isTyping(e) || editor || e.ctrlKey || e.metaKey || e.altKey) return
-      const s = useStore.getState()
-      if (s.composer || s.paletteOpen || s.setupOpen || s.settingsOpen) return
-      if (e.key === 't') setAnchor(new Date())
-      else if (e.key === 'w') setRange('week')
-      else if (e.key === 'm') setRange('month')
-      else if (e.key === 'ArrowLeft' || e.key === 'h') step(-1)
-      else if (e.key === 'ArrowRight' || e.key === 'l') step(1)
-      else if (e.key === 'n') {
-        const startTs = Math.ceil(Date.now() / 1_800_000) * 1_800_000
-        create(startTs, startTs + 3_600_000, false)
+      if (isTyping(e) || editor || peek || adding || overlayOpen() || e.ctrlKey || e.metaKey || e.altKey) return
+      if (useStore.getState().composer) return
+      const map: Record<string, () => void> = {
+        t: () => setAnchor(new Date()),
+        d: () => pickRange('day'),
+        w: () => pickRange('week'),
+        m: () => pickRange('month'),
+        a: () => pickRange('agenda'),
+        ArrowLeft: () => step(-1),
+        h: () => step(-1),
+        ArrowRight: () => step(1),
+        l: () => step(1),
+        n: newNow
       }
+      map[e.key]?.()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const title = range === 'week' && dayCount < 7
-    ? dayCount === 1
-      ? format(start, 'EEE d MMM', { locale: fr })
-      : `${format(start, 'd', { locale: fr })}–${format(addDays(end, -1), 'd MMM', { locale: fr })}`
-    : range === 'week' && !isSameMonth(start, addDays(end, -1))
-    ? `${format(start, 'MMM', { locale: fr })} – ${format(addDays(end, -1), 'MMM yyyy', { locale: fr })}`
-    : format(range === 'week' ? start : anchor, 'MMMM yyyy', { locale: fr })
+  const sourceMenu = (s: CalendarSource): MenuEntry[] => [
+    {
+      label: 'Actualiser',
+      icon: RefreshCw,
+      onSelect: () => void api.calendar.refresh(start.getTime(), end.getTime()).catch((e: Error) => toast(e.message, 'error'))
+    },
+    ...(s.accountId
+      ? []
+      : ([
+          'separator',
+          {
+            label: 'Retirer cet agenda',
+            danger: true,
+            onSelect: async () => {
+              const ok = await confirmDialog({
+                title: `Retirer « ${s.name} » ?`,
+                body: 'Ses événements disparaîtront de Mailbox. Rien n’est supprimé sur le serveur.',
+                confirmLabel: 'Retirer',
+                tone: 'danger'
+              })
+              if (ok) {
+                await api.calendar.removeSource(s.id)
+                void reload()
+              }
+            }
+          }
+        ] satisfies MenuEntry[]))
+  ]
 
-  const byAccount = accounts.map((a) => ({ account: a, cals: calendars.filter((c) => c.accountId === a.id) })).filter((g) => g.cals.length)
+  const calendarMenu = (c: Calendar): MenuEntry[] =>
+    SWATCHES.map((color) => ({
+      label: color === c.color ? 'Couleur actuelle' : 'Utiliser cette couleur',
+      swatch: color,
+      checked: color === c.color,
+      onSelect: () => void api.calendar.setCalendarColor(c.id, color).then(reload)
+    }))
+
+  const toggle = async (c: Calendar): Promise<void> => {
+    await api.calendar.setEnabled(c.id, !c.enabled)
+    if (!c.enabled) void refresh()
+    else void reload()
+  }
+
+  const title =
+    range === 'day'
+      ? format(start, 'EEEE d MMMM yyyy', { locale: fr })
+      : range === 'agenda'
+        ? `${format(start, 'd MMM', { locale: fr })} – ${format(addDays(end, -1), 'd MMM yyyy', { locale: fr })}`
+        : range === 'week' && dayCount < 7
+          ? dayCount === 1
+            ? format(start, 'EEE d MMM', { locale: fr })
+            : `${format(start, 'd', { locale: fr })}–${format(addDays(end, -1), 'd MMM', { locale: fr })}`
+          : range === 'week' && !isSameMonth(start, addDays(end, -1))
+            ? `${format(start, 'MMM', { locale: fr })} – ${format(addDays(end, -1), 'MMM yyyy', { locale: fr })}`
+            : format(range === 'week' ? start : anchor, 'MMMM yyyy', { locale: fr })
+
+  const peeked = peek ? events.find((e) => e.id === peek.id) : undefined
+  const openEvent = (e: CalendarEvent, el: HTMLElement): void => setPeek({ id: e.id, anchor: el })
+  const editEvent = (e: CalendarEvent): void => {
+    setPeek(null)
+    setEditor({
+      id: e.id,
+      input: { calendarId: e.calendarId, title: e.title, location: e.location, description: e.description, start: e.start, end: e.end, allDay: e.allDay },
+      recurring: e.recurring
+    })
+  }
+
+  const ranges: Range[] = ['day', 'week', 'month', 'agenda']
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1">
-      <aside className={`w-[212px] shrink-0 flex-col border-r border-line ${single ? 'hidden' : 'flex'}`}>
-        <div className="h-4 shrink-0" />
-        <div className="space-y-4 overflow-y-auto px-3 pb-4">
-          {byAccount.length === 0 && (
-            <p className="px-1 text-[12.5px] leading-5 text-muted">
-              Aucun agenda pour l’instant. Les comptes Google en ont un automatiquement ; pour un autre compte, ajoutez son URL CalDAV dans les réglages.
-            </p>
-          )}
-          {byAccount.map(({ account, cals }) => (
-            <div key={account.id}>
-              <div className="mb-1 truncate px-1 text-[12px] font-medium text-muted">{account.name}</div>
-              {cals.map((c) => (
-                <div key={c.id} className="flex h-8 items-center gap-2.5 rounded-lg px-1.5 text-[13px] text-fg-2 hover:bg-hover">
-                  <Checkbox
-                    checked={c.enabled}
-                    color={c.color}
-                    label={`Afficher ${c.name}`}
-                    onChange={async (checked) => {
-                      await api.calendar.setEnabled(c.id, checked)
-                      if (checked) void refresh()
-                      else void reload()
-                    }}
-                  />
-                  <span className="truncate">{c.name}</span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </aside>
+      {!single && (
+        <aside className="flex w-[232px] shrink-0 flex-col border-r border-line">
+          <div className="p-3">
+            <button onClick={newNow} className="btn-primary flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-medium">
+              <Plus size={15} /> Nouvel événement
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-2 pb-4">
+            <MiniMonth value={anchor} rangeStart={start} rangeEnd={end} busyDays={busyDays} onPick={(d) => setAnchor(d)} />
 
-      <div ref={body} className="flex min-w-0 flex-1 flex-col">
+            {sources.length === 0 && (
+              <div className="rounded-xl border border-dashed border-line-strong px-3 py-4 text-center">
+                <p className="text-[12.5px] text-fg-2">Aucun agenda connecté</p>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-muted">Google, iCloud, Nextcloud ou un lien Outlook publié.</p>
+              </div>
+            )}
+
+            {sources.map((s) => {
+              const Icon = SOURCE_ICON[s.kind]
+              const cals = calendars.filter((c) => c.sourceId === s.id)
+              return (
+                <div key={s.id}>
+                  <div className="group flex h-7 items-center gap-2 px-2 text-[12px] font-medium text-muted">
+                    <Icon size={13} />
+                    <span className="min-w-0 flex-1 truncate" title={s.syncError ?? s.name}>
+                      {s.name}
+                    </span>
+                    {s.syncError && <OctagonAlert size={13} className="text-danger" aria-label={s.syncError} />}
+                    <button
+                      onClick={(e) => setMenu({ anchor: e.currentTarget, items: sourceMenu(s) })}
+                      aria-label={`Options de ${s.name}`}
+                      className="grid size-6 place-items-center rounded-md opacity-0 hover:bg-hover hover:text-fg group-hover:opacity-100 focus-visible:opacity-100"
+                    >
+                      <MoreHorizontal size={14} />
+                    </button>
+                  </div>
+                  {s.syncError && <p className="mx-2 mb-1 rounded-md bg-danger/10 px-2 py-1 text-[11.5px] text-danger">{s.syncError}</p>}
+                  {cals.map((c) => (
+                    <div
+                      key={c.id}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setMenu({ anchor: { x: e.clientX, y: e.clientY }, items: calendarMenu(c) })
+                      }}
+                      className="group flex h-8 items-center gap-2.5 rounded-lg px-2 text-[13px] text-fg-2 hover:bg-hover"
+                    >
+                      <Checkbox checked={c.enabled} color={c.color} label={`Afficher ${c.name}`} onChange={() => void toggle(c)} />
+                      <span className="min-w-0 flex-1 truncate" title={c.readOnly ? `${c.name} (lecture seule)` : c.name}>
+                        {c.name}
+                      </span>
+                      <button
+                        onClick={(e) => setMenu({ anchor: e.currentTarget, items: calendarMenu(c) })}
+                        aria-label={`Couleur de ${c.name}`}
+                        className="grid size-6 place-items-center rounded-md opacity-0 hover:bg-hover group-hover:opacity-100"
+                      >
+                        <span className="size-2.5 rounded-full" style={{ background: c.color }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+
+            <button onClick={() => setAdding(true)} className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+              <Plus size={15} className="text-muted" /> Ajouter un agenda
+            </button>
+          </div>
+        </aside>
+      )}
+
+      <div ref={body} className="@container flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
           <h1 className={`min-w-0 truncate font-semibold capitalize tracking-[-0.015em] ${compact ? 'text-[14px]' : 'min-w-44 text-[16px]'}`}>{title}</h1>
           <div className="flex shrink-0 items-center gap-1">
@@ -365,67 +335,102 @@ export function CalendarView() {
             <button onClick={() => step(1)} aria-label="Suivant" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
               <ChevronRight size={16} />
             </button>
-            <button onClick={() => void refresh()} aria-label="Actualiser" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button onClick={() => void refresh()} aria-label="Actualiser" title="Actualiser" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
+          <span className="flex-1" />
           {single && (
             <button
-              onClick={(e) => setCalMenu(e.currentTarget)}
+              onClick={(e) =>
+                setMenu({
+                  anchor: e.currentTarget,
+                  items: [
+                    ...(calendars.length
+                      ? calendars.map((c) => ({ label: c.name, swatch: c.color, checked: c.enabled, onSelect: () => void toggle(c) }))
+                      : [{ label: 'Aucun agenda', disabled: true, onSelect: () => {} }]),
+                    'separator' as const,
+                    { label: 'Ajouter un agenda…', icon: Plus, onSelect: () => setAdding(true) }
+                  ]
+                })
+              }
               aria-label="Agendas affichés"
               title="Agendas affichés"
-              className="ml-auto grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              className="grid size-7 shrink-0 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
             >
               <Layers size={15} />
             </button>
           )}
-          {calMenu && (
-            <Menu
-              anchor={calMenu}
-              align="end"
-              onClose={() => setCalMenu(null)}
-              items={
-                calendars.length
-                  ? calendars.map((c) => ({
-                      label: c.name,
-                      swatch: c.color,
-                      checked: c.enabled,
-                      onSelect: () =>
-                        void api.calendar.setEnabled(c.id, !c.enabled).then(() => (c.enabled ? reload() : refresh()))
-                    }))
-                  : [{ label: 'Aucun agenda configuré', disabled: true, onSelect: () => {} }]
+          {compact ? (
+            <button
+              onClick={(e) =>
+                setMenu({ anchor: e.currentTarget, items: ranges.map((r) => ({ label: RANGE_LABEL[r], checked: r === range, onSelect: () => pickRange(r) })) })
               }
-            />
+              className="h-7 shrink-0 rounded-md border border-line px-2.5 text-[12px] text-fg-2 hover:bg-hover"
+            >
+              {RANGE_LABEL[range]}
+            </button>
+          ) : (
+            <div className="flex shrink-0 rounded-lg border border-line p-0.5">
+              {ranges.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => pickRange(r)}
+                  title={`${RANGE_LABEL[r]} (${r === 'day' ? 'D' : r === 'week' ? 'W' : r === 'month' ? 'M' : 'A'})`}
+                  className={`h-6 rounded-md px-2.5 text-[12px] ${range === r ? 'lit text-fg' : 'text-muted hover:text-fg'}`}
+                >
+                  {RANGE_LABEL[r]}
+                </button>
+              ))}
+            </div>
           )}
-          <div className={`flex shrink-0 rounded-md border border-line p-0.5 ${single ? '' : 'ml-auto'}`}>
-            {(['week', 'month'] as const).map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={`h-6 rounded px-2.5 text-[12px] ${range === r ? 'bg-hover text-fg' : 'text-muted hover:text-fg'}`}
-              >
-                {r === 'week' ? (dayCount < 7 ? `${dayCount} j` : 'Semaine') : 'Mois'}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => {
-              const s = Math.ceil(Date.now() / 1_800_000) * 1_800_000
-              create(s, s + 3_600_000, false)
-            }}
-            aria-label="Nouvel événement (N)"
-            className="flex h-7 shrink-0 items-center gap-1.5 rounded-md btn-primary px-2.5 text-[12.5px] font-medium"
-          >
-            <Plus size={14} /> {!compact && 'Événement'}
-          </button>
+          {single && (
+            <button onClick={newNow} aria-label="Nouvel événement (N)" className="btn-primary grid size-7 shrink-0 place-items-center rounded-md">
+              <Plus size={14} />
+            </button>
+          )}
         </header>
-        {range === 'week' ? (
-          <WeekGrid days={days} events={events} colorOf={colorOf} onCreate={create} onOpen={(e) => setEditor({ id: e.id, input: { calendarId: e.calendarId, title: e.title, location: e.location, description: e.description, start: e.start, end: e.end, allDay: e.allDay }, recurring: e.recurring })} />
+
+        {range === 'month' ? (
+          <MonthGrid
+            anchor={anchor}
+            days={days}
+            events={events}
+            colorOf={colorOf}
+            onCreate={create}
+            onOpen={openEvent}
+            onPickDay={(d) => {
+              setAnchor(d)
+              pickRange('day')
+            }}
+          />
+        ) : range === 'agenda' ? (
+          <AgendaList events={events} colorOf={colorOf} nameOf={nameOf} onOpen={openEvent} />
         ) : (
-          <MonthGrid anchor={anchor} days={days} events={events} colorOf={colorOf} onCreate={create} onOpen={(e) => setEditor({ id: e.id, input: { calendarId: e.calendarId, title: e.title, location: e.location, description: e.description, start: e.start, end: e.end, allDay: e.allDay }, recurring: e.recurring })} />
+          <TimeGrid days={days} events={events} colorOf={colorOf} onCreate={create} onOpen={openEvent} />
         )}
       </div>
 
+      {peek && peeked && (
+        <EventPeek
+          key={peeked.id}
+          event={peeked}
+          calendar={calById.get(peeked.calendarId)}
+          anchor={peek.anchor}
+          onClose={() => setPeek(null)}
+          onEdit={() => editEvent(peeked)}
+          onChanged={() => void reload()}
+        />
+      )}
+      {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={210} />}
+      {adding && (
+        <AddSourceDialog
+          onClose={() => {
+            setAdding(false)
+            void reload()
+          }}
+        />
+      )}
       {editor && (
         <EventEditor
           state={editor}
