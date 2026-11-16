@@ -7,7 +7,7 @@ import { Reader } from './components/Reader'
 import { Composer } from './components/Composer'
 import { CommandPalette } from './components/CommandPalette'
 import { AccountSetup } from './components/AccountSetup'
-import { Settings } from './components/Settings'
+import { SettingsView } from './views/SettingsView'
 import { Toasts } from './components/Toasts'
 import { MovePicker } from './components/MovePicker'
 import { DialogHost } from './components/ui/DialogHost'
@@ -21,7 +21,6 @@ export function App() {
   const composer = useStore((s) => s.composer)
   const paletteOpen = useStore((s) => s.paletteOpen)
   const setupOpen = useStore((s) => s.setupOpen)
-  const settingsOpen = useStore((s) => s.settingsOpen)
   const selected = useStore((s) => s.selected)
   const drawerOpen = useStore((s) => s.drawerOpen)
   const layout = useLayout()
@@ -57,8 +56,10 @@ export function App() {
                   {composer ? <Composer key={composer.key} /> : <Reader />}
                 </>
               )
-            ) : (
+            ) : mode === 'calendar' ? (
               <CalendarView />
+            ) : (
+              <SettingsView />
             )}
           </div>
         </main>
@@ -72,7 +73,6 @@ export function App() {
       )}
       {paletteOpen && <CommandPalette />}
       {setupOpen && <AccountSetup />}
-      {settingsOpen && <Settings />}
       <MovePicker />
       <DialogHost />
       <Toasts />

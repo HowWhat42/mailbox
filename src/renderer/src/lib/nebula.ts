@@ -7,18 +7,21 @@
 const W = 320
 const H = 180
 
-// Night palette, darkest first: the dither picks between neighbours of this ramp.
-const RAMP: [number, number, number][] = [
-  [0, 0, 0],
-  [7, 6, 22],
-  [16, 13, 48],
-  [29, 24, 86],
-  [48, 38, 132],
-  [76, 58, 178],
-  [111, 92, 224],
-  [150, 134, 246],
-  [196, 188, 255]
-]
+/** Night palette for an accent, darkest first: black → deep accent → accent → pale accent. */
+function rampFor(accent: string): [number, number, number][] {
+  const n = parseInt(accent.slice(1), 16)
+  const a = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+  const out: [number, number, number][] = []
+  for (let i = 0; i < 9; i++) {
+    const t = i / 8
+    const mix = (to: number[], k: number, from: number[]): [number, number, number] =>
+      from.map((v, j) => Math.round(v + (to[j] - v) * k)) as [number, number, number]
+    // Dark stops lean a little blue so the deep end reads as night, not mud.
+    const deep = [Math.round(a[0] * 0.55), Math.round(a[1] * 0.55), Math.min(255, Math.round(a[2] * 0.75 + 25))]
+    out.push(t < 0.75 ? mix(t < 0.4 ? deep : a, t < 0.4 ? (t / 0.4) ** 1.6 : (t - 0.4) / 0.35, t < 0.4 ? [0, 0, 0] : deep) : mix([255, 255, 255], ((t - 0.75) / 0.25) * 0.55, a))
+  }
+  return out
+}
 
 const BAYER = [
   [0, 8, 2, 10],
@@ -66,7 +69,8 @@ function makeNoise(random: () => number): (x: number, y: number) => number {
   }
 }
 
-export function paintNebula(seed = 7): string {
+export function paintNebula(accent = '#8f86f0', seed = 7): string {
+  const RAMP = rampFor(accent)
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
@@ -117,9 +121,9 @@ export function paintNebula(seed = 7): string {
   return canvas.toDataURL('image/png')
 }
 
-export function installNebula(): void {
+export function installNebula(accent?: string): void {
   try {
-    document.documentElement.style.setProperty('--nebula', `url(${paintNebula()})`)
+    document.documentElement.style.setProperty('--nebula', `url(${paintNebula(accent)})`)
   } catch {
     // No canvas (very unlikely): the backdrop just stays black.
   }

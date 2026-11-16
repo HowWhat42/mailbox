@@ -3,13 +3,16 @@ import { join } from 'node:path'
 import { writeFile } from 'node:fs/promises'
 import { Notification } from 'electron'
 import type { ImapFlow, ListResponse, MailboxObject, MessageStructureObject } from 'imapflow'
-import type { Account, FolderRole } from '@shared/types'
+import type { Account, FolderRole, MailCategory, RuleActions } from '@shared/types'
 import { dataDir, getDb, tx } from '../db'
 import { emit } from '../events'
 import { getAccount, setSyncResult } from '../accounts/store'
 import { forgetGoogleToken } from '../accounts/google'
 import { inMailbox, withImap } from './imap'
 import { idList, parseFull, previewFromPartialSource } from './parse'
+import { classify, parseHeaders, signalsFrom, TRIAGE_HEADERS } from './triage'
+import { knownContacts, listRules, reapplyRules } from './rules'
+import { getSettings, inQuietHours } from '../settings'
 
 /** Newest messages pulled per folder on first sync. Older mail stays on the server. */
 const INITIAL_WINDOW = 400
@@ -52,6 +55,8 @@ export function syncAccount(accountId: string, opts: { inboxOnly?: boolean } = {
 async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
   const account = getAccount(accountId)
   emit('sync:status', { accountId, state: 'syncing', message: null })
+  // On a first sync, Sent arrives after the inbox: re-sort once we know who the user writes to.
+  const firstSync = !(getDb().prepare('SELECT 1 FROM messages WHERE account_id = ? LIMIT 1').get(accountId) as unknown)
   try {
     await withImap(account, async (client) => {
       const folders = inboxOnly ? foldersOf(accountId).filter((f) => f.role === 'inbox') : await syncFolderList(client, account)
@@ -62,6 +67,7 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
         emit('mail:changed', { accountId })
       }
     })
+    if (firstSync && !inboxOnly) reapplyRules()
     setSyncResult(accountId, null)
     emit('sync:status', { accountId, state: 'idle', message: null })
   } catch (err) {
@@ -165,13 +171,20 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
     // 3. New messages: newer than our window, or the newest N on first sync.
     const minLocal = kept.length ? kept.reduce((a, b) => Math.min(a, b)) : 0
     let fresh = remoteUids.filter((uid) => !localSet.has(uid) && uid > minLocal).sort((a, b) => b - a)
-    fresh = fresh.slice(0, INITIAL_WINDOW)
+    fresh = fresh.slice(0, account.syncDepth || INITIAL_WINDOW)
     const notifyNew = folder.role === 'inbox' && kept.length > 0
-    const newUnread: { from: string; subject: string }[] = []
+    const newUnread: Incoming[] = []
+    const rules = listRules()
+    const contacts = knownContacts(account.id)
+    const folders = foldersOf(account.id)
 
     for (let i = 0; i < fresh.length; i += FETCH_BATCH) {
       const batch = fresh.slice(i, i + FETCH_BATCH)
       const rows: unknown[][] = []
+      // Rule actions to replay on the server for this batch, grouped by kind.
+      const toRead: number[] = []
+      const toStar: number[] = []
+      const toMove = new Map<string, number[]>()
       for await (const msg of client.fetch(
         batch,
         {
@@ -181,20 +194,37 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           internalDate: true,
           bodyStructure: true,
           threadId: true,
-          headers: ['references'],
+          headers: TRIAGE_HEADERS,
           source: { maxLength: 24_000 }
         },
         { uid: true }
       )) {
         const env = msg.envelope
-        const refs = idList(msg.headers?.toString('utf8'))
+        const headers = parseHeaders(msg.headers?.toString('utf8'))
+        const refs = idList(headers['references'])
         const msgId = env?.messageId?.replace(/^<|>$/g, '') ?? null
         const inReplyTo = idList(env?.inReplyTo)[0]
         const root = refs[0] ?? inReplyTo ?? msgId ?? `${folder.id}:${msg.uid}`
         const threadId = msg.threadId ? `g:${msg.threadId}` : `r:${root}`
         const from = env?.from?.[0]
         const date = (env?.date ?? msg.internalDate ?? new Date()) as Date | string
-        const unread = msg.flags?.has('\\Seen') ? 0 : 1
+        const subject = env?.subject ?? ''
+        const to = (env?.to ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))
+        const signals = signalsFrom(headers, msg.bodyStructure, subject)
+        // Sent mail and drafts are ours: they are never "notifications".
+        const own = folder.role === 'sent' || folder.role === 'drafts'
+        const { category, actions } = own
+          ? { category: 'people' as const, actions: {} as RuleActions }
+          : classify({ fromAddr: from?.address ?? '', fromName: from?.name ?? '', to: to.map((a) => a.address), subject, signals }, rules, account.id, contacts)
+        const seen = msg.flags?.has('\\Seen') || !!actions.markRead
+        const flagged = msg.flags?.has('\\Flagged') || !!actions.star
+        if (actions.markRead && !msg.flags?.has('\\Seen')) toRead.push(msg.uid)
+        if (actions.star && !msg.flags?.has('\\Flagged')) toStar.push(msg.uid)
+        const dest = actions.moveTo ? folders.find((f) => f.id === actions.moveTo && f.id !== folder.id) : undefined
+        if (dest) {
+          toMove.set(dest.path, [...(toMove.get(dest.path) ?? []), msg.uid])
+          continue
+        }
         const snippet = msg.source ? await previewFromPartialSource(msg.source) : ''
         rows.push([
           `${folder.id}:${msg.uid}`,
@@ -204,29 +234,41 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           threadId,
           msgId,
           JSON.stringify(inReplyTo && !refs.includes(inReplyTo) ? [...refs, inReplyTo] : refs),
-          env?.subject ?? '',
+          subject,
           from?.name ?? '',
           from?.address ?? '',
-          JSON.stringify((env?.to ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))),
+          JSON.stringify(to),
           JSON.stringify((env?.cc ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))),
           JSON.stringify((env?.replyTo ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))),
           new Date(date).getTime() || Date.now(),
           snippet,
-          unread,
-          msg.flags?.has('\\Flagged') ? 1 : 0,
+          seen ? 0 : 1,
+          flagged ? 1 : 0,
           hasAttachment(msg.bodyStructure) ? 1 : 0,
-          JSON.stringify((env?.bcc ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' })))
+          JSON.stringify((env?.bcc ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))),
+          category,
+          JSON.stringify(signals),
+          headers['list-unsubscribe'] ?? null
         ])
-        if (notifyNew && unread) newUnread.push({ from: from?.name || from?.address || '', subject: env?.subject ?? '' })
+        if (notifyNew && !seen && !actions.mute) newUnread.push({ from: from?.name || from?.address || '', subject, category })
       }
       tx(() => {
         const insert = db.prepare(
           `INSERT OR IGNORE INTO messages (id, account_id, folder_id, uid, thread_id, message_id_header, refs, subject,
-             from_name, from_addr, to_json, cc_json, reply_to_json, date, snippet, unread, flagged, has_attachments, bcc_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+             from_name, from_addr, to_json, cc_json, reply_to_json, date, snippet, unread, flagged, has_attachments, bcc_json,
+             category, signals, list_unsubscribe)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         for (const row of rows) insert.run(...(row as (string | number | null)[]))
       })
+      // Replay rule actions on the server while the folder is still selected.
+      try {
+        if (toRead.length) await client.messageFlagsAdd(toRead, ['\\Seen'], { uid: true })
+        if (toStar.length) await client.messageFlagsAdd(toStar, ['\\Flagged'], { uid: true })
+        for (const [path, uids] of toMove) await client.messageMove(uids, path, { uid: true })
+      } catch {
+        // The local state is already right; the next sync will reconcile with the server.
+      }
     }
 
     const unseen = mailbox.exists ? ((await client.search({ seen: false }, { uid: true })) || []).length : 0
@@ -235,11 +277,21 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
   })
 }
 
-function notify(account: Account, items: { from: string; subject: string }[]): void {
-  if (!items.length || !Notification.isSupported()) return
-  const body = items.length === 1 ? items[0].subject || '(sans objet)' : `${items.length} nouveaux messages`
-  const title = items.length === 1 ? items[0].from : account.name
-  new Notification({ title, body, silent: false }).show()
+interface Incoming {
+  from: string
+  subject: string
+  category: MailCategory
+}
+
+/** System notification for new mail, filtered by the user's notification preferences. */
+function notify(account: Account, items: Incoming[]): void {
+  const settings = getSettings()
+  if (!account.notify || !settings.mailNotifications || inQuietHours() || !Notification.isSupported()) return
+  const wanted = settings.smartNotifications ? items.filter((i) => i.category === 'people' || i.category === 'invitations') : items
+  if (!wanted.length) return
+  const body = wanted.length === 1 ? wanted[0].subject || '(sans objet)' : `${wanted.length} nouveaux messages`
+  const title = wanted.length === 1 ? wanted[0].from : account.name
+  new Notification({ title, body, silent: !settings.mailSound }).show()
 }
 
 /** Downloads and caches the full source of messages that have no body yet. */

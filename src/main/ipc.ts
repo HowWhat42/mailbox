@@ -23,12 +23,15 @@ import {
   respondToEvent,
   setCalendarColor,
   setCalendarEnabled,
+  setCalendarPrefs,
   upcomingEvents,
   updateEvent
 } from './calendar'
 import { addSource, listSources, removeSource, syncAccountSources, updateSource } from './calendar/sources'
 import { activeReminders, dismissReminder, joinReminder, openReminder, snoozeReminder } from './calendar/reminders'
-import { applyLoginItem, getSettings, setSettings } from './settings'
+import { getSettings, loginItemStatus, setSettings } from './settings'
+import { classifySender, listRules, reapplyRules, removeRule, reorderRules, saveRule } from './mail/rules'
+import { unsubscribe } from './mail/unsubscribe'
 
 const DAY = 86_400_000
 
@@ -98,7 +101,7 @@ const handlers: Handlers = {
   },
   mail: {
     folders: async () => listFolders(),
-    list: async (view, filter, limit) => listThreads(view, filter, limit),
+    list: async (view, filter, category, limit) => listThreads(view, filter, category, limit),
     thread: (accountId, threadId) => threadMessages(accountId, threadId),
     act: (ids, action) => applyAction(ids, action),
     actThread: (accountId, threadId, folderId, action, destFolderId) =>
@@ -122,7 +125,16 @@ const handlers: Handlers = {
       return fileInfo(res.filePaths)
     },
     fileInfo: async (paths) => fileInfo(paths),
-    counts: async () => unifiedCounts()
+    counts: async () => unifiedCounts(),
+    unsubscribe: (messageId) => unsubscribe(messageId)
+  },
+  rules: {
+    list: async () => listRules(),
+    save: async (rule) => saveRule(rule),
+    remove: async (id) => removeRule(id),
+    reorder: async (ids) => reorderRules(ids),
+    reapply: async () => reapplyRules(),
+    classifySender: async (address, category) => classifySender(address, category)
   },
   calendar: {
     sources: async () => listSources(),
@@ -152,6 +164,10 @@ const handlers: Handlers = {
     calendars: async () => listCalendars(),
     setEnabled: async (id, enabled) => setCalendarEnabled(id, enabled),
     setCalendarColor: async (id, color) => setCalendarColor(id, color),
+    setCalendarPrefs: async (id, prefs) => {
+      setCalendarPrefs(id, prefs)
+      emit('calendar:changed', { sourceId: '' })
+    },
     events: async (start, end) => listEvents(start, end),
     upcoming: async (limit) => upcomingEvents(limit),
     refresh: (start, end) => refreshCalendars(start, end),
@@ -162,11 +178,8 @@ const handlers: Handlers = {
   },
   settings: {
     get: async () => getSettings(),
-    set: async (patch) => {
-      const next = setSettings(patch)
-      if ('launchAtLogin' in patch) applyLoginItem()
-      return next
-    }
+    set: async (patch) => setSettings(patch),
+    loginItem: async () => loginItemStatus()
   },
   reminders: {
     list: async () => activeReminders(),

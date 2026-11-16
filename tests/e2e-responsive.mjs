@@ -27,6 +27,8 @@ const page = await app.firstWindow()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
 
+// Classic single-list inbox here; the smart inbox has its own test (e2e-triage).
+await page.evaluate(() => window.mailbox.settings.set({ smartInbox: false }))
 await page.click('text=Autre adresse (IMAP)')
 await page.fill('input[placeholder="Camille Martin"]', 'Test')
 await page.fill('input[type=email]', account.user)

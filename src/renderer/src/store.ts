@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { Account, Address, Folder, MailFilter, MailView, MessageAction, OutgoingAttachment, ThreadSummary } from '@shared/types'
+import type { Account, Address, AppSettings, Folder, MailCategory, MailFilter, MailView, MessageAction, OutgoingAttachment, ThreadSummary } from '@shared/types'
+import { applyAppearance } from './lib/appearance'
 
 export const api = window.mailbox
 
@@ -36,11 +37,10 @@ export interface DialogRequest {
   resolve: (ok: boolean) => void
 }
 
-type Mode = 'mail' | 'calendar'
-type Theme = 'dark' | 'light'
+type Mode = 'mail' | 'calendar' | 'settings'
+export type SettingsSection = 'general' | 'appearance' | 'notifications' | 'inbox' | 'calendars' | 'shortcuts' | `account:${string}`
 
 const PAGE = 150
-const UNDO_MS = 5000
 const MOVE_ACTIONS = new Set<MessageAction>(['archive', 'trash', 'junk', 'move'])
 
 const ACTION_DONE: Partial<Record<MessageAction, [string, string]>> = {
@@ -58,7 +58,10 @@ interface Pending {
 interface State {
   ready: boolean
   mode: Mode
-  theme: Theme
+  settings: AppSettings | null
+  settingsSection: SettingsSection
+  /** Theme actually shown (settings.theme resolved against the OS for 'system'). */
+  theme: 'dark' | 'light'
   sidebarCollapsed: boolean
   /** Window width, drives the responsive layout (see lib/layout). */
   viewport: number
@@ -67,10 +70,11 @@ interface State {
   calendarFocus: { eventId: string; start: number } | null
   accounts: Account[]
   folders: Folder[]
-  counts: { inbox: number; flagged: number }
   syncing: Record<string, boolean>
   view: MailView
   filter: MailFilter
+  category: MailCategory | 'all'
+  counts: { inbox: number; flagged: number; categories: Record<MailCategory, number> }
   threads: ThreadSummary[]
   limit: number
   selected: string | null
@@ -79,7 +83,6 @@ interface State {
   composer: ComposeDraft | null
   paletteOpen: boolean
   setupOpen: boolean
-  settingsOpen: boolean
   movePicker: ThreadSummary[] | null
   toasts: Toast[]
   dialog: DialogRequest | null
@@ -88,12 +91,16 @@ interface State {
   refreshAccounts(): Promise<void>
   refreshMail(): Promise<void>
   setMode(mode: Mode): void
-  setTheme(theme: Theme): void
+  openSettings(section?: SettingsSection): void
+  updateSettings(patch: Partial<AppSettings>): Promise<void>
   toggleSidebar(): void
   setDrawer(open: boolean): void
   focusEvent(focus: { eventId: string; start: number } | null): void
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
+  setCategory(category: MailCategory | 'all'): void
+  /** Whether the current view shows smart-inbox tabs. */
+  smartView(): boolean
   loadMore(): void
   select(key: string | null): void
   move(delta: 1 | -1): void
@@ -108,7 +115,6 @@ interface State {
   closeComposer(): void
   setPalette(open: boolean): void
   setSetup(open: boolean): void
-  setSettings(open: boolean): void
   openMovePicker(threads: ThreadSummary[] | null): void
   toast(text: string, tone?: Toast['tone'], action?: Toast['action']): number
   dismiss(id: number): void
@@ -157,17 +163,20 @@ export function confirmDialog(opts: Omit<DialogRequest, 'resolve'>): Promise<boo
 export const useStore = create<State>((set, get) => ({
   ready: false,
   mode: 'mail',
-  theme: readPref('theme', ['dark', 'light'], 'dark'),
+  settings: null,
+  settingsSection: 'general',
+  theme: 'dark',
   sidebarCollapsed: readPref('sidebar', ['open', 'collapsed'], 'open') === 'collapsed',
   viewport: window.innerWidth,
   drawerOpen: false,
   calendarFocus: null,
   accounts: [],
   folders: [],
-  counts: { inbox: 0, flagged: 0 },
+  counts: { inbox: 0, flagged: 0, categories: { people: 0, notifications: 0, newsletters: 0, invitations: 0 } },
   syncing: {},
   view: { type: 'unified', role: 'inbox' },
   filter: 'all',
+  category: 'people',
   threads: [],
   limit: PAGE,
   selected: null,
@@ -176,13 +185,29 @@ export const useStore = create<State>((set, get) => ({
   composer: null,
   paletteOpen: false,
   setupOpen: false,
-  settingsOpen: false,
   movePicker: null,
   toasts: [],
   dialog: null,
 
   async init() {
-    get().setTheme(get().theme)
+    const settings = await api.settings.get()
+    const apply = (s: AppSettings): void => {
+      const theme = applyAppearance(s)
+      void api.app.setTheme(theme)
+      set({ settings: s, theme, category: get().smartView() && s.smartInbox ? get().category : 'all' })
+    }
+    apply(settings)
+    if (!settings.smartInbox) set({ category: 'all' })
+    api.app.on('settings:changed', (s) => {
+      const smartChanged = s.smartInbox !== get().settings?.smartInbox
+      apply(s)
+      if (smartChanged) get().setCategory(s.smartInbox && get().smartView() ? 'people' : 'all')
+    })
+    // "Système" follows the OS live.
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      const s = get().settings
+      if (s?.theme === 'system') apply(s)
+    })
     await get().refreshAccounts()
     await get().refreshMail()
     set({ ready: true, setupOpen: get().accounts.length === 0 })
@@ -211,10 +236,10 @@ export const useStore = create<State>((set, get) => ({
   },
 
   async refreshMail() {
-    const { view, filter, limit } = get()
-    const [folders, threads, counts] = await Promise.all([api.mail.folders(), api.mail.list(view, filter, limit), api.mail.counts()])
+    const { view, filter, limit, category } = get()
+    const [folders, threads, counts] = await Promise.all([api.mail.folders(), api.mail.list(view, filter, get().smartView() ? category : 'all', limit), api.mail.counts()])
     // Ignore stale responses if the view changed meanwhile.
-    if (get().view !== view || get().filter !== filter) return
+    if (get().view !== view || get().filter !== filter || get().category !== category) return
     const hidden = get().hidden
     const visible = threads.filter((t) => !hidden.has(threadKey(t)))
     const keys = new Set(visible.map(threadKey))
@@ -225,11 +250,19 @@ export const useStore = create<State>((set, get) => ({
     set({ mode })
   },
 
-  setTheme(theme) {
-    document.documentElement.dataset.theme = theme
-    writePref('theme', theme)
-    void api.app.setTheme(theme)
-    set({ theme })
+  openSettings(section) {
+    set({ mode: 'settings', composer: null, settingsSection: section ?? get().settingsSection })
+  },
+
+  async updateSettings(patch) {
+    // Optimistic: the UI reacts at once, the main process confirms through settings:changed.
+    const current = get().settings
+    if (current) {
+      const next = { ...current, ...patch }
+      const theme = applyAppearance(next)
+      set({ settings: next, theme })
+    }
+    await api.settings.set(patch)
   },
 
   setDrawer(open) {
@@ -252,6 +285,20 @@ export const useStore = create<State>((set, get) => ({
 
   setView(view) {
     set({ view, mode: 'mail', selected: null, checked: new Set(), limit: PAGE, threads: [], filter: 'all', composer: null })
+    set({ category: get().smartView() ? 'people' : 'all' })
+    void get().refreshMail()
+  },
+
+  smartView() {
+    const { view, folders, settings } = get()
+    if (!settings?.smartInbox) return false
+    if (view.type === 'unified') return view.role === 'inbox'
+    if (view.type === 'folder') return folders.find((f) => f.id === view.folderId)?.role === 'inbox'
+    return false
+  },
+
+  setCategory(category) {
+    set({ category, selected: null, checked: new Set(), limit: PAGE, threads: [] })
     void get().refreshMail()
   },
 
@@ -332,7 +379,8 @@ export const useStore = create<State>((set, get) => ({
       pending.delete(id)
       void run().finally(unhide)
     }
-    pending.set(id, { timer: setTimeout(commit, UNDO_MS), commit })
+    const undoMs = (get().settings?.undoSeconds ?? 5) * 1000
+    pending.set(id, { timer: setTimeout(commit, undoMs), commit })
 
     const [one, many] = ACTION_DONE[action]!
     get().toast(list.length === 1 ? one : `${list.length} ${many}`, 'info', {
@@ -399,9 +447,6 @@ export const useStore = create<State>((set, get) => ({
   setSetup(open) {
     set({ setupOpen: open })
   },
-  setSettings(open) {
-    set({ settingsOpen: open })
-  },
   openMovePicker(threads) {
     set({ movePicker: threads && threads.length ? threads : null })
   },
@@ -410,7 +455,7 @@ export const useStore = create<State>((set, get) => ({
     const id = ++toastId
     set({ toasts: [...get().toasts.slice(-3), { id, text, tone, action }] })
     // A toast with an undo lives exactly as long as the undo window.
-    setTimeout(() => get().dismiss(id), action ? UNDO_MS : tone === 'error' ? 7000 : 3200)
+    setTimeout(() => get().dismiss(id), action ? (get().settings?.undoSeconds ?? 5) * 1000 : tone === 'error' ? 7000 : 3200)
     return id
   },
   dismiss(id) {

@@ -43,6 +43,8 @@ await page.setViewportSize({ width: 1440, height: 900 }).catch(() => {})
 await page.waitForSelector('text=Bienvenue dans Mailbox')
 await page.screenshot({ path: join(shots, '01-onboarding.png') })
 
+// Classic single-list inbox here; the smart inbox has its own test (e2e-triage).
+await page.evaluate(() => window.mailbox.settings.set({ smartInbox: false }))
 await page.click('text=Autre adresse (IMAP)')
 await page.fill('input[placeholder="Camille Martin"]', 'Test Ethereal')
 await page.fill('input[type=email]', account.user)

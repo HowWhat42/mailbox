@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { AlarmClock, MapPin, Video, X } from 'lucide-react'
 import type { Reminder } from '@shared/types'
 import './styles.css'
+import { applyAppearance } from './lib/appearance'
 
 const api = window.mailbox
 
@@ -98,6 +99,8 @@ function Stack() {
   useEffect(() => {
     const load = async (): Promise<void> => {
       const [list, settings] = await Promise.all([api.reminders.list(), api.settings.get()])
+      // The floating card always uses the night look, in the user's accent.
+      applyAppearance({ ...settings, theme: 'dark', backdrop: 'plain' })
       const fresh = list.some((r) => !seen.current.has(r.key))
       for (const r of list) seen.current.add(r.key)
       setItems(list)
@@ -105,9 +108,11 @@ function Stack() {
     }
     void load()
     const off = api.app.on('reminders:changed', () => void load())
+    const offSettings = api.app.on('settings:changed', (s) => applyAppearance({ ...s, theme: 'dark', backdrop: 'plain' }))
     const t = setInterval(() => setNow(Date.now()), 15_000)
     return () => {
       off()
+      offSettings()
       clearInterval(t)
     }
   }, [])

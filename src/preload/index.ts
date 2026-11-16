@@ -22,7 +22,8 @@ const api = {
     'counts',
     'saveDraft',
     'deleteDraft',
-    'contacts'
+    'contacts',
+    'unsubscribe'
   ]),
   calendar: invoker('calendar', [
     'sources',
@@ -32,6 +33,7 @@ const api = {
     'calendars',
     'setEnabled',
     'setCalendarColor',
+    'setCalendarPrefs',
     'events',
     'upcoming',
     'refresh',
@@ -40,7 +42,8 @@ const api = {
     'remove',
     'respond'
   ]),
-  settings: invoker('settings', ['get', 'set']),
+  settings: invoker('settings', ['get', 'set', 'loginItem']),
+  rules: invoker('rules', ['list', 'save', 'remove', 'reorder', 'reapply', 'classifySender']),
   reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),

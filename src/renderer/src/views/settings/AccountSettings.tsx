@@ -1,0 +1,128 @@
+import { useEffect, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
+import type { Account } from '@shared/types'
+import { api, confirmDialog, useStore } from '../../store'
+import { Select, Toggle } from '../../components/ui/Controls'
+import { fieldCls } from '../../components/Modal'
+import { Row, Section } from './parts'
+
+const COLORS = ['#8f86f0', '#5b8cff', '#2dd4bf', '#4ade80', '#f5b041', '#fb7c5c', '#f472b6', '#c084fc']
+
+/** Settings of one mailbox: identity, signature, notifications, sync, calendar. */
+export function AccountSettings({ account }: { account: Account }) {
+  const { toast, openSettings } = useStore.getState()
+  const [name, setName] = useState(account.name)
+  const [signature, setSignature] = useState(account.signature)
+  const [caldavUrl, setCaldavUrl] = useState(account.caldavUrl ?? '')
+  useEffect(() => {
+    setName(account.name)
+    setSignature(account.signature)
+    setCaldavUrl(account.caldavUrl ?? '')
+  }, [account.id, account.name, account.signature, account.caldavUrl])
+
+  const dirty = name !== account.name || signature !== account.signature || caldavUrl !== (account.caldavUrl ?? '')
+  const patch = (p: Parameters<typeof api.accounts.update>[1]): void => void api.accounts.update(account.id, p)
+
+  const save = async (): Promise<void> => {
+    await api.accounts.update(account.id, { name, signature, ...(account.kind === 'imap' ? { caldavUrl: caldavUrl.trim() || null } : {}) })
+    toast('Compte enregistré')
+  }
+
+  const remove = async (): Promise<void> => {
+    const ok = await confirmDialog({
+      title: `Retirer ${account.email} ?`,
+      body: 'Les messages et agendas restent sur le serveur ; seule la copie locale est effacée de cet ordinateur.',
+      confirmLabel: 'Retirer le compte',
+      tone: 'danger'
+    })
+    if (!ok) return
+    await api.accounts.remove(account.id)
+    toast('Compte retiré')
+    openSettings('general')
+  }
+
+  return (
+    <>
+      <div className="mb-7 flex items-center gap-3">
+        <span className="size-3 rounded-[4px]" style={{ background: account.color }} />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-[17px] font-semibold tracking-[-0.01em]">{account.email}</h2>
+          <p className="text-[12px] text-muted">
+            {account.kind === 'google' ? 'Google' : `IMAP · ${account.imapHost}`}
+            {account.lastSyncAt && ` · synchronisé à ${new Date(account.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+          </p>
+        </div>
+        <button
+          onClick={() => void api.mail.sync(account.id).then(() => toast('Compte synchronisé')).catch((e: Error) => toast(e.message, 'error'))}
+          className="flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+        >
+          <RefreshCw size={13} /> Synchroniser
+        </button>
+      </div>
+      {account.syncError && <p className="mb-5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{account.syncError}</p>}
+
+      <Section title="Identité">
+        <Row label="Nom affiché aux destinataires" stack>
+          <input value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} aria-label="Nom affiché" />
+        </Row>
+        <Row label="Signature" hint="Ajoutée aux nouveaux messages, réponses et transferts." stack>
+          <textarea value={signature} onChange={(e) => setSignature(e.target.value)} rows={4} className={`${fieldCls} h-auto resize-y py-2`} aria-label="Signature" />
+        </Row>
+        <Row label="Couleur du compte" hint="Repère du compte dans la boîte unifiée.">
+          <div className="flex gap-1.5">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => patch({ color: c })}
+                aria-label={`Couleur ${c}`}
+                className={`size-5 rounded-md ${account.color === c ? 'ring-2 ring-fg ring-offset-2 ring-offset-[var(--surface-solid)]' : ''}`}
+                style={{ background: c }}
+              />
+            ))}
+          </div>
+        </Row>
+        {dirty && (
+          <div className="flex justify-end px-4 py-3">
+            <button onClick={() => void save()} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium">
+              Enregistrer
+            </button>
+          </div>
+        )}
+      </Section>
+
+      <Section title="Boîte de réception">
+        <Row label="Inclure dans la boîte unifiée" hint="Sinon, ce compte n’apparaît que dans ses propres dossiers.">
+          <Toggle label="" checked={account.inUnified} onChange={(v) => patch({ inUnified: v })} />
+        </Row>
+        <Row label="Notifications" hint="Les réglages généraux (heures calmes, tri intelligent) s’appliquent en plus.">
+          <Toggle label="" checked={account.notify} onChange={(v) => patch({ notify: v })} />
+        </Row>
+        <Row label="Messages gardés sur cet ordinateur" hint="Les plus récents de chaque dossier ; la recherche porte sur eux. Les plus anciens restent sur le serveur.">
+          <Select
+            ariaLabel="Profondeur de synchronisation"
+            className="w-44"
+            value={String(account.syncDepth)}
+            onChange={(v) => patch({ syncDepth: Number(v) })}
+            options={[200, 400, 1000, 2500, 5000].map((n) => ({ value: String(n), label: `${n.toLocaleString('fr-FR')} par dossier` }))}
+          />
+        </Row>
+      </Section>
+
+      {account.kind === 'imap' && (
+        <Section title="Agenda" description="Les agendas CalDAV de ce compte (mêmes identifiants que la messagerie). Pour un autre serveur, ajoutez un agenda indépendant.">
+          <Row label="Adresse CalDAV" stack>
+            <input value={caldavUrl} onChange={(e) => setCaldavUrl(e.target.value)} className={fieldCls} placeholder="https://" aria-label="Adresse CalDAV" />
+          </Row>
+        </Section>
+      )}
+
+      <Section title="Zone sensible">
+        <Row label="Retirer ce compte" hint="Efface la copie locale ; rien n’est supprimé sur le serveur.">
+          <button onClick={() => void remove()} className="h-8 rounded-lg border border-danger/40 px-3 text-[12.5px] text-danger hover:bg-danger/10">
+            Retirer le compte
+          </button>
+        </Row>
+      </Section>
+    </>
+  )
+}

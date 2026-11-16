@@ -198,6 +198,29 @@ const MIGRATIONS: string[] = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
+  `,
+  // Smart inbox: category + the raw signals it was derived from (so rules can re-sort offline),
+  // per-account and per-calendar preferences, user rules. Folders are reset so the next sync
+  // re-reads the newly needed headers.
+  `
+  ALTER TABLE messages ADD COLUMN category TEXT NOT NULL DEFAULT 'people';
+  ALTER TABLE messages ADD COLUMN signals TEXT NOT NULL DEFAULT '{}';
+  ALTER TABLE messages ADD COLUMN list_unsubscribe TEXT;
+  CREATE INDEX messages_category ON messages (category);
+  UPDATE folders SET uidvalidity = NULL;
+
+  ALTER TABLE accounts ADD COLUMN notify INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE accounts ADD COLUMN in_unified INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE accounts ADD COLUMN sync_depth INTEGER NOT NULL DEFAULT 400;
+
+  ALTER TABLE calendars ADD COLUMN notify INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE calendars ADD COLUMN reminder_override INTEGER;
+
+  CREATE TABLE rules (
+    id TEXT PRIMARY KEY,
+    position INTEGER NOT NULL,
+    data TEXT NOT NULL
+  );
   `
 ]
 

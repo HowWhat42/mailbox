@@ -17,6 +17,11 @@ export interface Account {
   signature: string
   lastSyncAt: number | null
   syncError: string | null
+  /** Per-account preferences. */
+  notify: boolean
+  inUnified: boolean
+  /** Newest messages kept per folder. */
+  syncDepth: number
 }
 
 export interface ImapAccountInput {
@@ -77,6 +82,9 @@ export interface ThreadSummary {
   count: number
   folderId: string
   folderRole: FolderRole
+  category: MailCategory
+  /** The sender offers List-Unsubscribe. */
+  canUnsubscribe: boolean
 }
 
 export interface Attachment {
@@ -116,6 +124,38 @@ export type MailView =
 export type MessageAction = 'read' | 'unread' | 'flag' | 'unflag' | 'archive' | 'trash' | 'junk' | 'move'
 
 export type MailFilter = 'all' | 'unread' | 'flagged' | 'attachments'
+
+/** Smart-inbox buckets (Spark-style). */
+export type MailCategory = 'people' | 'notifications' | 'newsletters' | 'invitations'
+export const MAIL_CATEGORIES: MailCategory[] = ['people', 'notifications', 'newsletters', 'invitations']
+
+export type RuleField = 'from' | 'domain' | 'to' | 'subject'
+export type RuleOp = 'contains' | 'is'
+
+export interface RuleCondition {
+  field: RuleField
+  op: RuleOp
+  value: string
+}
+
+export interface RuleActions {
+  category?: MailCategory
+  markRead?: boolean
+  star?: boolean
+  /** Folder id (must belong to the account the rule applies to). */
+  moveTo?: string
+  mute?: boolean
+}
+
+export interface MailRule {
+  id: string
+  name: string
+  enabled: boolean
+  /** null = every account. */
+  accountId: string | null
+  conditions: RuleCondition[]
+  actions: RuleActions
+}
 
 /** A file from disk, or an attachment of an existing message (forward, reopened draft). */
 export type OutgoingAttachment =
@@ -165,6 +205,8 @@ export interface Calendar {
   color: string
   readOnly: boolean
   enabled: boolean
+  notify: boolean
+  reminderOverride: number | null
 }
 
 export type ResponseStatus = 'accepted' | 'tentative' | 'declined' | 'needsAction'
@@ -210,13 +252,52 @@ export interface EventInput {
   allDay: boolean
 }
 
+export type ThemeMode = 'dark' | 'light' | 'system'
+
 export interface AppSettings {
+  // Général
   /** Keep running in the tray when the window is closed (needed for reminders). */
   backgroundMode: boolean
   launchAtLogin: boolean
+  /** Start hidden in the tray when launched at login. */
+  startHidden: boolean
+  /** -1 = never, 0 = on open, else milliseconds. */
+  markReadDelay: number
+  undoSeconds: number
+  remoteImages: 'block' | 'allow'
+
+  // Apparence
+  theme: ThemeMode
+  /** Hex colour. */
+  accent: string
+  backdrop: 'nebula' | 'plain'
+  density: 'comfortable' | 'compact'
+
+  // Notifications
+  mailNotifications: boolean
+  /** Only notify for People and Invitations. */
+  smartNotifications: boolean
+  mailSound: boolean
+  quietHours: boolean
+  /** Minutes after midnight. */
+  quietStart: number
+  quietEnd: number
   /** Used when an event carries no reminder of its own. */
   reminderMinutes: number
   reminderSound: boolean
+  /** Online meetings also ping at start time. */
+  reminderAtStart: boolean
+
+  // Boîte de réception
+  smartInbox: boolean
+  /** Categories shown as tabs (People is always shown). */
+  categories: MailCategory[]
+}
+
+export interface CalendarPrefs {
+  notify: boolean
+  /** Minutes before start; null = the calendar's own defaults. */
+  reminderOverride: number | null
 }
 
 /** An event reminder currently shown in the floating notification window. */
@@ -248,6 +329,7 @@ export interface AppEvents {
   'reminders:changed': Record<string, never>
   /** Ask the main window to show an event (from a reminder). */
   'calendar:open': { eventId: string; start: number }
+  'settings:changed': AppSettings
 }
 
 export interface MailboxApi {
@@ -256,13 +338,13 @@ export interface MailboxApi {
     discover(email: string): Promise<ServerSettings | null>
     addImap(input: ImapAccountInput): Promise<Account>
     addGoogle(): Promise<Account>
-    update(id: string, patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl'>>): Promise<void>
+    update(id: string, patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>): Promise<void>
     remove(id: string): Promise<void>
     googleConfigured(): Promise<boolean>
   }
   mail: {
     folders(): Promise<Folder[]>
-    list(view: MailView, filter: MailFilter, limit: number): Promise<ThreadSummary[]>
+    list(view: MailView, filter: MailFilter, category: MailCategory | 'all', limit: number): Promise<ThreadSummary[]>
     thread(accountId: string, threadId: string): Promise<MessageDetail[]>
     act(messageIds: string[], action: MessageAction): Promise<void>
     actThread(accountId: string, threadId: string, folderId: string, action: MessageAction, destFolderId?: string): Promise<void>
@@ -276,7 +358,18 @@ export interface MailboxApi {
     saveAttachment(messageId: string, attachmentId: string): Promise<void>
     pickFiles(): Promise<OutgoingAttachment[]>
     fileInfo(paths: string[]): Promise<OutgoingAttachment[]>
-    counts(): Promise<{ inbox: number; flagged: number }>
+    counts(): Promise<{ inbox: number; flagged: number; categories: Record<MailCategory, number> }>
+    unsubscribe(messageId: string): Promise<'done' | 'opened'>
+  }
+  rules: {
+    list(): Promise<MailRule[]>
+    save(rule: MailRule): Promise<MailRule>
+    remove(id: string): Promise<void>
+    reorder(ids: string[]): Promise<void>
+    /** Re-sorts every local message with the current rules; returns how many changed category. */
+    reapply(): Promise<number>
+    /** One-click "always put mail from this sender in…" (Spark's "move to"). */
+    classifySender(address: string, category: MailCategory): Promise<void>
   }
   calendar: {
     sources(): Promise<CalendarSource[]>
@@ -286,6 +379,7 @@ export interface MailboxApi {
     calendars(): Promise<Calendar[]>
     setEnabled(id: string, enabled: boolean): Promise<void>
     setCalendarColor(id: string, color: string): Promise<void>
+    setCalendarPrefs(id: string, prefs: Partial<CalendarPrefs>): Promise<void>
     events(start: number, end: number): Promise<CalendarEvent[]>
     /** Next events (today and tomorrow) for the "next up" card. */
     upcoming(limit: number): Promise<CalendarEvent[]>
@@ -298,6 +392,8 @@ export interface MailboxApi {
   settings: {
     get(): Promise<AppSettings>
     set(patch: Partial<AppSettings>): Promise<AppSettings>
+    /** Whether the OS will start Mailbox at login right now. */
+    loginItem(): Promise<{ enabled: boolean; packaged: boolean }>
   }
   reminders: {
     list(): Promise<Reminder[]>

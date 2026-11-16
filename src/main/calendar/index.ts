@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import type { Calendar, CalendarEvent, CalendarSource, EventInput, ResponseStatus } from '@shared/types'
+import type { Calendar, CalendarEvent, CalendarPrefs, CalendarSource, EventInput, ResponseStatus } from '@shared/types'
 import { getDb, tx } from '../db'
 import { emit } from '../events'
 import { getSource, listSources, setSourceResult, syncAccountSources } from './sources'
@@ -22,6 +22,8 @@ interface CalendarRow {
   read_only: number
   enabled: number
   default_reminders: string
+  notify: number
+  reminder_override: number | null
 }
 
 interface EventRow {
@@ -86,8 +88,16 @@ export function listCalendars(): Calendar[] {
     name: r.name,
     color: r.user_color ?? r.color,
     readOnly: !!r.read_only,
-    enabled: !!r.enabled
+    enabled: !!r.enabled,
+    notify: !!r.notify,
+    reminderOverride: r.reminder_override
   }))
+}
+
+export function setCalendarPrefs(id: string, prefs: Partial<CalendarPrefs>): void {
+  const db = getDb()
+  if (prefs.notify !== undefined) db.prepare('UPDATE calendars SET notify = ? WHERE id = ?').run(prefs.notify ? 1 : 0, id)
+  if (prefs.reminderOverride !== undefined) db.prepare('UPDATE calendars SET reminder_override = ? WHERE id = ?').run(prefs.reminderOverride, id)
 }
 
 export function setCalendarEnabled(id: string, enabled: boolean): void {

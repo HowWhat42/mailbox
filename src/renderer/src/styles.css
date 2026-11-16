@@ -5,66 +5,70 @@
  * Dark ("nuit") is the signature theme: pure black, a dithered pixel nebula
  * behind translucent panels, violet light on whatever is selected.
  */
+/* --accent / --accent-2 / --accent-fg are set at runtime from the user's settings. */
+:root {
+  --accent: #8f86f0;
+  --accent-2: #6f8cff;
+  --accent-fg: #0b0a14;
+}
+
 :root,
 [data-theme='dark'] {
   --shell: #000000;
   --surface: rgb(4 4 12 / 0.7);
   --surface-solid: #07070f;
   --panel: rgb(255 255 255 / 0.02);
-  --raised: #0d0c1f;
-  --hover: rgb(180 170 255 / 0.07);
-  --selected: rgb(138 127 232 / 0.16);
+  --raised: color-mix(in oklch, var(--accent) 7%, #08080f);
+  --hover: color-mix(in oklch, var(--accent) 9%, transparent);
+  --selected: color-mix(in oklch, var(--accent) 16%, transparent);
   --line: rgb(255 255 255 / 0.07);
-  --line-strong: rgb(180 170 255 / 0.16);
+  --line-strong: color-mix(in oklch, var(--accent) 22%, rgb(255 255 255 / 0.06));
   --fg: #f4f2fb;
   --fg-2: #cdc8e4;
   --muted: #9a94b8;
   --faint: #5f5a7c;
-  --accent: #8f86f0;
-  --accent-fg: #0a0920;
-  --accent-soft: rgb(138 127 232 / 0.16);
+  --accent-soft: color-mix(in oklch, var(--accent) 16%, transparent);
   --danger: #f07ba0;
   --paper: #ffffff;
-  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 60px -20px rgb(0 0 0 / 0.9), 0 0 0 1px rgb(180 170 255 / 0.12);
+  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 60px -20px rgb(0 0 0 / 0.9), 0 0 0 1px color-mix(in oklch, var(--accent) 18%, transparent);
   --card-shadow: 0 0 0 1px var(--line);
-  --glow: inset 0 -14px 22px -16px rgb(120 100 255 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.04);
-  --selected-bg: linear-gradient(90deg, rgb(138 127 232 / 0.32), rgb(111 140 255 / 0.12) 60%, rgb(111 140 255 / 0));
-  --glass: linear-gradient(160deg, rgb(138 127 232 / 0.12), transparent 45%), rgb(11 10 30 / 0.92);
+  --glow: inset 0 -14px 22px -16px color-mix(in oklch, var(--accent) 65%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --selected-bg: linear-gradient(90deg, color-mix(in oklch, var(--accent) 32%, transparent), color-mix(in oklch, var(--accent-2) 12%, transparent) 60%, transparent);
+  --glass: linear-gradient(160deg, color-mix(in oklch, var(--accent) 12%, transparent), transparent 45%), color-mix(in oklch, var(--accent) 5%, rgb(9 8 20 / 0.94));
   --primary-bg: radial-gradient(100% 60% at 50% 0%, rgb(255 255 255 / 0.14), transparent 70%),
-    linear-gradient(150deg, rgb(138 127 232 / 0.85), rgb(111 140 255 / 0.35) 60%, rgb(74 60 196 / 0.4)), #0d0b26;
-  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -8px 14px -10px rgb(169 159 255 / 0.8), 0 0 0 1px rgb(180 170 255 / 0.25),
-    0 4px 14px -6px rgb(120 100 255 / 0.6);
-  --primary-fg: #f6f4ff;
+    linear-gradient(150deg, color-mix(in oklch, var(--accent) 85%, transparent), color-mix(in oklch, var(--accent-2) 38%, transparent) 60%, color-mix(in oklch, var(--accent) 40%, #000)),
+    color-mix(in oklch, var(--accent) 12%, #05050f);
+  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -8px 14px -10px color-mix(in oklch, var(--accent) 80%, white),
+    0 0 0 1px color-mix(in oklch, var(--accent) 30%, transparent), 0 4px 14px -6px color-mix(in oklch, var(--accent) 60%, transparent);
+  --primary-fg: #ffffff;
   color-scheme: dark;
 }
 
 [data-theme='light'] {
-  --shell: #e9e8f2;
+  --shell: color-mix(in oklch, var(--accent) 6%, #eceaf2);
   --surface: #ffffff;
   --surface-solid: #ffffff;
-  --panel: #f6f5fb;
+  --panel: color-mix(in oklch, var(--accent) 3%, #f7f7fa);
   --raised: #ffffff;
-  --hover: #f1f0f8;
-  --selected: #ecebfb;
+  --hover: color-mix(in oklch, var(--accent) 6%, #f3f3f7);
+  --selected: color-mix(in oklch, var(--accent) 10%, #ffffff);
   --line: #e5e3ee;
   --line-strong: #d3d0e2;
   --fg: #16141f;
   --fg-2: #3c3950;
   --muted: #6f6b86;
   --faint: #a29fb5;
-  --accent: #5b51d8;
-  --accent-fg: #ffffff;
-  --accent-soft: rgb(91 81 216 / 0.1);
+  --accent-soft: color-mix(in oklch, var(--accent) 11%, transparent);
   --danger: #d23d6a;
   --paper: #ffffff;
   --shadow: 0 16px 48px -12px rgb(30 20 80 / 0.25), 0 0 0 1px var(--line);
   --card-shadow: 0 1px 2px rgb(30 20 80 / 0.05), 0 0 0 1px var(--line);
-  --glow: inset 0 0 0 1px rgb(91 81 216 / 0.12);
-  --selected-bg: linear-gradient(90deg, rgb(91 81 216 / 0.14), rgb(91 81 216 / 0.04) 70%, transparent);
+  --glow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 16%, transparent);
+  --selected-bg: linear-gradient(90deg, color-mix(in oklch, var(--accent) 15%, transparent), color-mix(in oklch, var(--accent) 4%, transparent) 70%, transparent);
   --glass: #ffffff;
-  --primary-bg: linear-gradient(160deg, #6d63ea, #4d43c8);
-  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px -4px rgb(77 67 200 / 0.5);
-  --primary-fg: #ffffff;
+  --primary-bg: linear-gradient(160deg, color-mix(in oklch, var(--accent) 88%, white), color-mix(in oklch, var(--accent) 90%, black));
+  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px -4px color-mix(in oklch, var(--accent) 55%, transparent);
+  --primary-fg: var(--accent-fg);
   color-scheme: light;
 }
 
@@ -117,11 +121,19 @@ textarea,
 }
 
 ::selection {
-  background: rgb(143 134 240 / 0.4);
+  background: color-mix(in oklch, var(--accent) 40%, transparent);
 }
 
 .tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* Horizontal strips (tabs, chips) scroll without showing a bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 .drag {
@@ -154,7 +166,8 @@ textarea,
   background-repeat: repeat, repeat, no-repeat;
   image-rendering: pixelated;
 }
-[data-theme='light'] .backdrop {
+[data-theme='light'] .backdrop,
+[data-backdrop='plain'] .backdrop {
   display: none;
 }
 
@@ -202,7 +215,7 @@ textarea,
   --cell: max(4px, calc(max(1920px, 100vw) / 480));
   background:
     linear-gradient(90deg, #000 1px, transparent 1px), linear-gradient(0deg, #000 1px, transparent 1px),
-    linear-gradient(170deg, #d6ceff, #8f86f0 55%, #6f8cff);
+    linear-gradient(170deg, color-mix(in oklch, var(--accent) 40%, white), var(--accent) 55%, var(--accent-2));
   background-size:
     var(--cell) var(--cell),
     var(--cell) var(--cell),
@@ -217,7 +230,7 @@ textarea,
 [data-theme='light'] .wordmark {
   background:
     linear-gradient(90deg, #fff 1px, transparent 1px), linear-gradient(0deg, #fff 1px, transparent 1px),
-    linear-gradient(170deg, #b8b0ff, #5b51d8);
+    linear-gradient(170deg, color-mix(in oklch, var(--accent) 50%, white), var(--accent));
   background-size:
     var(--cell) var(--cell),
     var(--cell) var(--cell),

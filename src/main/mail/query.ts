@@ -1,4 +1,4 @@
-import type { Address, Folder, MailFilter, MailView, MessageDetail, ThreadSummary } from '@shared/types'
+import { MAIL_CATEGORIES, type Address, type Folder, type MailCategory, type MailFilter, type MailView, type MessageDetail, type ThreadSummary } from '@shared/types'
 import { getDb } from '../db'
 import { ensureBodies } from './sync'
 
@@ -19,6 +19,8 @@ interface SummaryRow {
   any_att: number
   senders: string | null
   role: Folder['role']
+  category: MailCategory
+  list_unsubscribe: string | null
 }
 
 /** Groups the matching messages by thread and keeps the newest one per thread. */
@@ -57,7 +59,9 @@ function summaries(where: string, params: (string | number)[], limit: number): T
     unread: !!r.any_unread,
     flagged: !!r.any_flagged,
     hasAttachments: !!r.any_att,
-    count: r.cnt
+    count: r.cnt,
+    category: r.category,
+    canUnsubscribe: !!r.list_unsubscribe
   }))
 }
 
@@ -82,18 +86,26 @@ const FILTERS: Record<MailFilter, string> = {
  * Note: filters apply per message, so a thread shows up under "Non lus" when any
  * of its messages in the view is unread, and the row then shows that message.
  */
-export function listThreads(view: MailView, filter: MailFilter, limit: number): ThreadSummary[] {
-  const f = FILTERS[filter] ?? '1'
+/** Accounts the user chose to keep out of the unified boxes. */
+const UNIFIED = 'm.account_id IN (SELECT id FROM accounts WHERE in_unified = 1)'
+
+export function listThreads(view: MailView, filter: MailFilter, category: MailCategory | 'all', limit: number): ThreadSummary[] {
+  const params: (string | number)[] = []
+  let f = FILTERS[filter] ?? '1'
+  if (category !== 'all' && MAIL_CATEGORIES.includes(category)) {
+    f += ' AND m.category = ?'
+    params.push(category)
+  }
   switch (view.type) {
     case 'folder':
-      return summaries(`m.folder_id = ? AND ${f}`, [view.folderId], limit)
+      return summaries(`m.folder_id = ? AND ${f}`, [view.folderId, ...params], limit)
     case 'unified':
-      if (view.role === 'flagged') return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${f}`, [], limit)
-      return summaries(`f.role = ? AND ${f}`, [view.role], limit)
+      if (view.role === 'flagged') return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED} AND ${f}`, params, limit)
+      return summaries(`f.role = ? AND ${UNIFIED} AND ${f}`, [view.role, ...params], limit)
     case 'search': {
       const q = ftsQuery(view.query)
       if (!q) return []
-      return summaries(`m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, [q], limit)
+      return summaries(`m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, [q, ...params], limit)
     }
   }
 }
@@ -142,21 +154,29 @@ export function listFolders(): Folder[] {
   }))
 }
 
-export function unifiedCounts(): { inbox: number; flagged: number } {
+/** Unread threads in the unified inbox (total and per smart-inbox category) and flagged threads. */
+export function unifiedCounts(): { inbox: number; flagged: number; categories: Record<MailCategory, number> } {
   const db = getDb()
+  const perCategory = db
+    .prepare(
+      `SELECT m.category, count(DISTINCT m.account_id || m.thread_id) AS n FROM messages m JOIN folders f ON f.id = m.folder_id
+       WHERE f.role = 'inbox' AND m.unread = 1 AND ${UNIFIED} GROUP BY m.category`
+    )
+    .all() as { category: MailCategory; n: number }[]
+  const categories = Object.fromEntries(MAIL_CATEGORIES.map((c) => [c, perCategory.find((r) => r.category === c)?.n ?? 0])) as Record<MailCategory, number>
   const inbox = db
     .prepare(
       `SELECT count(DISTINCT m.account_id || m.thread_id) AS n FROM messages m JOIN folders f ON f.id = m.folder_id
-       WHERE f.role = 'inbox' AND m.unread = 1`
+       WHERE f.role = 'inbox' AND m.unread = 1 AND ${UNIFIED}`
     )
     .get() as { n: number }
   const flagged = db
     .prepare(
       `SELECT count(DISTINCT m.account_id || m.thread_id) AS n FROM messages m JOIN folders f ON f.id = m.folder_id
-       WHERE m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk')`
+       WHERE m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED}`
     )
     .get() as { n: number }
-  return { inbox: inbox.n, flagged: flagged.n }
+  return { inbox: inbox.n, flagged: flagged.n, categories }
 }
 
 interface DetailRow {

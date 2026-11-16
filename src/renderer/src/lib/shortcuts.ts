@@ -9,7 +9,7 @@ export function isTyping(e: KeyboardEvent): boolean {
 
 export function overlayOpen(): boolean {
   const s = useStore.getState()
-  return !!(s.paletteOpen || s.setupOpen || s.settingsOpen || s.movePicker || s.dialog || document.querySelector('[role=menu]'))
+  return !!(s.paletteOpen || s.setupOpen || s.movePicker || s.dialog || document.querySelector('[role=menu]'))
 }
 
 /** Global keyboard map. Single keys only fire outside text fields; "g" starts a two-key jump. */
@@ -31,6 +31,10 @@ export function useMailShortcuts(): void {
         return
       }
       if (isTyping(e) || overlayOpen() || e.ctrlKey || e.metaKey || e.altKey) return
+      if (s.mode === 'settings') {
+        if (e.key === 'Escape') s.setMode('mail')
+        return
+      }
 
       if (pendingG && Date.now() - pendingG < 1000) {
         pendingG = 0

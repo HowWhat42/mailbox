@@ -1,5 +1,5 @@
 import { Command } from 'cmdk'
-import { Archive, CalendarDays, File, Folder, FolderInput, Inbox, Moon, PanelLeft, PenSquare, Plus, RefreshCw, Reply, Search, Send, Settings, Star, Trash2, type LucideIcon } from 'lucide-react'
+import { Archive, Bell, CalendarDays, Palette, Wand2, File, Folder, FolderInput, Inbox, Moon, PanelLeft, PenSquare, Plus, RefreshCw, Reply, Search, Send, Settings, Star, Trash2, type LucideIcon } from 'lucide-react'
 import { api, threadKey, useStore } from '../store'
 import { ROLE_LABEL } from '../lib/format'
 import { startReply } from '../lib/threadActions'
@@ -57,10 +57,13 @@ export function CommandPalette() {
           <Command.Group heading="Actions" className={groupCls}>
             <Item icon={PenSquare} label="Nouveau message" hint="C" onSelect={run(() => s.compose())} />
             <Item icon={RefreshCw} label="Synchroniser maintenant" onSelect={run(() => void api.mail.sync().catch((e: Error) => s.toast(e.message, 'error')))} />
-            <Item icon={Moon} label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'} onSelect={run(() => s.setTheme(theme === 'dark' ? 'light' : 'dark'))} />
+            <Item icon={Moon} label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'} onSelect={run(() => s.updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' }))} />
             <Item icon={PanelLeft} label="Afficher ou masquer la barre latérale" hint="Ctrl \" onSelect={run(() => s.toggleSidebar())} />
             <Item icon={Plus} label="Ajouter un compte" onSelect={run(() => s.setSetup(true))} />
-            <Item icon={Settings} label="Réglages des comptes" onSelect={run(() => s.setSettings(true))} />
+            <Item icon={Settings} label="Réglages" onSelect={run(() => s.openSettings('general'))} />
+            <Item icon={Palette} label="Apparence et couleur d’accent" onSelect={run(() => s.openSettings('appearance'))} />
+            <Item icon={Bell} label="Réglages des notifications" onSelect={run(() => s.openSettings('notifications'))} />
+            <Item icon={Wand2} label="Tri intelligent et règles" onSelect={run(() => s.openSettings('inbox'))} />
           </Command.Group>
 
           <Command.Group heading="Aller à" className={groupCls}>

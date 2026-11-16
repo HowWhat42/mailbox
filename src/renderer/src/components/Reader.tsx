@@ -25,6 +25,7 @@ import { useLayout } from '../lib/layout'
 import { Avatar } from './Avatar'
 import { AttachmentCard } from './AttachmentCard'
 import { MessageBody } from './MessageBody'
+import { TriageBanner } from './TriageBanner'
 import { Menu } from './ui/Menu'
 
 function ToolButton({ icon: Icon, label, onClick, active }: { icon: LucideIcon; label: string; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; active?: boolean }) {
@@ -73,7 +74,7 @@ function Message({ m, expanded, onToggle, onReply }: { m: MessageDetail; expande
         </time>
         <ToolButton icon={Reply} label="Répondre à ce message" onClick={() => onReply(m)} />
       </header>
-      <MessageBody html={m.html} text={m.text} />
+      <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
       {m.attachments.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2.5">
           {m.attachments.map((a) => (
@@ -136,6 +137,7 @@ export function Reader() {
       return
     }
     let cancelled = false
+    let markTimer: ReturnType<typeof setTimeout> | undefined
     setMessages(null)
     setError(null)
     api.mail
@@ -145,12 +147,18 @@ export function Reader() {
         setMessages(msgs)
         setExpanded(new Set(msgs.filter((m, i) => m.unread || i === msgs.length - 1).map((m) => m.id)))
         scroller.current?.scrollTo({ top: 0 })
-        const current = useStore.getState().threads.find((t) => t.accountId === accountId && t.threadId === threadId)
-        if (current?.unread && current.folderRole !== 'drafts') void useStore.getState().act([current], 'read')
+        const delay = useStore.getState().settings?.markReadDelay ?? 0
+        if (delay >= 0) {
+          markTimer = setTimeout(() => {
+            const current = useStore.getState().threads.find((t) => t.accountId === accountId && t.threadId === threadId)
+            if (current?.unread && current.folderRole !== 'drafts') void useStore.getState().act([current], 'read')
+          }, delay)
+        }
       })
       .catch((e: Error) => !cancelled && setError(e.message))
     return () => {
       cancelled = true
+      clearTimeout(markTimer)
     }
   }, [accountId, threadId])
 
@@ -232,6 +240,10 @@ export function Reader() {
                 </span>
               )}
             </div>
+
+            {messages && !isDraft && (thread.category === 'newsletters' || thread.category === 'notifications') && (
+              <TriageBanner thread={thread} messageId={messages.at(-1)!.id} />
+            )}
 
             {isDraft && messages && (
               <div className="mb-4 flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">

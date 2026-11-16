@@ -21,6 +21,7 @@ interface DueRow {
   meeting_provider: string | null
   reminders_json: string | null
   default_reminders: string
+  reminder_override: number | null
   my_status: ResponseStatus | null
   color: string
   calendar_name: string
@@ -48,13 +49,13 @@ function show(reminder: Reminder): void {
 function tick(): void {
   const now = Date.now()
   const db = getDb()
-  const { reminderMinutes } = getSettings()
+  const { reminderMinutes, reminderAtStart } = getSettings()
   const rows = db
     .prepare(
       `SELECT e.id, e.title, e.start, e.end, e.all_day, e.location, e.meeting_url, e.meeting_provider, e.reminders_json,
-              e.my_status, c.default_reminders, coalesce(c.user_color, c.color) AS color, c.name AS calendar_name
+              e.my_status, c.default_reminders, c.reminder_override, coalesce(c.user_color, c.color) AS color, c.name AS calendar_name
        FROM events e JOIN calendars c ON c.id = e.calendar_id
-       WHERE c.enabled = 1 AND e.all_day = 0 AND e.status <> 'cancelled'
+       WHERE c.enabled = 1 AND c.notify = 1 AND e.all_day = 0 AND e.status <> 'cancelled'
          AND coalesce(e.my_status, '') <> 'declined' AND e.start > ? AND e.start < ?`
     )
     .all(now - GRACE, now + 24 * 3_600_000) as unknown as DueRow[]
@@ -64,10 +65,11 @@ function tick(): void {
   let changed = false
 
   for (const row of rows) {
-    const own = JSON.parse(row.reminders_json ?? row.default_reminders) as number[]
+    // A per-calendar override beats the event's alarms, which beat the global default.
+    const own = row.reminder_override != null ? [row.reminder_override] : (JSON.parse(row.reminders_json ?? row.default_reminders) as number[])
     const offsets = new Set(own.length ? own : [reminderMinutes])
     // Online meetings also ping when they start: that's when you need the Join button.
-    if (row.meeting_url) offsets.add(0)
+    if (row.meeting_url && reminderAtStart) offsets.add(0)
     for (const minutes of offsets) {
       const key = `${row.id}:${row.start}:${minutes}`
       if (now < row.start - minutes * 60_000 || fired.get(key) || snoozed.has(key)) continue

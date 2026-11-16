@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Archive, FolderInput, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Tag, Trash2, type LucideIcon } from 'lucide-react'
-import type { MailFilter, ThreadSummary } from '@shared/types'
+import { Archive, FolderInput, Inbox, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Tag, Trash2, type LucideIcon } from 'lucide-react'
+import type { MailCategory, MailFilter, ThreadSummary } from '@shared/types'
+import { CATEGORY_ICON, CATEGORY_LABEL } from '../lib/categories'
 import { threadKey, useStore } from '../store'
 import { dateGroup, displayName, listDate, ROLE_LABEL } from '../lib/format'
 import { threadMenu } from '../lib/threadActions'
@@ -11,7 +12,7 @@ import { Checkbox } from './ui/Controls'
 import { Menu } from './ui/Menu'
 import type { Anchor } from './ui/Popover'
 
-const ROW = 92
+const ROW = { comfortable: 92, compact: 60 }
 const HEADER = 34
 
 type Item = { type: 'header'; label: string } | { type: 'thread'; t: ThreadSummary }
@@ -40,7 +41,8 @@ function Row({
   checked,
   sentLike,
   accountColor,
-  onContext
+  onContext,
+  compact
 }: {
   t: ThreadSummary
   selected: boolean
@@ -48,6 +50,7 @@ function Row({
   sentLike: boolean
   accountColor?: string
   onContext: (e: React.MouseEvent) => void
+  compact: boolean
 }) {
   const { select, toggleCheck } = useStore.getState()
   const key = threadKey(t)
@@ -68,16 +71,16 @@ function Row({
         aria-selected={selected}
         onClick={(e) => (e.ctrlKey || e.metaKey ? toggleCheck(key) : select(key))}
         onContextMenu={onContext}
-        className={`group flex h-full cursor-default gap-3 rounded-lg px-3 py-2.5 transition-colors ${
+        className={`group flex h-full cursor-default gap-3 rounded-lg px-3 transition-colors ${compact ? 'items-center py-1.5' : 'py-2.5'} ${
           selected ? 'lit' : checked ? 'bg-accent-soft' : 'hover:bg-hover'
         }`}
       >
-        <div className="flex shrink-0 items-start gap-3 pt-0.5">
-          <span className={`pt-2 ${checked ? '' : 'opacity-60 group-hover:opacity-100'}`}>
+        <div className={`flex shrink-0 gap-3 ${compact ? 'items-center' : 'items-start pt-0.5'}`}>
+          <span className={`${compact ? '' : 'pt-2'} ${checked ? '' : 'opacity-60 group-hover:opacity-100'}`}>
             <Checkbox checked={checked} onChange={() => toggleCheck(key)} label="Sélectionner" />
           </span>
           <span className="relative">
-            <Avatar name={displayName(person)} seed={person.address || displayName(person)} />
+            <Avatar name={displayName(person)} seed={person.address || displayName(person)} size={compact ? 26 : 32} />
             {t.unread && <span className="absolute -left-0.5 -top-0.5 size-2.5 rounded-full border-2 border-surface bg-accent" />}
           </span>
         </div>
@@ -92,8 +95,19 @@ function Row({
               <span className={`tnum text-[11.5px] ${t.unread ? 'text-fg-2' : ''}`}>{listDate(t.date)}</span>
             </span>
           </div>
-          <div className={`truncate text-[13px] ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`}>{t.subject || '(sans objet)'}</div>
-          <p className="line-clamp-2 text-[12px] leading-[1.45] text-muted">{t.snippet || ' '}</p>
+          {compact ? (
+            <div className="flex min-w-0 items-baseline gap-1.5 text-[12.5px]">
+              <span className={`shrink-0 truncate ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`} style={{ maxWidth: '65%' }}>
+                {t.subject || '(sans objet)'}
+              </span>
+              <span className="min-w-0 truncate text-muted">{t.snippet}</span>
+            </div>
+          ) : (
+            <>
+              <div className={`truncate text-[13px] ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`}>{t.subject || '(sans objet)'}</div>
+              <p className="line-clamp-2 text-[12px] leading-[1.45] text-muted">{t.snippet || ' '}</p>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -130,6 +144,12 @@ export function ThreadList() {
   const filter = useStore((s) => s.filter)
   const syncing = useStore((s) => s.syncing)
   const { title, sentLike } = useViewInfo()
+  const settings = useStore((s) => s.settings)
+  const category = useStore((s) => s.category)
+  const counts = useStore((s) => s.counts)
+  const compact = settings?.density === 'compact'
+  const rowHeight = ROW[compact ? 'compact' : 'comfortable']
+  const tabs = useStore((s) => s.smartView()) ? (['people', ...(settings?.categories ?? []).filter((c) => c !== 'people')] as MailCategory[]) : []
   const { single } = useLayout()
   const s = useStore.getState()
   const parent = useRef<HTMLDivElement>(null)
@@ -152,9 +172,12 @@ export function ThreadList() {
   const virtual = useVirtualizer({
     count: items.length,
     getScrollElement: () => parent.current,
-    estimateSize: (i) => (items[i].type === 'header' ? HEADER : ROW),
+    estimateSize: (i) => (items[i].type === 'header' ? HEADER : rowHeight),
     overscan: 10
   })
+
+  // Row height changes with the density setting: drop cached sizes.
+  useEffect(() => virtual.measure(), [rowHeight, virtual])
 
   useEffect(() => {
     const idx = items.findIndex((it) => it.type === 'thread' && threadKey(it.t) === selected)
@@ -197,7 +220,34 @@ export function ThreadList() {
         <ToolButton icon={PenSquare} label="Nouveau message (C)" onClick={() => s.compose()} />
       </header>
 
-      <div className="flex shrink-0 gap-1.5 overflow-x-auto px-5 pb-3">
+      {tabs.length > 0 && (
+        <div role="tablist" aria-label="Catégories" className="no-scrollbar flex shrink-0 gap-0.5 overflow-x-auto border-b border-line px-3">
+          {[...tabs, 'all' as const].map((c) => {
+            const active = category === c
+            const Icon = c === 'all' ? Inbox : CATEGORY_ICON[c]
+            const n = c === 'all' ? counts.inbox : counts.categories[c]
+            return (
+              <button
+                key={c}
+                role="tab"
+                aria-selected={active}
+                onClick={() => s.setCategory(c)}
+                title={c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}
+                aria-label={c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}
+                className={`relative flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[12.5px] ${active ? 'font-medium text-fg' : 'text-muted hover:text-fg'}`}
+              >
+                <Icon size={14} />
+                {/* Narrow list: only the active tab spells its name out. */}
+                <span className={active ? '' : 'hidden @[600px]:inline'}>{c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}</span>
+                {n > 0 && <span className={`tnum rounded-md px-1.5 text-[10.5px] font-semibold ${active ? 'bg-accent text-accent-fg' : 'bg-hover text-fg-2'}`}>{n}</span>}
+                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+
+      <div className={`no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-5 pb-3 ${tabs.length ? 'pt-3' : ''}`}>
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -266,6 +316,7 @@ export function ThreadList() {
                       sentLike={sentLike}
                       accountColor={showAccount ? colorOf.get(it.t.accountId) : undefined}
                       onContext={(e) => openContext(e, it.t)}
+                      compact={compact}
                     />
                   )}
                 </div>

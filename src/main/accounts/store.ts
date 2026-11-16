@@ -23,6 +23,9 @@ interface AccountRow {
   signature: string
   last_sync_at: number | null
   sync_error: string | null
+  notify: number
+  in_unified: number
+  sync_depth: number
 }
 
 function toAccount(r: AccountRow): Account {
@@ -42,7 +45,10 @@ function toAccount(r: AccountRow): Account {
     caldavUrl: r.caldav_url,
     signature: r.signature,
     lastSyncAt: r.last_sync_at,
-    syncError: r.sync_error
+    syncError: r.sync_error,
+    notify: !!r.notify,
+    inUnified: !!r.in_unified,
+    syncDepth: r.sync_depth
   }
 }
 
@@ -67,7 +73,7 @@ export function setSecret(id: string, secret: AccountSecret): void {
   getDb().prepare('UPDATE accounts SET secret = ? WHERE id = ?').run(sealSecret(secret), id)
 }
 
-export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError'>
+export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError' | 'notify' | 'inUnified' | 'syncDepth'>
 
 export function insertAccount(input: NewAccount, secret: AccountSecret): Account {
   const db = getDb()
@@ -103,15 +109,23 @@ export function insertAccount(input: NewAccount, secret: AccountSecret): Account
 
 export function updateAccount(
   id: string,
-  patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl'>>
+  patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>
 ): void {
-  const cols: Record<string, string> = { name: 'name', color: 'color', signature: 'signature', caldavUrl: 'caldav_url' }
+  const cols: Record<string, string> = {
+    name: 'name',
+    color: 'color',
+    signature: 'signature',
+    caldavUrl: 'caldav_url',
+    notify: 'notify',
+    inUnified: 'in_unified',
+    syncDepth: 'sync_depth'
+  }
   const sets: string[] = []
-  const values: (string | null)[] = []
+  const values: (string | number | null)[] = []
   for (const [key, value] of Object.entries(patch)) {
     if (!(key in cols) || value === undefined) continue
     sets.push(`${cols[key]} = ?`)
-    values.push(value as string | null)
+    values.push(typeof value === 'boolean' ? (value ? 1 : 0) : (value as string | number | null))
   }
   if (!sets.length) return
   getDb()

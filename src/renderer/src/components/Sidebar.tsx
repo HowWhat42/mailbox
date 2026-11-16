@@ -84,7 +84,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const { mode, view, accounts, folders, counts, syncing, theme } = useStore()
   const layout = useLayout()
   const collapsed = !forceExpanded && layout.rail
-  const { compose, setSetup, setSettings, setTheme, toast } = useStore.getState()
+  const { compose, setSetup, openSettings, updateSettings, toast } = useStore.getState()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
   const errored = accounts.filter((a) => a.syncError)
@@ -212,17 +212,17 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
       {!collapsed && <NextUp />}
 
       {!collapsed && errored.length > 0 && (
-        <button onClick={() => setSettings(true)} className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger">
+        <button onClick={() => openSettings()} className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger">
           {errored.length === 1 ? `${errored[0].email} : ${errored[0].syncError}` : `${errored.length} comptes en erreur`}
         </button>
       )}
 
       <div className={`flex shrink-0 items-center gap-1 pb-2 ${collapsed ? 'flex-col px-2.5' : 'h-11 px-3'}`}>
-        <button onClick={() => setSettings(true)} title="Réglages" aria-label="Réglages" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button onClick={() => openSettings()} title="Réglages" aria-label="Réglages" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
           <SettingsIcon size={15} strokeWidth={1.75} />
         </button>
         <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onClick={() => updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' })}
           title={theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
           aria-label={theme === 'dark' ? 'Thème clair' : 'Thème sombre'}
           className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"

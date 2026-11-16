@@ -37,8 +37,8 @@ function buildDoc(html: string, allowRemote: boolean): string {
   return clean.replace(/<head>/i, `<head>${base}`)
 }
 
-export function MessageBody({ html, text }: { html: string | null; text: string | null }) {
-  const [allowRemote, setAllowRemote] = useState(false)
+export function MessageBody({ html, text, allowRemoteByDefault = false }: { html: string | null; text: string | null; allowRemoteByDefault?: boolean }) {
+  const [allowRemote, setAllowRemote] = useState(allowRemoteByDefault)
   const frame = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(80)
   const source = html ?? (text ? `<pre style="font:inherit;margin:0">${textToHtml(text)}</pre>` : '<p style="color:#888">(message vide)</p>')
