@@ -8,7 +8,11 @@ export function Toasts() {
     <div aria-live="polite" className="pointer-events-none fixed bottom-5 left-1/2 z-[60] flex -translate-x-1/2 flex-col items-center gap-2">
       {toasts.map((t) => (
         <div key={t.id} className="pop-in pointer-events-auto flex max-w-[540px] items-center gap-3 rounded-xl glass py-2 pl-3.5 pr-2 text-[13px]">
-          {t.tone === 'error' ? <CircleAlert size={15} className="shrink-0 text-danger" /> : <CheckCircle2 size={15} className="shrink-0 text-accent" />}
+          {t.tone === 'error' ? (
+            <CircleAlert size={15} className="shrink-0 text-danger" />
+          ) : (
+            <CheckCircle2 size={15} className="shrink-0 text-accent" />
+          )}
           <span className={`whitespace-pre-line ${t.tone === 'error' ? 'text-danger' : 'text-fg'}`}>{t.text}</span>
           {t.action && (
             <button
@@ -22,7 +26,11 @@ export function Toasts() {
               <kbd className="ml-1.5 text-[11px] font-normal text-muted">Z</kbd>
             </button>
           )}
-          <button onClick={() => dismiss(t.id)} className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg" aria-label="Fermer">
+          <button
+            onClick={() => dismiss(t.id)}
+            className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            aria-label="Fermer"
+          >
             <X size={13} />
           </button>
         </div>

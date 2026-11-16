@@ -62,7 +62,14 @@ export function SettingsView() {
 
   return (
     <div className={`flex min-h-0 min-w-0 flex-1 ${single ? 'flex-col' : ''}`}>
-      <nav aria-label="Sections des réglages" className={single ? 'flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2' : 'w-[232px] shrink-0 space-y-0.5 overflow-y-auto border-r border-line p-3'}>
+      <nav
+        aria-label="Sections des réglages"
+        className={
+          single
+            ? 'flex shrink-0 gap-1 overflow-x-auto border-b border-line p-2'
+            : 'w-[232px] shrink-0 space-y-0.5 overflow-y-auto border-r border-line p-3'
+        }
+      >
         {!single && <p className="px-2.5 pb-2 pt-1 text-[15px] font-semibold tracking-[-0.01em]">Réglages</p>}
         {SECTIONS.map((s) => (
           <button key={s.id} onClick={() => openSettings(s.id)} className={item(section === s.id)}>
@@ -88,7 +95,12 @@ export function SettingsView() {
         <div className="mx-auto max-w-[760px] px-5 pb-16 pt-6 @[600px]:px-8">
           <div className="mb-6 flex items-center">
             <h1 className="flex-1 text-[22px] font-semibold tracking-[-0.02em]">{account ? 'Compte' : TITLES[section]}</h1>
-            <button onClick={() => setMode('mail')} aria-label="Fermer les réglages" title="Fermer (Échap)" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button
+              onClick={() => setMode('mail')}
+              aria-label="Fermer les réglages"
+              title="Fermer (Échap)"
+              className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
               <X size={17} />
             </button>
           </div>

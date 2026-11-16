@@ -33,12 +33,26 @@
   --shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 24px 60px -20px rgb(0 0 0 / 0.9), 0 0 0 1px color-mix(in oklch, var(--accent) 18%, transparent);
   --card-shadow: 0 0 0 1px var(--line);
   --glow: inset 0 -14px 22px -16px color-mix(in oklch, var(--accent) 65%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.04);
-  --selected-bg: linear-gradient(90deg, color-mix(in oklch, var(--accent) 32%, transparent), color-mix(in oklch, var(--accent-2) 12%, transparent) 60%, transparent);
-  --glass: linear-gradient(160deg, color-mix(in oklch, var(--accent) 12%, transparent), transparent 45%), color-mix(in oklch, var(--accent) 5%, rgb(9 8 20 / 0.94));
-  --primary-bg: radial-gradient(100% 60% at 50% 0%, rgb(255 255 255 / 0.14), transparent 70%),
-    linear-gradient(150deg, color-mix(in oklch, var(--accent) 85%, transparent), color-mix(in oklch, var(--accent-2) 38%, transparent) 60%, color-mix(in oklch, var(--accent) 40%, #000)),
+  --selected-bg: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--accent) 32%, transparent),
+    color-mix(in oklch, var(--accent-2) 12%, transparent) 60%,
+    transparent
+  );
+  --glass:
+    linear-gradient(160deg, color-mix(in oklch, var(--accent) 12%, transparent), transparent 45%),
+    color-mix(in oklch, var(--accent) 5%, rgb(9 8 20 / 0.94));
+  --primary-bg:
+    radial-gradient(100% 60% at 50% 0%, rgb(255 255 255 / 0.14), transparent 70%),
+    linear-gradient(
+      150deg,
+      color-mix(in oklch, var(--accent) 85%, transparent),
+      color-mix(in oklch, var(--accent-2) 38%, transparent) 60%,
+      color-mix(in oklch, var(--accent) 40%, #000)
+    ),
     color-mix(in oklch, var(--accent) 12%, #05050f);
-  --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -8px 14px -10px color-mix(in oklch, var(--accent) 80%, white),
+  --primary-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18), inset 0 -8px 14px -10px color-mix(in oklch, var(--accent) 80%, white),
     0 0 0 1px color-mix(in oklch, var(--accent) 30%, transparent), 0 4px 14px -6px color-mix(in oklch, var(--accent) 60%, transparent);
   --primary-fg: #ffffff;
   color-scheme: dark;
@@ -64,7 +78,12 @@
   --shadow: 0 16px 48px -12px rgb(30 20 80 / 0.25), 0 0 0 1px var(--line);
   --card-shadow: 0 1px 2px rgb(30 20 80 / 0.05), 0 0 0 1px var(--line);
   --glow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 16%, transparent);
-  --selected-bg: linear-gradient(90deg, color-mix(in oklch, var(--accent) 15%, transparent), color-mix(in oklch, var(--accent) 4%, transparent) 70%, transparent);
+  --selected-bg: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--accent) 15%, transparent),
+    color-mix(in oklch, var(--accent) 4%, transparent) 70%,
+    transparent
+  );
   --glass: #ffffff;
   --primary-bg: linear-gradient(160deg, color-mix(in oklch, var(--accent) 88%, white), color-mix(in oklch, var(--accent) 90%, black));
   --primary-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 4px 12px -4px color-mix(in oklch, var(--accent) 55%, transparent);
@@ -156,8 +175,7 @@ textarea,
   z-index: 0;
   pointer-events: none;
   background-color: #000;
-  background-image:
-    linear-gradient(90deg, #000 1px, transparent 1px), linear-gradient(0deg, #000 1px, transparent 1px), var(--nebula, none);
+  background-image: linear-gradient(90deg, #000 1px, transparent 1px), linear-gradient(0deg, #000 1px, transparent 1px), var(--nebula, none);
   background-size:
     var(--cell) var(--cell),
     var(--cell) var(--cell),
@@ -221,7 +239,10 @@ textarea,
     var(--cell) var(--cell),
     100% 100%;
   background-attachment: fixed, fixed, scroll;
-  background-position: right bottom, right bottom, 0 0;
+  background-position:
+    right bottom,
+    right bottom,
+    0 0;
   -webkit-background-clip: text;
   background-clip: text;
   opacity: 0.55;
@@ -236,7 +257,10 @@ textarea,
     var(--cell) var(--cell),
     100% 100%;
   background-attachment: fixed, fixed, scroll;
-  background-position: right bottom, right bottom, 0 0;
+  background-position:
+    right bottom,
+    right bottom,
+    0 0;
   -webkit-background-clip: text;
   background-clip: text;
   mix-blend-mode: normal;

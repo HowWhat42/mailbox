@@ -103,12 +103,18 @@ export function AppearanceSettings() {
         </div>
       </Section>
 
-      <Section title="Repère du compte" description="Dans la boîte unifiée, comment voir d’un coup d’œil de quelle boîte vient chaque message. La couleur et le nom court se règlent dans la page de chaque compte.">
+      <Section
+        title="Repère du compte"
+        description="Dans la boîte unifiée, comment voir d’un coup d’œil de quelle boîte vient chaque message. La couleur et le nom court se règlent dans la page de chaque compte."
+      >
         <MarkerPicker />
       </Section>
 
       <Section title="Affichage">
-        <Row label="Taille de l’interface" hint="Automatique : plus grande sur les écrans larges (2560 px et plus), recalculée quand la fenêtre change d’écran.">
+        <Row
+          label="Taille de l’interface"
+          hint="Automatique : plus grande sur les écrans larges (2560 px et plus), recalculée quand la fenêtre change d’écran."
+        >
           <Select
             ariaLabel="Taille de l’interface"
             className="w-48"

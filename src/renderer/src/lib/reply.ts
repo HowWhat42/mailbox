@@ -15,7 +15,10 @@ const same = (a: Address, b: Address): boolean => a.address.toLowerCase() === b.
 export async function replyDraft(thread: ThreadSummary, kind: ReplyKind, message?: MessageDetail): Promise<Partial<ComposeDraft>> {
   const msg = message ?? (await api.mail.thread(thread.accountId, thread.threadId)).at(-1)
   if (!msg) return { accountId: thread.accountId, kind }
-  const me = useStore.getState().accounts.find((a) => a.id === thread.accountId)?.email.toLowerCase()
+  const me = useStore
+    .getState()
+    .accounts.find((a) => a.id === thread.accountId)
+    ?.email.toLowerCase()
   const body = msg.html ?? (msg.text ? textToHtml(msg.text) : '')
 
   if (kind === 'forward') {
@@ -33,8 +36,7 @@ export async function replyDraft(thread: ThreadSummary, kind: ReplyKind, message
 
   const fromMe = msg.from.address.toLowerCase() === me
   const primary = fromMe ? msg.to : msg.replyTo.length ? msg.replyTo : [msg.from]
-  const others =
-    kind === 'replyAll' ? [...msg.to, ...msg.cc].filter((a) => a.address.toLowerCase() !== me && !primary.some((p) => same(p, a))) : []
+  const others = kind === 'replyAll' ? [...msg.to, ...msg.cc].filter((a) => a.address.toLowerCase() !== me && !primary.some((p) => same(p, a))) : []
 
   return {
     kind,

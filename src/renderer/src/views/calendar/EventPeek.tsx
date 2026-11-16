@@ -52,7 +52,9 @@ export function EventPeek({
   const remove = async (): Promise<void> => {
     const ok = await confirmDialog({
       title: event.recurring ? 'Supprimer toute la série ?' : 'Supprimer cet événement ?',
-      body: event.recurring ? 'Cet événement se répète : toutes ses occurrences seront supprimées.' : `« ${event.title || 'Sans titre'} » sera supprimé de l’agenda.`,
+      body: event.recurring
+        ? 'Cet événement se répète : toutes ses occurrences seront supprimées.'
+        : `« ${event.title || 'Sans titre'} » sera supprimé de l’agenda.`,
       confirmLabel: event.recurring ? 'Supprimer la série' : 'Supprimer',
       tone: 'danger'
     })
@@ -78,7 +80,12 @@ export function EventPeek({
           <span className="ml-1 size-2.5 rounded-[3px]" style={{ background: color }} />
           <span className="min-w-0 flex-1 truncate pl-1 text-[12px] text-muted">{calendar?.name}</span>
           {event.webLink && (
-            <button onClick={() => void api.app.openExternal(event.webLink!)} title="Ouvrir dans le navigateur" aria-label="Ouvrir dans le navigateur" className={iconBtn}>
+            <button
+              onClick={() => void api.app.openExternal(event.webLink!)}
+              title="Ouvrir dans le navigateur"
+              aria-label="Ouvrir dans le navigateur"
+              className={iconBtn}
+            >
               <ExternalLink size={14} />
             </button>
           )}
@@ -87,7 +94,13 @@ export function EventPeek({
               <button onClick={onEdit} title="Modifier" aria-label="Modifier" className={iconBtn}>
                 <Pencil size={14} />
               </button>
-              <button onClick={() => void remove()} disabled={busy === 'delete'} title="Supprimer" aria-label="Supprimer l’événement" className={`${iconBtn} hover:!text-danger`}>
+              <button
+                onClick={() => void remove()}
+                disabled={busy === 'delete'}
+                title="Supprimer"
+                aria-label="Supprimer l’événement"
+                className={`${iconBtn} hover:!text-danger`}
+              >
                 <Trash2 size={14} />
               </button>
             </>
@@ -150,8 +163,8 @@ export function EventPeek({
           {people.length > 0 && (
             <div>
               <p className="mb-1.5 flex items-center gap-1.5 text-[12px] text-muted">
-                <Users size={13} /> {people.length} participant{people.length > 1 ? 's' : ''} ·{' '}
-                {people.filter((p) => p.status === 'accepted').length} oui · {people.filter((p) => p.status === 'declined').length} non
+                <Users size={13} /> {people.length} participant{people.length > 1 ? 's' : ''} · {people.filter((p) => p.status === 'accepted').length}{' '}
+                oui · {people.filter((p) => p.status === 'declined').length} non
               </p>
               <div className="space-y-0.5">
                 {people.slice(0, 12).map((p) => {
@@ -177,7 +190,12 @@ export function EventPeek({
             </div>
           )}
 
-          {event.description.trim() && <RichText text={event.description} className="max-h-48 overflow-y-auto border-t border-line pt-3 text-[12.5px] leading-relaxed text-fg-2 select-text" />}
+          {event.description.trim() && (
+            <RichText
+              text={event.description}
+              className="max-h-48 overflow-y-auto border-t border-line pt-3 text-[12.5px] leading-relaxed text-fg-2 select-text"
+            />
+          )}
         </div>
       </div>
     </Popover>

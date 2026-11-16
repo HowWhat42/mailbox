@@ -22,7 +22,13 @@ function rgb(hex: string): [number, number, number] {
 }
 
 function toHex([r, g, b]: number[]): string {
-  return `#${[r, g, b].map((v) => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')}`
+  return `#${[r, g, b]
+    .map((v) =>
+      Math.round(Math.max(0, Math.min(255, v)))
+        .toString(16)
+        .padStart(2, '0')
+    )
+    .join('')}`
 }
 
 /** Hue rotation in HSL: the second stop of the accent gradients. */

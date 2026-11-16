@@ -109,7 +109,9 @@ function tick(): void {
 }
 
 export function startReminders(): void {
-  getDb().prepare('DELETE FROM reminders_fired WHERE fired_at < ?').run(Date.now() - 14 * 86_400_000)
+  getDb()
+    .prepare('DELETE FROM reminders_fired WHERE fired_at < ?')
+    .run(Date.now() - 14 * 86_400_000)
   tick()
   timer ??= setInterval(tick, TICK)
 }

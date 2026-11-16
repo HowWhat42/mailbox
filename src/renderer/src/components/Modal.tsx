@@ -24,7 +24,11 @@ export function Modal({
         <div className="flex h-12 items-center px-5">
           <h2 className="text-[14px] font-semibold tracking-[-0.01em]">{title}</h2>
           {closable && (
-            <button onClick={onClose} aria-label="Fermer" className="ml-auto grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button
+              onClick={onClose}
+              aria-label="Fermer"
+              className="ml-auto grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
               <X size={15} />
             </button>
           )}

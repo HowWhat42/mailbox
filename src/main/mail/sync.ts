@@ -137,11 +137,9 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
       db.prepare('UPDATE folders SET uidvalidity = ? WHERE id = ?').run(uidvalidity, folder.id)
     }
 
-    const remoteUids = mailbox.exists ? ((await client.search({ all: true }, { uid: true })) || []) : []
+    const remoteUids = mailbox.exists ? (await client.search({ all: true }, { uid: true })) || [] : []
     const remoteSet = new Set(remoteUids)
-    const localUids = (
-      db.prepare('SELECT uid FROM messages WHERE folder_id = ?').all(folder.id) as { uid: number }[]
-    ).map((r) => r.uid)
+    const localUids = (db.prepare('SELECT uid FROM messages WHERE folder_id = ?').all(folder.id) as { uid: number }[]).map((r) => r.uid)
     const localSet = new Set(localUids)
 
     // 1. Expunged on the server.
@@ -215,7 +213,12 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
         const own = folder.role === 'sent' || folder.role === 'drafts'
         const { category, actions } = own
           ? { category: 'people' as const, actions: {} as RuleActions }
-          : classify({ fromAddr: from?.address ?? '', fromName: from?.name ?? '', to: to.map((a) => a.address), subject, signals }, rules, account.id, contacts)
+          : classify(
+              { fromAddr: from?.address ?? '', fromName: from?.name ?? '', to: to.map((a) => a.address), subject, signals },
+              rules,
+              account.id,
+              contacts
+            )
         const seen = msg.flags?.has('\\Seen') || !!actions.markRead
         const flagged = msg.flags?.has('\\Flagged') || !!actions.star
         if (actions.markRead && !msg.flags?.has('\\Seen')) toRead.push(msg.uid)

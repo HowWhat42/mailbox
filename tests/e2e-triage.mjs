@@ -11,7 +11,12 @@ mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
 const account = await createTestAccount()
-const smtp = createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
+const smtp = createTransport({
+  host: account.smtp.host,
+  port: account.smtp.port,
+  secure: account.smtp.secure,
+  auth: { user: account.user, pass: account.pass }
+})
 const send = (opts) => smtp.sendMail({ to: account.user, ...opts })
 
 await send({ from: 'Léa Moreau <lea@example.com>', subject: 'On déjeune vendredi ?', text: 'Ça te dit, vers 12h30 ?' })
@@ -75,16 +80,18 @@ const rows = () => page.locator('[role=option]')
 const bundle = (c) => page.locator(`[data-bundle="${c}"]`)
 const back = () => page.click('button[aria-label="Retour à la réception"]')
 const expectRows = async (label, texts) => {
-  await page.waitForFunction(
-    (want) => {
-      const got = [...document.querySelectorAll('[role=option]')].map((r) => r.textContent)
-      return got.length === want.length && want.every((w) => got.some((g) => g.includes(w)))
-    },
-    texts,
-    { timeout: 60_000 }
-  ).catch(async () => {
-    throw new Error(`${label}: expected ${JSON.stringify(texts)}, got ${JSON.stringify(await rows().allTextContents())}`)
-  })
+  await page
+    .waitForFunction(
+      (want) => {
+        const got = [...document.querySelectorAll('[role=option]')].map((r) => r.textContent)
+        return got.length === want.length && want.every((w) => got.some((g) => g.includes(w)))
+      },
+      texts,
+      { timeout: 60_000 }
+    )
+    .catch(async () => {
+      throw new Error(`${label}: expected ${JSON.stringify(texts)}, got ${JSON.stringify(await rows().allTextContents())}`)
+    })
 }
 
 await expectRows('Personnes', ['On déjeune', 'Facture du traiteur'])
@@ -165,7 +172,9 @@ const loginToggle = page.locator('div:has(> div > p:has-text("Lancer Mailbox au 
 await loginToggle.click()
 await page.waitForSelector('text=Enregistré auprès de Windows.', { timeout: 10_000 })
 await page.screenshot({ path: join(shots, 't-06-general.png') })
-const registered = await app.evaluate(({ app: electronApp }) => electronApp.getLoginItemSettings({ path: process.execPath, args: [electronApp.getAppPath(), '--hidden'] }).openAtLogin)
+const registered = await app.evaluate(
+  ({ app: electronApp }) => electronApp.getLoginItemSettings({ path: process.execPath, args: [electronApp.getAppPath(), '--hidden'] }).openAtLogin
+)
 if (!registered) throw new Error('login item not registered with the OS')
 await loginToggle.click()
 await page.waitForSelector('text=Pas lancé au démarrage.', { timeout: 10_000 })

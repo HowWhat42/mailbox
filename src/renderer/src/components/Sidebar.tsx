@@ -116,7 +116,9 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const customFolders = folders.filter((f) => !f.role)
 
   return (
-    <aside className={`flex shrink-0 flex-col transition-[width] duration-150 ${forceExpanded ? 'h-full w-full' : collapsed ? 'w-[60px]' : 'w-[232px]'}`}>
+    <aside
+      className={`flex shrink-0 flex-col transition-[width] duration-150 ${forceExpanded ? 'h-full w-full' : collapsed ? 'w-[60px]' : 'w-[232px]'}`}
+    >
       <div className={collapsed ? 'px-2.5 pb-3' : 'px-3 pb-3'}>
         <button
           onClick={() => {
@@ -139,7 +141,15 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
 
       <nav className={`min-h-0 flex-1 space-y-5 overflow-y-auto pb-3 ${collapsed ? 'px-2.5' : 'px-3'}`}>
         <div className="space-y-0.5">
-          <Item collapsed={collapsed} icon={Inbox} label={accounts.length > 1 ? 'Toutes les boîtes' : 'Réception'} count={counts.inbox} emphasize={counts.inbox > 0} active={active({ type: 'unified', role: 'inbox' })} onClick={() => setView({ type: 'unified', role: 'inbox' })} />
+          <Item
+            collapsed={collapsed}
+            icon={Inbox}
+            label={accounts.length > 1 ? 'Toutes les boîtes' : 'Réception'}
+            count={counts.inbox}
+            emphasize={counts.inbox > 0}
+            active={active({ type: 'unified', role: 'inbox' })}
+            onClick={() => setView({ type: 'unified', role: 'inbox' })}
+          />
           {!collapsed && accounts.length > 1 && (
             // One inbox per account, right under the unified one.
             <div className="ml-4 space-y-0.5 border-l border-line pl-2">
@@ -165,9 +175,28 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
               })}
             </div>
           )}
-          <Item collapsed={collapsed} icon={Star} label="Suivis" count={counts.flagged} active={active({ type: 'unified', role: 'flagged' })} onClick={() => setView({ type: 'unified', role: 'flagged' })} />
-          <Item collapsed={collapsed} icon={Send} label="Envoyés" active={active({ type: 'unified', role: 'sent' })} onClick={() => setView({ type: 'unified', role: 'sent' })} />
-          <Item collapsed={collapsed} icon={File} label="Brouillons" active={active({ type: 'unified', role: 'drafts' })} onClick={() => setView({ type: 'unified', role: 'drafts' })} />
+          <Item
+            collapsed={collapsed}
+            icon={Star}
+            label="Suivis"
+            count={counts.flagged}
+            active={active({ type: 'unified', role: 'flagged' })}
+            onClick={() => setView({ type: 'unified', role: 'flagged' })}
+          />
+          <Item
+            collapsed={collapsed}
+            icon={Send}
+            label="Envoyés"
+            active={active({ type: 'unified', role: 'sent' })}
+            onClick={() => setView({ type: 'unified', role: 'sent' })}
+          />
+          <Item
+            collapsed={collapsed}
+            icon={File}
+            label="Brouillons"
+            active={active({ type: 'unified', role: 'drafts' })}
+            onClick={() => setView({ type: 'unified', role: 'drafts' })}
+          />
           <Item collapsed={collapsed} icon={CalendarDays} label="Calendrier" active={mode === 'calendar'} onClick={() => setMode('calendar')} />
         </div>
 
@@ -238,13 +267,21 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
       {!collapsed && <NextUp />}
 
       {!collapsed && errored.length > 0 && (
-        <button onClick={() => openSettings()} className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger">
+        <button
+          onClick={() => openSettings()}
+          className="mx-3 mb-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-left text-[12px] leading-snug text-danger"
+        >
           {errored.length === 1 ? `${errored[0].email} : ${errored[0].syncError}` : `${errored.length} comptes en erreur`}
         </button>
       )}
 
       <div className={`flex shrink-0 items-center gap-1 pb-2 ${collapsed ? 'flex-col px-2.5' : 'h-11 px-3'}`}>
-        <button onClick={() => openSettings()} title="Réglages" aria-label="Réglages" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => openSettings()}
+          title="Réglages"
+          aria-label="Réglages"
+          className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <SettingsIcon size={15} strokeWidth={1.75} />
         </button>
         <button
@@ -255,7 +292,12 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
         >
           {theme === 'dark' ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
         </button>
-        <button onClick={sync} title="Synchroniser" aria-label="Synchroniser" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={sync}
+          title="Synchroniser"
+          aria-label="Synchroniser"
+          className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <RefreshCw size={14} strokeWidth={1.75} className={isSyncing ? 'animate-spin' : ''} />
         </button>
         {!collapsed && (

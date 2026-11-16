@@ -16,7 +16,19 @@ export type MenuEntry =
   | 'separator'
 
 /** Keyboard-navigable menu: ↑ ↓ to move, Enter to pick, Escape to close. */
-export function Menu({ anchor, items, onClose, align, minWidth = 200 }: { anchor: Anchor; items: MenuEntry[]; onClose: () => void; align?: 'start' | 'end'; minWidth?: number }) {
+export function Menu({
+  anchor,
+  items,
+  onClose,
+  align,
+  minWidth = 200
+}: {
+  anchor: Anchor
+  items: MenuEntry[]
+  onClose: () => void
+  align?: 'start' | 'end'
+  minWidth?: number
+}) {
   const actionable = items.flatMap((it, i) => (it !== 'separator' && !it.disabled ? [i] : []))
   const [active, setActive] = useState(-1)
   const list = useRef<HTMLDivElement>(null)

@@ -15,7 +15,12 @@ function CalendarRow({ c, onChange }: { c: Calendar; onChange: () => void }) {
   return (
     <div className="space-y-2 px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={() => setPicking(!picking)} aria-label={`Couleur de ${c.name}`} className="size-4 shrink-0 rounded-full ring-offset-2 ring-offset-[var(--surface-solid)] hover:ring-2 hover:ring-line-strong" style={{ background: c.color }} />
+        <button
+          onClick={() => setPicking(!picking)}
+          aria-label={`Couleur de ${c.name}`}
+          className="size-4 shrink-0 rounded-full ring-offset-2 ring-offset-[var(--surface-solid)] hover:ring-2 hover:ring-line-strong"
+          style={{ background: c.color }}
+        />
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
           {c.name}
           {c.readOnly && <span className="ml-2 text-[11.5px] font-normal text-muted">lecture seule</span>}
@@ -30,7 +35,10 @@ function CalendarRow({ c, onChange }: { c: Calendar; onChange: () => void }) {
           disabled={!c.notify}
           value={c.reminderOverride == null ? 'auto' : String(c.reminderOverride)}
           onChange={(v) => void api.calendar.setCalendarPrefs(c.id, { reminderOverride: v === 'auto' ? null : Number(v) }).then(onChange)}
-          options={[{ value: 'auto', label: 'Rappels de l’événement' }, ...[0, 5, 10, 15, 30, 60, 1440].map((m) => ({ value: String(m), label: minutesLabel(m) }))]}
+          options={[
+            { value: 'auto', label: 'Rappels de l’événement' },
+            ...[0, 5, 10, 15, 30, 60, 1440].map((m) => ({ value: String(m), label: minutesLabel(m) }))
+          ]}
         />
       </div>
       {picking && (
@@ -93,11 +101,20 @@ export function CalendarSettings() {
               ))}
             <div className="flex items-center gap-2 px-4 py-3 text-[12px] text-muted">
               <Icon size={13} />
-              <span className="flex-1">{s.lastSyncAt ? `Actualisé à ${new Date(s.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Jamais actualisé'}</span>
+              <span className="flex-1">
+                {s.lastSyncAt
+                  ? `Actualisé à ${new Date(s.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+                  : 'Jamais actualisé'}
+              </span>
               {!s.accountId && (
                 <button
                   onClick={async () => {
-                    const ok = await confirmDialog({ title: `Retirer « ${s.name} » ?`, body: 'Rien n’est supprimé sur le serveur.', confirmLabel: 'Retirer', tone: 'danger' })
+                    const ok = await confirmDialog({
+                      title: `Retirer « ${s.name} » ?`,
+                      body: 'Rien n’est supprimé sur le serveur.',
+                      confirmLabel: 'Retirer',
+                      tone: 'danger'
+                    })
                     if (ok) {
                       await api.calendar.removeSource(s.id)
                       load()

@@ -50,24 +50,38 @@ export function AccountSettings({ account }: { account: Account }) {
           <h2 className="truncate text-[17px] font-semibold tracking-[-0.01em]">{account.email}</h2>
           <p className="text-[12px] text-muted">
             {account.kind === 'google' ? 'Google' : `IMAP · ${account.imapHost}`}
-            {account.lastSyncAt && ` · synchronisé à ${new Date(account.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+            {account.lastSyncAt &&
+              ` · synchronisé à ${new Date(account.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
           </p>
         </div>
         <button
-          onClick={() => void api.mail.sync(account.id).then(() => toast('Compte synchronisé')).catch((e: Error) => toast(e.message, 'error'))}
+          onClick={() =>
+            void api.mail
+              .sync(account.id)
+              .then(() => toast('Compte synchronisé'))
+              .catch((e: Error) => toast(e.message, 'error'))
+          }
           className="flex h-8 items-center gap-1.5 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
         >
           <RefreshCw size={13} /> Synchroniser
         </button>
       </div>
-      {account.syncError && <p className="mb-5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{account.syncError}</p>}
+      {account.syncError && (
+        <p className="mb-5 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger">{account.syncError}</p>
+      )}
 
       <Section title="Identité">
         <Row label="Nom affiché aux destinataires" stack>
           <input value={name} onChange={(e) => setName(e.target.value)} className={fieldCls} aria-label="Nom affiché" />
         </Row>
         <Row label="Signature" hint="Ajoutée aux nouveaux messages, réponses et transferts." stack>
-          <textarea value={signature} onChange={(e) => setSignature(e.target.value)} rows={4} className={`${fieldCls} h-auto resize-y py-2`} aria-label="Signature" />
+          <textarea
+            value={signature}
+            onChange={(e) => setSignature(e.target.value)}
+            rows={4}
+            className={`${fieldCls} h-auto resize-y py-2`}
+            aria-label="Signature"
+          />
         </Row>
         {dirty && (
           <div className="flex justify-end px-4 py-3">
@@ -116,7 +130,15 @@ export function AccountSettings({ account }: { account: Account }) {
             />
           </div>
         </Row>
-        <Row label="Aperçu" hint={<button onClick={() => openSettings('appearance')} className="text-accent hover:underline">Changer le style de repère</button>} stack>
+        <Row
+          label="Aperçu"
+          hint={
+            <button onClick={() => openSettings('appearance')} className="text-accent hover:underline">
+              Changer le style de repère
+            </button>
+          }
+          stack
+        >
           <div className="max-w-[420px]">
             <MarkerSample marker={marker === 'none' ? 'stripe' : marker} account={{ ...account, label }} />
           </div>
@@ -130,7 +152,10 @@ export function AccountSettings({ account }: { account: Account }) {
         <Row label="Notifications" hint="Les réglages généraux (heures calmes, tri intelligent) s’appliquent en plus.">
           <Toggle label="" checked={account.notify} onChange={(v) => patch({ notify: v })} />
         </Row>
-        <Row label="Messages gardés sur cet ordinateur" hint="Les plus récents de chaque dossier ; la recherche porte sur eux. Les plus anciens restent sur le serveur.">
+        <Row
+          label="Messages gardés sur cet ordinateur"
+          hint="Les plus récents de chaque dossier ; la recherche porte sur eux. Les plus anciens restent sur le serveur."
+        >
           <Select
             ariaLabel="Profondeur de synchronisation"
             className="w-44"
@@ -142,9 +167,18 @@ export function AccountSettings({ account }: { account: Account }) {
       </Section>
 
       {account.kind === 'imap' && (
-        <Section title="Agenda" description="Les agendas CalDAV de ce compte (mêmes identifiants que la messagerie). Pour un autre serveur, ajoutez un agenda indépendant.">
+        <Section
+          title="Agenda"
+          description="Les agendas CalDAV de ce compte (mêmes identifiants que la messagerie). Pour un autre serveur, ajoutez un agenda indépendant."
+        >
           <Row label="Adresse CalDAV" stack>
-            <input value={caldavUrl} onChange={(e) => setCaldavUrl(e.target.value)} className={fieldCls} placeholder="https://" aria-label="Adresse CalDAV" />
+            <input
+              value={caldavUrl}
+              onChange={(e) => setCaldavUrl(e.target.value)}
+              className={fieldCls}
+              placeholder="https://"
+              aria-label="Adresse CalDAV"
+            />
           </Row>
         </Section>
       )}

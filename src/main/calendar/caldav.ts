@@ -60,7 +60,9 @@ export async function caldavEvents(source: CalendarSource, calendarUrl: string, 
   const self = [source.username ?? ''].filter((e) => e.includes('@'))
   return objects.flatMap((o) => {
     try {
-      return o.data ? eventsFrom(parseCalendar(o.data), { idBase: o.url, etag: o.etag ?? null, raw: o.data, start, end, selfEmails: self, perUid: false }) : []
+      return o.data
+        ? eventsFrom(parseCalendar(o.data), { idBase: o.url, etag: o.etag ?? null, raw: o.data, start, end, selfEmails: self, perUid: false })
+        : []
     } catch {
       return []
     }
@@ -93,7 +95,11 @@ export async function caldavCreate(source: CalendarSource, calendarUrl: string, 
   vevent.updatePropertyWithValue('uid', uid)
   applyInput(vevent, input)
   cal.addSubcomponent(vevent)
-  const res = await client.createCalendarObject({ calendar: calendarByUrl(calendars, calendarUrl), iCalString: cal.toString(), filename: `${uid}.ics` })
+  const res = await client.createCalendarObject({
+    calendar: calendarByUrl(calendars, calendarUrl),
+    iCalString: cal.toString(),
+    filename: `${uid}.ics`
+  })
   if (!res.ok) throw new Error(`CalDAV : création refusée (${res.status}).`)
 }
 
@@ -103,7 +109,14 @@ function master(root: Component): Component {
   return vevent
 }
 
-export async function caldavUpdate(source: CalendarSource, remoteId: string, etag: string | null, ical: string, input: EventInput, recurring: boolean): Promise<void> {
+export async function caldavUpdate(
+  source: CalendarSource,
+  remoteId: string,
+  etag: string | null,
+  ical: string,
+  input: EventInput,
+  recurring: boolean
+): Promise<void> {
   if (recurring) throw new Error('La modification des événements récurrents CalDAV n’est pas encore prise en charge.')
   const { client } = await connect(source)
   const root = parseCalendar(ical)
@@ -125,14 +138,24 @@ const PARTSTAT: Record<ResponseStatus, string> = { accepted: 'ACCEPTED', decline
  * Sets our PARTSTAT on the event (whole series for recurring ones). Servers with
  * scheduling support (Nextcloud, Fastmail…) forward the answer to the organizer.
  */
-export async function caldavRespond(source: CalendarSource, remoteId: string, etag: string | null, ical: string, status: ResponseStatus): Promise<void> {
+export async function caldavRespond(
+  source: CalendarSource,
+  remoteId: string,
+  etag: string | null,
+  ical: string,
+  status: ResponseStatus
+): Promise<void> {
   const { client } = await connect(source)
   const me = (source.username ?? '').toLowerCase()
   const root = parseCalendar(ical)
   let found = false
   for (const vevent of root.getAllSubcomponents('vevent')) {
     for (const p of vevent.getAllProperties('attendee')) {
-      if (String(p.getFirstValue()).replace(/^mailto:/i, '').toLowerCase() === me) {
+      if (
+        String(p.getFirstValue())
+          .replace(/^mailto:/i, '')
+          .toLowerCase() === me
+      ) {
         p.setParameter('partstat', PARTSTAT[status])
         p.removeParameter('rsvp')
         found = true

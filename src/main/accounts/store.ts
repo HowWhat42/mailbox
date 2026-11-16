@@ -79,9 +79,7 @@ export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncA
 
 export function insertAccount(input: NewAccount, secret: AccountSecret): Account {
   const db = getDb()
-  const existing = db.prepare('SELECT id FROM accounts WHERE email = ? AND kind = ?').get(input.email, input.kind) as
-    | { id: string }
-    | undefined
+  const existing = db.prepare('SELECT id FROM accounts WHERE email = ? AND kind = ?').get(input.email, input.kind) as { id: string } | undefined
   if (existing) throw new Error(`Le compte ${input.email} est déjà configuré.`)
   const count = (db.prepare('SELECT count(*) AS n FROM accounts').get() as { n: number }).n
   const id = randomUUID()

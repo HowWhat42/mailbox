@@ -29,7 +29,10 @@ export function DialogHost() {
         <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{dialog.title}</h2>
         {dialog.body && <p className="mt-2 text-[13px] leading-relaxed text-fg-2">{dialog.body}</p>}
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={() => dialog.resolve(false)} className="h-8 rounded-md border border-line px-3.5 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+          <button
+            onClick={() => dialog.resolve(false)}
+            className="h-8 rounded-md border border-line px-3.5 text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+          >
             {dialog.cancelLabel ?? 'Annuler'}
           </button>
           <button

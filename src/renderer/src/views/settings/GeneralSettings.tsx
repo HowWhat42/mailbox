@@ -17,7 +17,10 @@ export function GeneralSettings() {
 
   return (
     <>
-      <Section title="Démarrage" description="Mailbox peut se lancer avec Windows et rester discret dans la barre des tâches, pour que les rappels et les nouveaux messages arrivent même fenêtre fermée.">
+      <Section
+        title="Démarrage"
+        description="Mailbox peut se lancer avec Windows et rester discret dans la barre des tâches, pour que les rappels et les nouveaux messages arrivent même fenêtre fermée."
+      >
         <Row
           label="Lancer Mailbox au démarrage de Windows"
           hint={

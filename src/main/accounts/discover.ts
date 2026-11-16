@@ -31,10 +31,7 @@ function tag(block: string, name: string): string | null {
 
 function expand(template: string, email: string): string {
   const [local, domain] = email.split('@')
-  return template
-    .replaceAll('%EMAILADDRESS%', email)
-    .replaceAll('%EMAILLOCALPART%', local)
-    .replaceAll('%EMAILDOMAIN%', domain)
+  return template.replaceAll('%EMAILADDRESS%', email).replaceAll('%EMAILLOCALPART%', local).replaceAll('%EMAILDOMAIN%', domain)
 }
 
 function parseAutoconfig(xml: string, email: string): ServerSettings | null {

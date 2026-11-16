@@ -22,7 +22,17 @@ export function Row({ label, hint, children, stack }: { label: string; hint?: Re
   )
 }
 
-export function Segmented<T extends string | number>({ value, options, onChange, ariaLabel }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; ariaLabel: string }) {
+export function Segmented<T extends string | number>({
+  value,
+  options,
+  onChange,
+  ariaLabel
+}: {
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (v: T) => void
+  ariaLabel: string
+}) {
   return (
     <div role="radiogroup" aria-label={ariaLabel} className="flex rounded-lg border border-line p-0.5">
       {options.map((o) => (

@@ -6,19 +6,13 @@ export function addressList(value: AddressObject | AddressObject[] | undefined):
   const groups = Array.isArray(value) ? value : [value]
   return groups.flatMap((g) =>
     g.value.flatMap((a) =>
-      a.group
-        ? a.group.map((m) => ({ name: m.name ?? '', address: m.address ?? '' }))
-        : [{ name: a.name ?? '', address: a.address ?? '' }]
+      a.group ? a.group.map((m) => ({ name: m.name ?? '', address: m.address ?? '' })) : [{ name: a.name ?? '', address: a.address ?? '' }]
     )
   )
 }
 
 export function snippetOf(text: string | undefined | null): string {
-  return (text ?? '')
-    .replace(/^>.*$/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 220)
+  return (text ?? '').replace(/^>.*$/gm, '').replace(/\s+/g, ' ').trim().slice(0, 220)
 }
 
 /** Parses a (possibly truncated) message prefix just to get a preview line. */

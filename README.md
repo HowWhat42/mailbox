@@ -39,26 +39,26 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 
 ## Raccourcis
 
-| Touche | Action |
-| --- | --- |
-| `Ctrl K` | Palette de commandes |
-| `J` / `K` | Conversation suivante / précédente |
-| `E` | Archiver |
-| `#` / `Suppr` | Supprimer |
-| `S` | Suivre / ne plus suivre |
-| `U` | Lu / non lu |
-| `!` | Indésirable |
-| `V` | Déplacer vers un dossier |
-| `X` | Cocher la conversation |
-| `Z` | Annuler la dernière action |
-| `Ctrl \` | Afficher / masquer la barre latérale |
-| `R` / `A` / `F` | Répondre / répondre à tous / transférer |
-| `C` | Nouveau message |
-| `/` | Rechercher |
-| `Ctrl Entrée` | Envoyer |
-| `G` puis `I` `S` `T` `D` `C` | Réception, suivis, envoyés, brouillons, calendrier |
-| Calendrier : `T` `D` `W` `M` `A` | Aujourd'hui, jour, semaine, mois, agenda |
-| Calendrier : `N` `←` `→` | Nouvel événement, période précédente / suivante |
+| Touche                           | Action                                             |
+| -------------------------------- | -------------------------------------------------- |
+| `Ctrl K`                         | Palette de commandes                               |
+| `J` / `K`                        | Conversation suivante / précédente                 |
+| `E`                              | Archiver                                           |
+| `#` / `Suppr`                    | Supprimer                                          |
+| `S`                              | Suivre / ne plus suivre                            |
+| `U`                              | Lu / non lu                                        |
+| `!`                              | Indésirable                                        |
+| `V`                              | Déplacer vers un dossier                           |
+| `X`                              | Cocher la conversation                             |
+| `Z`                              | Annuler la dernière action                         |
+| `Ctrl \`                         | Afficher / masquer la barre latérale               |
+| `R` / `A` / `F`                  | Répondre / répondre à tous / transférer            |
+| `C`                              | Nouveau message                                    |
+| `/`                              | Rechercher                                         |
+| `Ctrl Entrée`                    | Envoyer                                            |
+| `G` puis `I` `S` `T` `D` `C`     | Réception, suivis, envoyés, brouillons, calendrier |
+| Calendrier : `T` `D` `W` `M` `A` | Aujourd'hui, jour, semaine, mois, agenda           |
+| Calendrier : `N` `←` `→`         | Nouvel événement, période précédente / suivante    |
 
 ## Ce qui est là
 

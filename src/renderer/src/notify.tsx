@@ -43,13 +43,20 @@ function Card({ r, now }: { r: Reminder; now: number }) {
   return (
     <article
       className="pop-in glass relative flex h-[132px] shrink-0 flex-col overflow-hidden rounded-2xl border border-line pl-5 pr-3 pt-3"
-      style={{ boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -18px rgb(0 0 0 / 0.9), inset 0 -18px 28px -22px rgb(120 100 255 / 0.55)' }}
+      style={{
+        boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -18px rgb(0 0 0 / 0.9), inset 0 -18px 28px -22px rgb(120 100 255 / 0.55)'
+      }}
     >
       <span className="absolute inset-y-3 left-2 w-[3px] rounded-full" style={{ background: r.color }} />
       <div className="flex items-center gap-2 text-[11.5px]">
         <span className={`font-semibold ${startingSoon ? 'text-accent' : 'text-fg-2'}`}>{relative(r.start, now)}</span>
         <span className="truncate text-muted">· {r.calendarName}</span>
-        <button onClick={() => void api.reminders.dismiss(r.key)} aria-label="Ignorer" title="Ignorer" className="ml-auto grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => void api.reminders.dismiss(r.key)}
+          aria-label="Ignorer"
+          title="Ignorer"
+          className="ml-auto grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <X size={14} />
         </button>
       </div>
@@ -70,7 +77,10 @@ function Card({ r, now }: { r: Reminder; now: number }) {
       </button>
       <div className="mt-auto flex items-center gap-1.5 pb-3">
         {r.meetingUrl && (
-          <button onClick={() => void api.reminders.join(r.key)} className="btn-primary flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold">
+          <button
+            onClick={() => void api.reminders.join(r.key)}
+            className="btn-primary flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-semibold"
+          >
             <Video size={14} /> Rejoindre
           </button>
         )}
@@ -80,10 +90,16 @@ function Card({ r, now }: { r: Reminder; now: number }) {
         >
           <AlarmClock size={13} /> 5 min
         </button>
-        <button onClick={() => void api.reminders.snooze(r.key, 15)} className="h-8 rounded-lg border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => void api.reminders.snooze(r.key, 15)}
+          className="h-8 rounded-lg border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+        >
           15 min
         </button>
-        <button onClick={() => void api.reminders.dismiss(r.key)} className="ml-auto h-8 rounded-lg px-2.5 text-[12.5px] text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => void api.reminders.dismiss(r.key)}
+          className="ml-auto h-8 rounded-lg px-2.5 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
+        >
           Ignorer
         </button>
       </div>

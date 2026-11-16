@@ -83,7 +83,11 @@ export function CalendarView() {
   }, [start, end])
 
   const reload = useCallback(async () => {
-    const [srcs, cals, evs] = await Promise.all([api.calendar.sources(), api.calendar.calendars(), api.calendar.events(start.getTime(), end.getTime())])
+    const [srcs, cals, evs] = await Promise.all([
+      api.calendar.sources(),
+      api.calendar.calendars(),
+      api.calendar.events(start.getTime(), end.getTime())
+    ])
     setSources(srcs)
     setCalendars(cals)
     setEvents(evs)
@@ -243,7 +247,15 @@ export function CalendarView() {
     setPeek(null)
     setEditor({
       id: e.id,
-      input: { calendarId: e.calendarId, title: e.title, location: e.location, description: e.description, start: e.start, end: e.end, allDay: e.allDay },
+      input: {
+        calendarId: e.calendarId,
+        title: e.title,
+        location: e.location,
+        description: e.description,
+        start: e.start,
+        end: e.end,
+        allDay: e.allDay
+      },
       recurring: e.recurring
     })
   }
@@ -315,7 +327,10 @@ export function CalendarView() {
               )
             })}
 
-            <button onClick={() => setAdding(true)} className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+            <button
+              onClick={() => setAdding(true)}
+              className="flex h-8 w-full items-center gap-2.5 rounded-lg px-2 text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+            >
               <Plus size={15} className="text-muted" /> Ajouter un agenda
             </button>
           </div>
@@ -324,18 +339,37 @@ export function CalendarView() {
 
       <div ref={body} className="@container flex min-w-0 flex-1 flex-col">
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-3 sm:px-4">
-          <h1 className={`min-w-0 truncate font-semibold capitalize tracking-[-0.015em] ${compact ? 'text-[14px]' : 'min-w-44 text-[16px]'}`}>{title}</h1>
+          <h1 className={`min-w-0 truncate font-semibold capitalize tracking-[-0.015em] ${compact ? 'text-[14px]' : 'min-w-44 text-[16px]'}`}>
+            {title}
+          </h1>
           <div className="flex shrink-0 items-center gap-1">
-            <button onClick={() => setAnchor(new Date())} className="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg" title="Aujourd’hui (T)">
+            <button
+              onClick={() => setAnchor(new Date())}
+              className="h-7 rounded-md border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+              title="Aujourd’hui (T)"
+            >
               {compact ? 'Auj.' : 'Aujourd’hui'}
             </button>
-            <button onClick={() => step(-1)} aria-label="Précédent" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button
+              onClick={() => step(-1)}
+              aria-label="Précédent"
+              className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
               <ChevronLeft size={16} />
             </button>
-            <button onClick={() => step(1)} aria-label="Suivant" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button
+              onClick={() => step(1)}
+              aria-label="Suivant"
+              className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
               <ChevronRight size={16} />
             </button>
-            <button onClick={() => void refresh()} aria-label="Actualiser" title="Actualiser" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <button
+              onClick={() => void refresh()}
+              aria-label="Actualiser"
+              title="Actualiser"
+              className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+            >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
@@ -364,7 +398,10 @@ export function CalendarView() {
           {compact ? (
             <button
               onClick={(e) =>
-                setMenu({ anchor: e.currentTarget, items: ranges.map((r) => ({ label: RANGE_LABEL[r], checked: r === range, onSelect: () => pickRange(r) })) })
+                setMenu({
+                  anchor: e.currentTarget,
+                  items: ranges.map((r) => ({ label: RANGE_LABEL[r], checked: r === range, onSelect: () => pickRange(r) }))
+                })
               }
               className="h-7 shrink-0 rounded-md border border-line px-2.5 text-[12px] text-fg-2 hover:bg-hover"
             >
@@ -445,4 +482,3 @@ export function CalendarView() {
     </div>
   )
 }
-

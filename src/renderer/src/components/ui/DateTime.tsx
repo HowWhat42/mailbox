@@ -43,10 +43,20 @@ export function DatePicker({ value, onChange, disabled }: { value: number; onCha
           <div className="w-[252px] p-2">
             <div className="mb-2 flex items-center">
               <span className="flex-1 pl-1 text-[13px] font-semibold capitalize">{format(month, 'MMMM yyyy', { locale: fr })}</span>
-              <button type="button" onClick={() => setMonth(addMonths(month, -1))} aria-label="Mois précédent" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+              <button
+                type="button"
+                onClick={() => setMonth(addMonths(month, -1))}
+                aria-label="Mois précédent"
+                className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              >
                 <ChevronLeft size={15} />
               </button>
-              <button type="button" onClick={() => setMonth(addMonths(month, 1))} aria-label="Mois suivant" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+              <button
+                type="button"
+                onClick={() => setMonth(addMonths(month, 1))}
+                aria-label="Mois suivant"
+                className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              >
                 <ChevronRight size={15} />
               </button>
             </div>

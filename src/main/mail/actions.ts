@@ -127,9 +127,9 @@ async function serverAction(
 export function threadTargets(accountId: string, threadId: string, folderId: string, action: MessageAction): string[] {
   const db = getDb()
   if (action === 'read' || action === 'unread' || action === 'unflag') {
-    return (
-      db.prepare('SELECT id FROM messages WHERE account_id = ? AND thread_id = ?').all(accountId, threadId) as { id: string }[]
-    ).map((r) => r.id)
+    return (db.prepare('SELECT id FROM messages WHERE account_id = ? AND thread_id = ?').all(accountId, threadId) as { id: string }[]).map(
+      (r) => r.id
+    )
   }
   if (action === 'flag') {
     const latest = db
@@ -138,8 +138,8 @@ export function threadTargets(accountId: string, threadId: string, folderId: str
     return latest ? [latest.id] : []
   }
   return (
-    db
-      .prepare('SELECT id FROM messages WHERE account_id = ? AND thread_id = ? AND folder_id = ?')
-      .all(accountId, threadId, folderId) as { id: string }[]
+    db.prepare('SELECT id FROM messages WHERE account_id = ? AND thread_id = ? AND folder_id = ?').all(accountId, threadId, folderId) as {
+      id: string
+    }[]
   ).map((r) => r.id)
 }

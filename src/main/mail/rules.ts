@@ -4,7 +4,12 @@ import { getDb, tx } from '../db'
 import { emit } from '../events'
 import { classify, type Signals } from './triage'
 
-const LABEL: Record<MailCategory, string> = { people: 'Personnes', notifications: 'Notifications', newsletters: 'Newsletters', invitations: 'Invitations' }
+const LABEL: Record<MailCategory, string> = {
+  people: 'Personnes',
+  notifications: 'Notifications',
+  newsletters: 'Newsletters',
+  invitations: 'Invitations'
+}
 
 export function listRules(): MailRule[] {
   return (getDb().prepare('SELECT data FROM rules ORDER BY position').all() as { data: string }[]).map((r) => JSON.parse(r.data))
@@ -98,11 +103,21 @@ export function reapplyRules(): number {
 /** "Always sort mail from this sender into…": updates the sender's rule or creates one. */
 export function classifySender(address: string, category: MailCategory): void {
   const addr = address.trim().toLowerCase()
-  const existing = listRules().find((r) => r.conditions.length === 1 && r.conditions[0].field === 'from' && r.conditions[0].op === 'is' && r.conditions[0].value.toLowerCase() === addr)
+  const existing = listRules().find(
+    (r) =>
+      r.conditions.length === 1 && r.conditions[0].field === 'from' && r.conditions[0].op === 'is' && r.conditions[0].value.toLowerCase() === addr
+  )
   saveRule(
     existing
       ? { ...existing, enabled: true, actions: { ...existing.actions, category }, name: `${addr} → ${LABEL[category]}` }
-      : { id: '', name: `${addr} → ${LABEL[category]}`, enabled: true, accountId: null, conditions: [{ field: 'from', op: 'is', value: addr }], actions: { category } }
+      : {
+          id: '',
+          name: `${addr} → ${LABEL[category]}`,
+          enabled: true,
+          accountId: null,
+          conditions: [{ field: 'from', op: 'is', value: addr }],
+          actions: { category }
+        }
   )
   reapplyRules()
 }

@@ -81,7 +81,13 @@ export function Select<T extends string>({
           anchor={anchor}
           onClose={() => setAnchor(null)}
           minWidth={anchor.offsetWidth}
-          items={options.map((o) => ({ label: o.label, hint: o.hint, swatch: o.swatch, checked: o.value === value, onSelect: () => onChange(o.value) }))}
+          items={options.map((o) => ({
+            label: o.label,
+            hint: o.hint,
+            swatch: o.swatch,
+            checked: o.value === value,
+            onSelect: () => onChange(o.value)
+          }))}
         />
       )}
     </>
@@ -90,7 +96,13 @@ export function Select<T extends string>({
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} onClick={() => onChange(!checked)} className="flex items-center gap-2.5 text-[12.5px] text-fg-2">
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-2.5 text-[12.5px] text-fg-2"
+    >
       <span className={`relative h-[18px] w-8 rounded-full transition-colors ${checked ? 'btn-primary' : 'bg-line-strong'}`}>
         <span className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow transition-[left] ${checked ? 'left-4' : 'left-0.5'}`} />
       </span>

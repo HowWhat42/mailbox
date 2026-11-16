@@ -1,4 +1,15 @@
-import { MAIL_CATEGORIES, type Address, type Bundle, type Folder, type MailCategory, type MailFilter, type MailScope, type MailView, type MessageDetail, type ThreadSummary } from '@shared/types'
+import {
+  MAIL_CATEGORIES,
+  type Address,
+  type Bundle,
+  type Folder,
+  type MailCategory,
+  type MailFilter,
+  type MailScope,
+  type MailView,
+  type MessageDetail,
+  type ThreadSummary
+} from '@shared/types'
 import { getDb } from '../db'
 import { ensureBodies } from './sync'
 
@@ -104,7 +115,8 @@ export function listThreads(view: MailView, filter: MailFilter, scope: MailScope
     case 'folder':
       return summaries(`m.folder_id = ? AND ${f}`, [view.folderId, ...params], limit)
     case 'unified':
-      if (view.role === 'flagged') return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED} AND ${f}`, params, limit)
+      if (view.role === 'flagged')
+        return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED} AND ${f}`, params, limit)
       return summaries(`f.role = ? AND ${UNIFIED} AND ${f}`, [view.role, ...params], limit)
     case 'search': {
       const q = ftsQuery(view.query)
@@ -176,9 +188,7 @@ export function bundleMessageIds(view: MailView, category: MailCategory, unreadO
 export function searchContacts(query: string): Address[] {
   const q = `%${query.trim().replace(/[%_]/g, '')}%`
   if (q === '%%') return []
-  const own = new Set(
-    (getDb().prepare('SELECT lower(email) AS e FROM accounts').all() as { e: string }[]).map((r) => r.e)
-  )
+  const own = new Set((getDb().prepare('SELECT lower(email) AS e FROM accounts').all() as { e: string }[]).map((r) => r.e))
   const rows = getDb()
     .prepare(
       `WITH a AS (
@@ -198,13 +208,22 @@ export function searchContacts(query: string): Address[] {
        LIMIT 12`
     )
     .all(q, q) as { address: string; name: string }[]
-  return rows.filter((r) => !own.has(r.address)).slice(0, 8).map((r) => ({ name: r.name, address: r.address }))
+  return rows
+    .filter((r) => !own.has(r.address))
+    .slice(0, 8)
+    .map((r) => ({ name: r.name, address: r.address }))
 }
 
 export function listFolders(): Folder[] {
-  const rows = getDb()
-    .prepare('SELECT id, account_id, path, name, role, unread, total FROM folders ORDER BY path COLLATE NOCASE')
-    .all() as { id: string; account_id: string; path: string; name: string; role: Folder['role']; unread: number; total: number }[]
+  const rows = getDb().prepare('SELECT id, account_id, path, name, role, unread, total FROM folders ORDER BY path COLLATE NOCASE').all() as {
+    id: string
+    account_id: string
+    path: string
+    name: string
+    role: Folder['role']
+    unread: number
+    total: number
+  }[]
   return rows.map((r) => ({
     id: r.id,
     accountId: r.account_id,
@@ -225,7 +244,10 @@ export function unifiedCounts(): { inbox: number; flagged: number; categories: R
        WHERE f.role = 'inbox' AND m.unread = 1 AND ${UNIFIED} GROUP BY m.category`
     )
     .all() as { category: MailCategory; n: number }[]
-  const categories = Object.fromEntries(MAIL_CATEGORIES.map((c) => [c, perCategory.find((r) => r.category === c)?.n ?? 0])) as Record<MailCategory, number>
+  const categories = Object.fromEntries(MAIL_CATEGORIES.map((c) => [c, perCategory.find((r) => r.category === c)?.n ?? 0])) as Record<
+    MailCategory,
+    number
+  >
   const inbox = db
     .prepare(
       `SELECT count(DISTINCT m.account_id || m.thread_id) AS n FROM messages m JOIN folders f ON f.id = m.folder_id

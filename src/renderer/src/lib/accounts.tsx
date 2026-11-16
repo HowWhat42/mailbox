@@ -5,7 +5,23 @@ import { useStore } from '../store'
 export function accountLabel(a: Pick<Account, 'label' | 'name' | 'email'>): string {
   if (a.label.trim()) return a.label.trim()
   const domain = a.email.split('@')[1]?.split('.')[0] ?? ''
-  const generic = ['gmail', 'googlemail', 'outlook', 'hotmail', 'live', 'yahoo', 'icloud', 'me', 'proton', 'protonmail', 'free', 'orange', 'sfr', 'laposte', 'ethereal']
+  const generic = [
+    'gmail',
+    'googlemail',
+    'outlook',
+    'hotmail',
+    'live',
+    'yahoo',
+    'icloud',
+    'me',
+    'proton',
+    'protonmail',
+    'free',
+    'orange',
+    'sfr',
+    'laposte',
+    'ethereal'
+  ]
   const word = generic.includes(domain.toLowerCase()) ? a.name.split(/\s+/)[0] : domain
   return (word || a.email).slice(0, 12).replace(/^./, (c) => c.toUpperCase())
 }
@@ -39,5 +55,11 @@ export function AccountTag({ account, size = 'sm' }: { account: Account; size?: 
 }
 
 export function AccountDot({ account, size = 8 }: { account: Account; size?: number }) {
-  return <span title={`${accountLabel(account)} · ${account.email}`} className="inline-block shrink-0 rounded-full" style={{ width: size, height: size, background: account.color }} />
+  return (
+    <span
+      title={`${accountLabel(account)} · ${account.email}`}
+      className="inline-block shrink-0 rounded-full"
+      style={{ width: size, height: size, background: account.color }}
+    />
+  )
 }

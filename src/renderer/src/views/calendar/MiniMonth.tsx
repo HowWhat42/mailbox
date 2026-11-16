@@ -4,7 +4,19 @@ import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 /** Small month navigator: the selected range is highlighted, days with events get a dot. */
-export function MiniMonth({ value, rangeStart, rangeEnd, busyDays, onPick }: { value: Date; rangeStart: Date; rangeEnd: Date; busyDays: Set<number>; onPick: (d: Date) => void }) {
+export function MiniMonth({
+  value,
+  rangeStart,
+  rangeEnd,
+  busyDays,
+  onPick
+}: {
+  value: Date
+  rangeStart: Date
+  rangeEnd: Date
+  busyDays: Set<number>
+  onPick: (d: Date) => void
+}) {
   const [month, setMonth] = useState(() => startOfMonth(value))
   // When the selected date moves to another month, follow it (state adjusted during render).
   const [shownFor, setShownFor] = useState(() => startOfMonth(value).getTime())
@@ -19,10 +31,18 @@ export function MiniMonth({ value, rangeStart, rangeEnd, busyDays, onPick }: { v
     <div className="px-1">
       <div className="mb-1 flex items-center">
         <span className="flex-1 pl-1.5 text-[12.5px] font-semibold capitalize">{format(month, 'MMMM yyyy', { locale: fr })}</span>
-        <button onClick={() => setMonth(addMonths(month, -1))} aria-label="Mois précédent" className="grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => setMonth(addMonths(month, -1))}
+          aria-label="Mois précédent"
+          className="grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <ChevronLeft size={14} />
         </button>
-        <button onClick={() => setMonth(addMonths(month, 1))} aria-label="Mois suivant" className="grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={() => setMonth(addMonths(month, 1))}
+          aria-label="Mois suivant"
+          className="grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <ChevronRight size={14} />
         </button>
       </div>

@@ -1,5 +1,27 @@
 import { Command } from 'cmdk'
-import { Archive, Bell, CalendarDays, Palette, Wand2, File, Folder, FolderInput, Inbox, Moon, PanelLeft, PenSquare, Plus, RefreshCw, Reply, Search, Send, Settings, Star, Trash2, type LucideIcon } from 'lucide-react'
+import {
+  Archive,
+  Bell,
+  CalendarDays,
+  Palette,
+  Wand2,
+  File,
+  Folder,
+  FolderInput,
+  Inbox,
+  Moon,
+  PanelLeft,
+  PenSquare,
+  Plus,
+  RefreshCw,
+  Reply,
+  Search,
+  Send,
+  Settings,
+  Star,
+  Trash2,
+  type LucideIcon
+} from 'lucide-react'
 import { api, threadKey, useStore } from '../store'
 import { ROLE_LABEL } from '../lib/format'
 import { startReply } from '../lib/threadActions'
@@ -18,7 +40,8 @@ function Item({ icon: Icon, label, hint, onSelect }: { icon: LucideIcon; label: 
   )
 }
 
-const groupCls = 'px-1 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11.5px] [&_[cmdk-group-heading]]:text-muted'
+const groupCls =
+  'px-1 [&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[11.5px] [&_[cmdk-group-heading]]:text-muted'
 
 export function CommandPalette() {
   const { folders, accounts, theme, threads, selected } = useStore()
@@ -30,7 +53,11 @@ export function CommandPalette() {
   }
 
   return (
-    <div role="presentation" className="fixed inset-0 z-50 bg-black/40 pt-[14vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && s.setPalette(false)}>
+    <div
+      role="presentation"
+      className="fixed inset-0 z-50 bg-black/40 pt-[14vh] backdrop-blur-[2px]"
+      onMouseDown={(e) => e.target === e.currentTarget && s.setPalette(false)}
+    >
       <Command
         label="Commandes"
         loop
@@ -39,7 +66,11 @@ export function CommandPalette() {
       >
         <div className="flex items-center gap-3 border-b border-line px-4">
           <Search size={15} className="text-muted" />
-          <Command.Input autoFocus placeholder="Tapez une commande ou un dossier…" className="h-12 flex-1 bg-transparent text-[14px] text-fg placeholder:text-muted focus:outline-none" />
+          <Command.Input
+            autoFocus
+            placeholder="Tapez une commande ou un dossier…"
+            className="h-12 flex-1 bg-transparent text-[14px] text-fg placeholder:text-muted focus:outline-none"
+          />
         </div>
         <Command.List className="max-h-[50vh] overflow-y-auto py-1.5">
           <Command.Empty className="px-4 py-6 text-center text-[13px] text-muted">Aucune commande.</Command.Empty>
@@ -50,14 +81,27 @@ export function CommandPalette() {
               <Item icon={FolderInput} label="Déplacer vers…" hint="V" onSelect={run(() => s.openMovePicker([current]))} />
               <Item icon={Archive} label="Archiver" hint="E" onSelect={run(() => void s.act([current], 'archive'))} />
               <Item icon={Trash2} label="Supprimer" hint="#" onSelect={run(() => void s.act([current], 'trash'))} />
-              <Item icon={Star} label={current.flagged ? 'Ne plus suivre' : 'Suivre'} hint="S" onSelect={run(() => void s.act([current], current.flagged ? 'unflag' : 'flag'))} />
+              <Item
+                icon={Star}
+                label={current.flagged ? 'Ne plus suivre' : 'Suivre'}
+                hint="S"
+                onSelect={run(() => void s.act([current], current.flagged ? 'unflag' : 'flag'))}
+              />
             </Command.Group>
           )}
 
           <Command.Group heading="Actions" className={groupCls}>
             <Item icon={PenSquare} label="Nouveau message" hint="C" onSelect={run(() => s.compose())} />
-            <Item icon={RefreshCw} label="Synchroniser maintenant" onSelect={run(() => void api.mail.sync().catch((e: Error) => s.toast(e.message, 'error')))} />
-            <Item icon={Moon} label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'} onSelect={run(() => s.updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' }))} />
+            <Item
+              icon={RefreshCw}
+              label="Synchroniser maintenant"
+              onSelect={run(() => void api.mail.sync().catch((e: Error) => s.toast(e.message, 'error')))}
+            />
+            <Item
+              icon={Moon}
+              label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+              onSelect={run(() => s.updateSettings({ theme: theme === 'dark' ? 'light' : 'dark' }))}
+            />
             <Item icon={PanelLeft} label="Afficher ou masquer la barre latérale" hint="Ctrl \" onSelect={run(() => s.toggleSidebar())} />
             <Item icon={Plus} label="Ajouter un compte" onSelect={run(() => s.setSetup(true))} />
             <Item icon={Settings} label="Réglages" onSelect={run(() => s.openSettings('general'))} />

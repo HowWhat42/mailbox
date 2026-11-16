@@ -38,8 +38,16 @@ const SAMPLE: Account = {
 export function MarkerSample({ marker, account = SAMPLE }: { marker: AccountMarker; account?: Account }) {
   return (
     <div className="relative flex items-center gap-2.5 overflow-hidden rounded-lg bg-white/[0.03] py-2 pl-3 pr-2.5">
-      {marker === 'stripe' && <span className="absolute inset-y-1 left-0 w-[3px] rounded-full" style={{ background: account.color, boxShadow: `0 0 8px ${account.color}` }} />}
-      <span className="rounded-full" style={marker === 'ring' ? { boxShadow: `0 0 0 2px var(--surface-solid), 0 0 0 4px ${account.color}` } : undefined}>
+      {marker === 'stripe' && (
+        <span
+          className="absolute inset-y-1 left-0 w-[3px] rounded-full"
+          style={{ background: account.color, boxShadow: `0 0 8px ${account.color}` }}
+        />
+      )}
+      <span
+        className="rounded-full"
+        style={marker === 'ring' ? { boxShadow: `0 0 0 2px var(--surface-solid), 0 0 0 4px ${account.color}` } : undefined}
+      >
         <Avatar name="Léa Moreau" seed="lea@example.com" size={24} />
       </span>
       <span className="min-w-0 flex-1">

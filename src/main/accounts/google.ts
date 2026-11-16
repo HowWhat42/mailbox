@@ -101,9 +101,10 @@ export async function authorizeGoogle(scope: keyof typeof SCOPES = 'mail'): Prom
     grant_type: 'authorization_code'
   })
   if (!tokens.refresh_token) throw new Error("Google n'a pas fourni de refresh token.")
-  const info = (await (
-    await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` } })
-  ).json()) as { email: string; name?: string }
+  const info = (await (await fetch(USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` } })).json()) as {
+    email: string
+    name?: string
+  }
   return { email: info.email, name: info.name ?? info.email, refreshToken: tokens.refresh_token }
 }
 

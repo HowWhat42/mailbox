@@ -7,7 +7,12 @@ import { fieldCls } from '../../components/Modal'
 import { CATEGORY_LABEL } from '../../lib/categories'
 import { ROLE_LABEL } from '../../lib/format'
 
-const FIELD_LABEL: Record<RuleField, string> = { from: 'L’expéditeur', domain: 'Le domaine de l’expéditeur', to: 'Un destinataire', subject: 'L’objet' }
+const FIELD_LABEL: Record<RuleField, string> = {
+  from: 'L’expéditeur',
+  domain: 'Le domaine de l’expéditeur',
+  to: 'Un destinataire',
+  subject: 'L’objet'
+}
 const OP_LABEL: Record<RuleOp, string> = { contains: 'contient', is: 'est' }
 
 /** One-line summary of a rule for the list. */
@@ -30,7 +35,8 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
   const [r, setR] = useState<MailRule>(rule)
   const [busy, setBusy] = useState(false)
 
-  const setCond = (i: number, patch: Partial<RuleCondition>): void => setR({ ...r, conditions: r.conditions.map((c, j) => (j === i ? { ...c, ...patch } : c)) })
+  const setCond = (i: number, patch: Partial<RuleCondition>): void =>
+    setR({ ...r, conditions: r.conditions.map((c, j) => (j === i ? { ...c, ...patch } : c)) })
   const setAct = (patch: Partial<MailRule['actions']>): void => setR({ ...r, actions: { ...r.actions, ...patch } })
   const accountFolders = folders.filter((f) => f.accountId === r.accountId && f.role !== 'all' && f.role !== 'flagged')
   const valid = r.conditions.some((c) => c.value.trim())
@@ -51,7 +57,13 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
 
   return (
     <div className="space-y-4 bg-white/[0.02] px-4 py-4">
-      <input value={r.name} onChange={(e) => setR({ ...r, name: e.target.value })} placeholder="Nom de la règle (facultatif)" className={fieldCls} aria-label="Nom de la règle" />
+      <input
+        value={r.name}
+        onChange={(e) => setR({ ...r, name: e.target.value })}
+        placeholder="Nom de la règle (facultatif)"
+        className={fieldCls}
+        aria-label="Nom de la règle"
+      />
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted">
@@ -74,7 +86,13 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
               onChange={(v) => setCond(i, { field: v })}
               options={(Object.keys(FIELD_LABEL) as RuleField[]).map((f) => ({ value: f, label: FIELD_LABEL[f] }))}
             />
-            <Select ariaLabel="Opérateur" className="w-28" value={c.op} onChange={(v) => setCond(i, { op: v })} options={(Object.keys(OP_LABEL) as RuleOp[]).map((o) => ({ value: o, label: OP_LABEL[o] }))} />
+            <Select
+              ariaLabel="Opérateur"
+              className="w-28"
+              value={c.op}
+              onChange={(v) => setCond(i, { op: v })}
+              options={(Object.keys(OP_LABEL) as RuleOp[]).map((o) => ({ value: o, label: OP_LABEL[o] }))}
+            />
             <input
               value={c.value}
               onChange={(e) => setCond(i, { value: e.target.value })}
@@ -83,7 +101,11 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
               className={`${fieldCls} min-w-40 flex-1`}
             />
             {r.conditions.length > 1 && (
-              <button onClick={() => setR({ ...r, conditions: r.conditions.filter((_, j) => j !== i) })} aria-label="Retirer la condition" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+              <button
+                onClick={() => setR({ ...r, conditions: r.conditions.filter((_, j) => j !== i) })}
+                aria-label="Retirer la condition"
+                className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+              >
                 <X size={14} />
               </button>
             )}
@@ -100,7 +122,11 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
       <div className="space-y-2.5">
         <p className="text-[12.5px] text-muted">Alors :</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Checkbox checked={!!r.actions.category} onChange={(on) => setAct({ category: on ? 'newsletters' : undefined })} label="Classer dans une catégorie" />
+          <Checkbox
+            checked={!!r.actions.category}
+            onChange={(on) => setAct({ category: on ? 'newsletters' : undefined })}
+            label="Classer dans une catégorie"
+          />
           <span className="text-[13px]">Classer dans</span>
           <Select
             ariaLabel="Catégorie"
@@ -126,7 +152,7 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
         <div className="flex flex-wrap items-center gap-2">
           <Checkbox
             checked={!!r.actions.moveTo}
-            onChange={(on) => setAct({ moveTo: on ? accountFolders.find((f) => f.role === 'archive')?.id ?? accountFolders[0]?.id : undefined })}
+            onChange={(on) => setAct({ moveTo: on ? (accountFolders.find((f) => f.role === 'archive')?.id ?? accountFolders[0]?.id) : undefined })}
             label="Déplacer"
           />
           <span className="text-[13px]">Déplacer vers</span>
@@ -149,7 +175,11 @@ export function RuleEditor({ rule, onCancel, onSaved }: { rule: MailRule; onCanc
         <button onClick={onCancel} className="h-8 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg">
           Annuler
         </button>
-        <button onClick={() => void save()} disabled={busy || !valid} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium disabled:opacity-50">
+        <button
+          onClick={() => void save()}
+          disabled={busy || !valid}
+          className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium disabled:opacity-50"
+        >
           {busy ? 'Enregistrement…' : 'Enregistrer la règle'}
         </button>
       </div>

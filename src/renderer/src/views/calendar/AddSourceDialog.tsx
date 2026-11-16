@@ -41,8 +41,11 @@ export function AddSourceDialog({ onClose }: { onClose: () => void }) {
   }
 
   const set = (k: keyof typeof form, v: string): void => setForm((f) => ({ ...f, [k]: v }))
-  const choice = 'flex w-full items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-left hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
-  const errorBox = error && <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger whitespace-pre-line">{error}</p>
+  const choice =
+    'flex w-full items-center gap-3 rounded-xl border border-line bg-panel px-4 py-3 text-left hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50'
+  const errorBox = error && (
+    <p className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] text-danger whitespace-pre-line">{error}</p>
+  )
 
   return (
     <Modal title="Ajouter un agenda" onClose={onClose} width={480}>
@@ -82,7 +85,10 @@ export function AddSourceDialog({ onClose }: { onClose: () => void }) {
       )}
 
       {kind === 'caldav' && (
-        <form onSubmit={(e) => (e.preventDefault(), void run(() => api.calendar.addSource({ kind: 'caldav', ...form }), 'Agenda CalDAV connecté'))} className="space-y-3.5 px-5 pb-5">
+        <form
+          onSubmit={(e) => (e.preventDefault(), void run(() => api.calendar.addSource({ kind: 'caldav', ...form }), 'Agenda CalDAV connecté'))}
+          className="space-y-3.5 px-5 pb-5"
+        >
           <div className="flex flex-wrap gap-1.5">
             {CALDAV_PRESETS.map((p) => (
               <button
@@ -102,7 +108,13 @@ export function AddSourceDialog({ onClose }: { onClose: () => void }) {
             <input required autoFocus value={form.url} onChange={(e) => set('url', e.target.value)} className={fieldCls} placeholder="https://" />
           </Label>
           <Label text="Identifiant">
-            <input required value={form.username} onChange={(e) => set('username', e.target.value)} className={fieldCls} placeholder="vous@exemple.fr" />
+            <input
+              required
+              value={form.username}
+              onChange={(e) => set('username', e.target.value)}
+              className={fieldCls}
+              placeholder="vous@exemple.fr"
+            />
           </Label>
           <Label text="Mot de passe">
             <input required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} className={fieldCls} />
@@ -123,12 +135,25 @@ export function AddSourceDialog({ onClose }: { onClose: () => void }) {
       )}
 
       {kind === 'ics' && (
-        <form onSubmit={(e) => (e.preventDefault(), void run(() => api.calendar.addSource({ kind: 'ics', name: form.name, url: form.url }), 'Abonnement ajouté'))} className="space-y-3.5 px-5 pb-5">
+        <form
+          onSubmit={(e) => (
+            e.preventDefault(),
+            void run(() => api.calendar.addSource({ kind: 'ics', name: form.name, url: form.url }), 'Abonnement ajouté')
+          )}
+          className="space-y-3.5 px-5 pb-5"
+        >
           <Label
             text="Lien de l’agenda"
             hint="Outlook : Paramètres › Calendrier › Calendriers partagés › Publier un calendrier, puis copiez le lien ICS. Les liens webcal:// fonctionnent aussi."
           >
-            <input required autoFocus value={form.url} onChange={(e) => set('url', e.target.value)} className={fieldCls} placeholder="https://… .ics" />
+            <input
+              required
+              autoFocus
+              value={form.url}
+              onChange={(e) => set('url', e.target.value)}
+              className={fieldCls}
+              placeholder="https://… .ics"
+            />
           </Label>
           <Label text="Nom affiché">
             <input value={form.name} onChange={(e) => set('name', e.target.value)} className={fieldCls} placeholder="Agenda Outlook, Jours fériés…" />

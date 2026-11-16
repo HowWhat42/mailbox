@@ -13,7 +13,12 @@ const step = (msg) => console.log(`• ${msg}`)
 const account = await createTestAccount()
 step(`test account ${account.user}`)
 
-const smtp = createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
+const smtp = createTransport({
+  host: account.smtp.host,
+  port: account.smtp.port,
+  secure: account.smtp.secure,
+  auth: { user: account.user, pass: account.pass }
+})
 const first = await smtp.sendMail({
   from: 'Léa Moreau <lea@example.com>',
   to: account.user,
@@ -29,7 +34,12 @@ await smtp.sendMail({
   inReplyTo: first.messageId,
   references: [first.messageId]
 })
-await smtp.sendMail({ from: 'Facturation <factures@example.org>', to: account.user, subject: 'Votre facture de novembre', text: 'Montant : 42,00 €. Merci !' })
+await smtp.sendMail({
+  from: 'Facturation <factures@example.org>',
+  to: account.user,
+  subject: 'Votre facture de novembre',
+  text: 'Montant : 42,00 €. Merci !'
+})
 step('3 messages sent')
 
 const userData = mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))
@@ -100,7 +110,11 @@ await page.click('button:has-text("Reprendre le brouillon")')
 await page.waitForSelector('span[title*="lea@example.com"]')
 await page.keyboard.press('Control+Enter')
 await page.waitForSelector('text=Message envoyé', { timeout: 30_000 })
-await page.waitForFunction(() => ![...document.querySelectorAll('[role=option]')].some((r) => r.textContent.includes('Envoyé depuis Mailbox')), null, { timeout: 30_000 })
+await page.waitForFunction(
+  () => ![...document.querySelectorAll('[role=option]')].some((r) => r.textContent.includes('Envoyé depuis Mailbox')),
+  null,
+  { timeout: 30_000 }
+)
 step('draft reopened, sent, and removed from Drafts')
 
 await page.click('nav button[aria-label=Réception]')

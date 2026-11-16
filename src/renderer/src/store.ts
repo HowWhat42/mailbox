@@ -1,5 +1,17 @@
 import { create } from 'zustand'
-import type { Account, Address, AppSettings, Bundle, Folder, MailCategory, MailFilter, MailView, MessageAction, OutgoingAttachment, ThreadSummary } from '@shared/types'
+import type {
+  Account,
+  Address,
+  AppSettings,
+  Bundle,
+  Folder,
+  MailCategory,
+  MailFilter,
+  MailView,
+  MessageAction,
+  OutgoingAttachment,
+  ThreadSummary
+} from '@shared/types'
 import { applyAppearance } from './lib/appearance'
 
 export const api = window.mailbox
@@ -385,7 +397,8 @@ export const useStore = create<State>((set, get) => ({
     const { threads, selected } = get()
     const idx = threads.findIndex((t) => threadKey(t) === selected)
     const rest = threads.filter((t) => !keys.has(threadKey(t)))
-    const nextSelected = selected && keys.has(selected) ? (rest[Math.min(idx, rest.length - 1)] ? threadKey(rest[Math.min(idx, rest.length - 1)]) : null) : selected
+    const nextSelected =
+      selected && keys.has(selected) ? (rest[Math.min(idx, rest.length - 1)] ? threadKey(rest[Math.min(idx, rest.length - 1)]) : null) : selected
     set({ threads: rest, selected: nextSelected, checked: new Set(), hidden: new Set([...get().hidden, ...keys]) })
 
     const id = ++pendingId
@@ -481,7 +494,9 @@ export const useStore = create<State>((set, get) => ({
     set({ toasts: get().toasts.filter((t) => t.id !== id) })
   },
   undoLast() {
-    const last = get().toasts.toReversed().find((t) => t.action)
+    const last = get()
+      .toasts.toReversed()
+      .find((t) => t.action)
     if (!last?.action) return
     last.action.run()
     get().dismiss(last.id)

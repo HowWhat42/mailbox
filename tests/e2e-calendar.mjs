@@ -67,7 +67,16 @@ monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
 monday.setHours(9, 0, 0, 0)
 await put(
   'standup.ics',
-  ics('BEGIN:VEVENT', 'UID:standup-1', `DTSTAMP:${utc(new Date())}`, `DTSTART:${utc(monday)}`, `DTEND:${utc(new Date(monday.getTime() + 15 * 60_000))}`, 'RRULE:FREQ=DAILY;COUNT=5', 'SUMMARY:Stand-up', 'END:VEVENT')
+  ics(
+    'BEGIN:VEVENT',
+    'UID:standup-1',
+    `DTSTAMP:${utc(new Date())}`,
+    `DTSTART:${utc(monday)}`,
+    `DTEND:${utc(new Date(monday.getTime() + 15 * 60_000))}`,
+    'RRULE:FREQ=DAILY;COUNT=5',
+    'SUMMARY:Stand-up',
+    'END:VEVENT'
+  )
 )
 step('CalDAV calendar with a Teams invitation and a recurring stand-up')
 
@@ -133,7 +142,9 @@ const notifyWin = await (async () => {
   }
   throw new Error('reminder window did not show up')
 })()
-const onTop = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().includes('notify.html') && w.isAlwaysOnTop() && w.isVisible()))
+const onTop = await app.evaluate(({ BrowserWindow }) =>
+  BrowserWindow.getAllWindows().some((w) => w.webContents.getURL().includes('notify.html') && w.isAlwaysOnTop() && w.isVisible())
+)
 if (!onTop) throw new Error('reminder window is not visible and always on top')
 await notifyWin.waitForTimeout(400)
 await notifyWin.screenshot({ path: join(shots, 'c-01-reminder.png') })

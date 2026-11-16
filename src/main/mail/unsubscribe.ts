@@ -49,4 +49,3 @@ export async function unsubscribe(messageId: string): Promise<'done' | 'opened'>
   }
   throw new Error('Lien de désabonnement inutilisable.')
 }
-

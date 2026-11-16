@@ -9,7 +9,9 @@ function when(e: CalendarEvent, now: number): string {
   if (now >= e.start) return `En cours · jusqu’à ${format(e.end, 'HH:mm')}`
   const min = Math.round((e.start - now) / 60_000)
   if (min < 60) return `Dans ${min} min`
-  return new Date(e.start).toDateString() === new Date(now).toDateString() ? `Aujourd’hui à ${format(e.start, 'HH:mm')}` : `Demain à ${format(e.start, 'HH:mm')}`
+  return new Date(e.start).toDateString() === new Date(now).toDateString()
+    ? `Aujourd’hui à ${format(e.start, 'HH:mm')}`
+    : `Demain à ${format(e.start, 'HH:mm')}`
 }
 
 /** "My day" card: the next meeting of the next 12 hours, with Join one click away. */
@@ -36,7 +38,11 @@ export function NextUp() {
 
   return (
     <div className={`mx-3 mb-2 rounded-xl border border-line p-3 ${soon ? 'lit' : 'bg-white/[0.02]'}`}>
-      <button onClick={() => useStore.getState().focusEvent({ eventId: next.id, start: next.start })} className="block w-full min-w-0 text-left" title="Ouvrir dans le calendrier">
+      <button
+        onClick={() => useStore.getState().focusEvent({ eventId: next.id, start: next.start })}
+        className="block w-full min-w-0 text-left"
+        title="Ouvrir dans le calendrier"
+      >
         <span className={`block text-[11.5px] font-semibold ${soon ? 'text-accent' : 'text-muted'}`}>{when(next, now)}</span>
         <span className="mt-0.5 block truncate text-[13px] font-medium text-fg">{next.title || '(sans titre)'}</span>
         <span className="mt-0.5 flex items-center gap-1 truncate text-[11.5px] text-muted">

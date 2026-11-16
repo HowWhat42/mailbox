@@ -25,8 +25,17 @@ export function MovePicker() {
   const close = (): void => openMovePicker(null)
 
   return (
-    <div role="presentation" className="fixed inset-0 z-50 bg-black/40 pt-[16vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <Command label="Déplacer vers" loop className="pop-in mx-auto w-full max-w-[440px] overflow-hidden rounded-xl glass" onKeyDown={(e) => e.key === 'Escape' && close()}>
+    <div
+      role="presentation"
+      className="fixed inset-0 z-50 bg-black/40 pt-[16vh] backdrop-blur-[2px]"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <Command
+        label="Déplacer vers"
+        loop
+        className="pop-in mx-auto w-full max-w-[440px] overflow-hidden rounded-xl glass"
+        onKeyDown={(e) => e.key === 'Escape' && close()}
+      >
         <div className="flex items-center gap-3 border-b border-line px-4">
           <FolderInput size={15} className="text-muted" />
           <Command.Input
@@ -50,7 +59,12 @@ export function MovePicker() {
                 }}
                 className="flex h-9 cursor-default items-center gap-3 rounded-md px-3 text-[13px] text-fg-2 data-[selected=true]:bg-hover data-[selected=true]:text-fg"
               >
-                <Icon size={15} strokeWidth={1.75} className={f.role ? 'text-muted' : ''} style={f.role ? undefined : { color: avatarColor(f.path), fill: avatarColor(f.path) }} />
+                <Icon
+                  size={15}
+                  strokeWidth={1.75}
+                  className={f.role ? 'text-muted' : ''}
+                  style={f.role ? undefined : { color: avatarColor(f.path), fill: avatarColor(f.path) }}
+                />
                 {label}
               </Command.Item>
             )

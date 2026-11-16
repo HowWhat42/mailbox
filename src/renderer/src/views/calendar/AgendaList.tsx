@@ -14,7 +14,17 @@ function dayLabel(d: number): string {
 }
 
 /** Outlook-style agenda: every upcoming event, day by day, with Join right there. */
-export function AgendaList({ events, colorOf, nameOf, onOpen }: { events: CalendarEvent[]; colorOf: (id: string) => string; nameOf: (id: string) => string; onOpen: OpenEvent }) {
+export function AgendaList({
+  events,
+  colorOf,
+  nameOf,
+  onOpen
+}: {
+  events: CalendarEvent[]
+  colorOf: (id: string) => string
+  nameOf: (id: string) => string
+  onOpen: OpenEvent
+}) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000)
@@ -72,7 +82,9 @@ export function AgendaList({ events, colorOf, nameOf, onOpen }: { events: Calend
                     <div className="min-w-0 flex-1">
                       <div className={`truncate text-[13.5px] font-medium ${faded ? 'line-through' : ''}`}>
                         {e.title || '(sans titre)'}
-                        {e.myStatus === 'needsAction' && <span className="ml-2 rounded bg-accent-soft px-1.5 py-px text-[10.5px] font-semibold text-accent">À répondre</span>}
+                        {e.myStatus === 'needsAction' && (
+                          <span className="ml-2 rounded bg-accent-soft px-1.5 py-px text-[10.5px] font-semibold text-accent">À répondre</span>
+                        )}
                       </div>
                       <div className="flex min-w-0 items-center gap-1.5 truncate text-[12px] text-muted">
                         <span className="truncate">{nameOf(e.calendarId)}</span>

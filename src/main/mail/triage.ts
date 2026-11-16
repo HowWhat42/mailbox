@@ -56,12 +56,16 @@ export function signalsFrom(headers: Record<string, string>, structure: MessageS
     listId: !!headers['list-id'],
     bulk: ['bulk', 'list', 'junk'].includes(precedence),
     autoSubmitted: auto !== 'no' || !!headers['x-auto-response-suppress'],
-    esp: ['feedback-id', 'x-campaign', 'x-campaign-id', 'x-mailchimp-campaign', 'x-mc-user', 'x-sg-eid', 'x-mailgun-tag', 'x-ses-outgoing'].some((h) => h in headers),
-    invite: hasCalendarPart(structure) || /^(invitation|invitation mise à jour|updated invitation|accepted|accepté|declined|refusé)\s*:/i.test(subject)
+    esp: ['feedback-id', 'x-campaign', 'x-campaign-id', 'x-mailchimp-campaign', 'x-mc-user', 'x-sg-eid', 'x-mailgun-tag', 'x-ses-outgoing'].some(
+      (h) => h in headers
+    ),
+    invite:
+      hasCalendarPart(structure) || /^(invitation|invitation mise à jour|updated invitation|accepted|accepté|declined|refusé)\s*:/i.test(subject)
   }
 }
 
-const AUTOMATED = /^(no-?reply|do-?not-?reply|ne-?pas-?repondre|nepasrepondre|notifications?|notify|alerts?|mailer-daemon|postmaster|bounces?|automated|security|billing|invoices?|factures?|receipts?|orders?|commandes?|account|accounts|system|support|calendar-notification)\b/i
+const AUTOMATED =
+  /^(no-?reply|do-?not-?reply|ne-?pas-?repondre|nepasrepondre|notifications?|notify|alerts?|mailer-daemon|postmaster|bounces?|automated|security|billing|invoices?|factures?|receipts?|orders?|commandes?|account|accounts|system|support|calendar-notification)\b/i
 const MARKETING = /^(news|newsletters?|hello|info|marketing|updates?|digest|team|contact|offers?|promo)\b/i
 
 export interface Classifiable {
@@ -104,7 +108,12 @@ export function heuristicCategory(m: Classifiable, knownContacts: Set<string>): 
 }
 
 /** Applies user rules in order on top of the heuristics. */
-export function classify(m: Classifiable, rules: MailRule[], accountId: string, knownContacts: Set<string>): { category: MailCategory; actions: RuleActions } {
+export function classify(
+  m: Classifiable,
+  rules: MailRule[],
+  accountId: string,
+  knownContacts: Set<string>
+): { category: MailCategory; actions: RuleActions } {
   const actions: RuleActions = {}
   let category: MailCategory | undefined
   for (const rule of rules) {

@@ -1,6 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { ArrowLeft, Bold, Italic, Link2, List, ListOrdered, Paperclip, Quote, Send, Trash2, Underline, Upload, X, type LucideIcon } from 'lucide-react'
+import {
+  ArrowLeft,
+  Bold,
+  Italic,
+  Link2,
+  List,
+  ListOrdered,
+  Paperclip,
+  Quote,
+  Send,
+  Trash2,
+  Underline,
+  Upload,
+  X,
+  type LucideIcon
+} from 'lucide-react'
 import type { OutgoingAttachment, OutgoingMessage } from '@shared/types'
 import { api, confirmDialog, useStore, type ComposeDraft } from '../store'
 import { escapeHtml, formatAddresses, htmlToText } from '../lib/format'
@@ -133,7 +148,16 @@ function SelectionToolbar({ editor }: { editor: React.RefObject<HTMLDivElement |
 }
 
 function isEmpty(d: ComposeDraft, html: string): boolean {
-  return !d.to.length && !d.cc.length && !d.bcc.length && !d.subject.trim() && !d.attachments.length && !htmlToText(html).replace(/^--\s*$[\s\S]*/m, '').trim()
+  return (
+    !d.to.length &&
+    !d.cc.length &&
+    !d.bcc.length &&
+    !d.subject.trim() &&
+    !d.attachments.length &&
+    !htmlToText(html)
+      .replace(/^--\s*$[\s\S]*/m, '')
+      .trim()
+  )
 }
 
 export function Composer() {
@@ -214,10 +238,12 @@ export function Composer() {
 
   useEffect(() => {
     const account = accounts.find((a) => a.id === draft.accountId)
-    const signature = account?.signature && draft.kind !== 'draft' ? `<p><br></p><p>-- <br>${escapeHtml(account.signature).replace(/\n/g, '<br>')}</p>` : ''
+    const signature =
+      account?.signature && draft.kind !== 'draft' ? `<p><br></p><p>-- <br>${escapeHtml(account.signature).replace(/\n/g, '<br>')}</p>` : ''
     // Quoted mail comes from strangers: sanitize before it lands in a live contentEditable.
     const body = DOMPurify.sanitize(draft.html, { FORBID_TAGS: ['style', 'form', 'input', 'button', 'script'] })
-    if (editor.current) editor.current.innerHTML = draft.html ? (signature ? body.replace('<p><br></p>', `<p><br></p>${signature}`) : body) : signature
+    if (editor.current)
+      editor.current.innerHTML = draft.html ? (signature ? body.replace('<p><br></p>', `<p><br></p>${signature}`) : body) : signature
     // A restored draft that never reached the server must still be saved when closed.
     if (draft.kind === 'draft' && !draft.draftId) dirty.current = true
     if (draft.to.length) {
@@ -251,7 +277,16 @@ export function Composer() {
       toast(`Adresse invalide : ${invalid.map((a) => a.address).join(', ')}`, 'error')
       return
     }
-    if (!d.subject.trim() && !(await confirmDialog({ title: 'Envoyer sans objet ?', body: 'Ce message n’a pas d’objet.', confirmLabel: 'Envoyer quand même', cancelLabel: 'Ajouter un objet' }))) return
+    if (
+      !d.subject.trim() &&
+      !(await confirmDialog({
+        title: 'Envoyer sans objet ?',
+        body: 'Ce message n’a pas d’objet.',
+        confirmLabel: 'Envoyer quand même',
+        cancelLabel: 'Ajouter un objet'
+      }))
+    )
+      return
     setSending(true)
     clearTimeout(timer.current)
     if (inflight.current) await inflight.current
@@ -270,7 +305,12 @@ export function Composer() {
     clearTimeout(timer.current)
     if (inflight.current) await inflight.current
     // Restored as a 'draft' so the signature isn't added a second time.
-    const snapshot: ComposeDraft = { ...latest.current, kind: 'draft', html: editor.current?.innerHTML ?? latest.current.html, key: crypto.randomUUID() }
+    const snapshot: ComposeDraft = {
+      ...latest.current,
+      kind: 'draft',
+      html: editor.current?.innerHTML ?? latest.current.html,
+      key: crypto.randomUUID()
+    }
     done.current = true
     closeComposer()
     if (isEmpty(snapshot, snapshot.html) && !snapshot.draftId) return
@@ -319,15 +359,29 @@ export function Composer() {
     >
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line px-4 @[600px]:px-6">
         {single && (
-          <button onClick={close} aria-label="Retour" title="Retour (garde le brouillon)" className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+          <button
+            onClick={close}
+            aria-label="Retour"
+            title="Retour (garde le brouillon)"
+            className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+          >
             <ArrowLeft size={16} />
           </button>
         )}
         <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{TITLES[draft.kind]}</h2>
         <span className="ml-1 hidden truncate text-[12px] text-muted @[480px]:inline">
-          {saving ? 'Enregistrement…' : savedAt ? `Brouillon enregistré à ${new Date(savedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+          {saving
+            ? 'Enregistrement…'
+            : savedAt
+              ? `Brouillon enregistré à ${new Date(savedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+              : ''}
         </span>
-        <button onClick={close} title="Fermer et garder le brouillon (Échap)" aria-label="Fermer" className="ml-auto grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+        <button
+          onClick={close}
+          title="Fermer et garder le brouillon (Échap)"
+          aria-label="Fermer"
+          className="ml-auto grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+        >
           <X size={16} />
         </button>
       </header>
@@ -348,7 +402,11 @@ export function Composer() {
           label="À"
           trailing={
             !showCc && (
-              <button type="button" onClick={() => setShowCc(true)} className="shrink-0 rounded-md px-2 py-1 text-[12.5px] text-muted hover:bg-hover hover:text-fg">
+              <button
+                type="button"
+                onClick={() => setShowCc(true)}
+                className="shrink-0 rounded-md px-2 py-1 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
+              >
                 Cc Cci
               </button>
             )
@@ -387,7 +445,12 @@ export function Composer() {
                 key={`${a.kind === 'file' ? a.path : a.messageId + a.attachmentId}-${i}`}
                 name={a.name}
                 size={a.size}
-                onRemove={() => set('attachments', draft.attachments.filter((_, j) => j !== i))}
+                onRemove={() =>
+                  set(
+                    'attachments',
+                    draft.attachments.filter((_, j) => j !== i)
+                  )
+                }
               />
             ))}
           </div>
@@ -413,7 +476,12 @@ export function Composer() {
           <Paperclip size={15} /> <span className="hidden @[480px]:inline">Joindre</span>
         </button>
         <span className="ml-auto hidden text-[12px] text-faint @[720px]:inline">Sélectionnez du texte pour le mettre en forme</span>
-        <button onClick={() => void discard()} title="Supprimer le brouillon" aria-label="Supprimer le brouillon" className="ml-auto grid @[720px]:ml-3 size-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-danger">
+        <button
+          onClick={() => void discard()}
+          title="Supprimer le brouillon"
+          aria-label="Supprimer le brouillon"
+          className="ml-auto grid @[720px]:ml-3 size-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-danger"
+        >
           <Trash2 size={15} />
         </button>
       </footer>

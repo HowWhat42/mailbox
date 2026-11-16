@@ -12,7 +12,12 @@ mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
 const account = await createTestAccount()
-const smtp = createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
+const smtp = createTransport({
+  host: account.smtp.host,
+  port: account.smtp.port,
+  secure: account.smtp.secure,
+  auth: { user: account.user, pass: account.pass }
+})
 await smtp.sendMail({
   from: 'Léa Moreau <lea@example.com>',
   to: account.user,
@@ -20,7 +25,12 @@ await smtp.sendMail({
   html: '<p>On fait le point <b>jeudi à 14h</b> ? Ordre du jour en pièce jointe.</p>',
   attachments: [{ filename: 'ordre-du-jour.pdf', content: 'x' }]
 })
-await smtp.sendMail({ from: 'Facturation <factures@example.org>', to: account.user, subject: 'Votre facture de novembre', text: 'Montant : 42,00 €. Merci !' })
+await smtp.sendMail({
+  from: 'Facturation <factures@example.org>',
+  to: account.user,
+  subject: 'Votre facture de novembre',
+  text: 'Montant : 42,00 €. Merci !'
+})
 
 const app = await electron.launch({ args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`] })
 const page = await app.firstWindow()

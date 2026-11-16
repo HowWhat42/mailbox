@@ -20,7 +20,17 @@ function startOfDay(ts: number): number {
   return d.getTime()
 }
 
-export function EventEditor({ state, calendars, onClose, onSaved }: { state: EditorState; calendars: Calendar[]; onClose: () => void; onSaved: () => void }) {
+export function EventEditor({
+  state,
+  calendars,
+  onClose,
+  onSaved
+}: {
+  state: EditorState
+  calendars: Calendar[]
+  onClose: () => void
+  onSaved: () => void
+}) {
   const { toast } = useStore.getState()
   const [input, setInput] = useState<EventInput>(state.input)
   const [busy, setBusy] = useState(false)
@@ -147,11 +157,23 @@ export function EventEditor({ state, calendars, onClose, onSaved }: { state: Edi
         <Label text="Lieu">
           <div className="relative">
             <MapPin size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input disabled={readOnly} value={input.location} onChange={(e) => set('location', e.target.value)} className={`${fieldCls} pl-9`} placeholder="Ajouter un lieu" />
+            <input
+              disabled={readOnly}
+              value={input.location}
+              onChange={(e) => set('location', e.target.value)}
+              className={`${fieldCls} pl-9`}
+              placeholder="Ajouter un lieu"
+            />
           </div>
         </Label>
         <Label text="Notes">
-          <textarea disabled={readOnly} value={input.description} onChange={(e) => set('description', e.target.value)} rows={3} className={`${fieldCls} h-auto resize-none py-2`} />
+          <textarea
+            disabled={readOnly}
+            value={input.description}
+            onChange={(e) => set('description', e.target.value)}
+            rows={3}
+            className={`${fieldCls} h-auto resize-none py-2`}
+          />
         </Label>
         {readOnly ? (
           <p className="text-[12px] text-muted">Agenda en lecture seule.</p>
@@ -165,7 +187,11 @@ export function EventEditor({ state, calendars, onClose, onSaved }: { state: Edi
               <span />
             )}
             <div className="flex gap-2">
-              <button type="button" onClick={onClose} className="h-9 rounded-lg border border-line px-3.5 text-[13px] text-fg-2 hover:bg-hover hover:text-fg">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-9 rounded-lg border border-line px-3.5 text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+              >
                 Annuler
               </button>
               <button disabled={busy || invalid} className="h-9 rounded-lg btn-primary px-4 text-[13px] font-medium disabled:opacity-50">

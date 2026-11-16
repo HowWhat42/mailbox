@@ -150,7 +150,8 @@ function body(input: EventInput): string {
   })
 }
 
-const eventPath = (calendarId: string, eventId: string): string => `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`
+const eventPath = (calendarId: string, eventId: string): string =>
+  `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`
 
 export async function googleCreate(source: CalendarSource, calendarId: string, input: EventInput): Promise<void> {
   await call(source, `/calendars/${encodeURIComponent(calendarId)}/events`, { method: 'POST', body: body(input) })

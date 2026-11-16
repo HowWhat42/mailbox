@@ -360,7 +360,10 @@ export interface MailboxApi {
     discover(email: string): Promise<ServerSettings | null>
     addImap(input: ImapAccountInput): Promise<Account>
     addGoogle(): Promise<Account>
-    update(id: string, patch: Partial<Pick<Account, 'name' | 'label' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>): Promise<void>
+    update(
+      id: string,
+      patch: Partial<Pick<Account, 'name' | 'label' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>
+    ): Promise<void>
     remove(id: string): Promise<void>
     googleConfigured(): Promise<boolean>
   }

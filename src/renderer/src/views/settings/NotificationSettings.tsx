@@ -16,7 +16,10 @@ export function NotificationSettings() {
         <Row label="Notifier les nouveaux messages">
           <Toggle label="" checked={settings.mailNotifications} onChange={(v) => void update({ mailNotifications: v })} />
         </Row>
-        <Row label="Notifications intelligentes" hint="Seulement les messages de personnes et les invitations : ni newsletters ni notifications automatiques.">
+        <Row
+          label="Notifications intelligentes"
+          hint="Seulement les messages de personnes et les invitations : ni newsletters ni notifications automatiques."
+        >
           <Toggle label="" checked={settings.smartNotifications} onChange={(v) => void update({ smartNotifications: v })} />
         </Row>
         <Row label="Son">
@@ -82,7 +85,10 @@ export function NotificationSettings() {
           <Toggle label="" checked={settings.reminderSound} onChange={(v) => void update({ reminderSound: v })} />
         </Row>
         <Row label="Par agenda" hint="Couper ou ajuster les rappels d’un agenda précis.">
-          <button onClick={() => openSettings('calendars')} className="h-8 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg">
+          <button
+            onClick={() => openSettings('calendars')}
+            className="h-8 rounded-lg border border-line px-3 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+          >
             Réglages des agendas
           </button>
         </Row>

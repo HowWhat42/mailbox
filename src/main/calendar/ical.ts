@@ -19,7 +19,11 @@ export function parseCalendar(data: string): Component {
   return root
 }
 
-const mail = (v: unknown): string => String(v ?? '').replace(/^mailto:/i, '').trim().toLowerCase()
+const mail = (v: unknown): string =>
+  String(v ?? '')
+    .replace(/^mailto:/i, '')
+    .trim()
+    .toLowerCase()
 
 function attendeesOf(vevent: Component, self: Set<string>): { attendees: Attendee[]; organizer: string | null; organizerEmail: string } {
   const org = vevent.getFirstProperty('organizer')
@@ -106,7 +110,16 @@ export function eventsFrom(
       const s = event.startDate.toJSDate().getTime()
       const e = event.endDate ? event.endDate.toJSDate().getTime() : fallbackEnd(s)
       if (s < opts.end && e > opts.start) {
-        out.push({ remoteId: base, etag: opts.etag, ical: opts.raw, start: s, end: Math.max(e, s), allDay, recurring: false, ...describe(master, event, self) })
+        out.push({
+          remoteId: base,
+          etag: opts.etag,
+          ical: opts.raw,
+          start: s,
+          end: Math.max(e, s),
+          allDay,
+          recurring: false,
+          ...describe(master, event, self)
+        })
       }
       continue
     }

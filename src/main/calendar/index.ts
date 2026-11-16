@@ -101,7 +101,9 @@ export function setCalendarPrefs(id: string, prefs: Partial<CalendarPrefs>): voi
 }
 
 export function setCalendarEnabled(id: string, enabled: boolean): void {
-  getDb().prepare('UPDATE calendars SET enabled = ? WHERE id = ?').run(enabled ? 1 : 0, id)
+  getDb()
+    .prepare('UPDATE calendars SET enabled = ? WHERE id = ?')
+    .run(enabled ? 1 : 0, id)
 }
 
 export function setCalendarColor(id: string, color: string): void {
@@ -166,7 +168,8 @@ async function doRefresh(source: CalendarSource, start: number, end: number): Pr
          ON CONFLICT (source_id, remote_id) DO UPDATE SET name = excluded.name, color = excluded.color,
            read_only = excluded.read_only, default_reminders = excluded.default_reminders`
       )
-      for (const c of remote) upsert.run(localId(source.id, c.remoteId), source.id, c.remoteId, c.name, c.color, c.readOnly ? 1 : 0, JSON.stringify(c.defaultReminders))
+      for (const c of remote)
+        upsert.run(localId(source.id, c.remoteId), source.id, c.remoteId, c.name, c.color, c.readOnly ? 1 : 0, JSON.stringify(c.defaultReminders))
       const keep = new Set(remote.map((c) => c.remoteId))
       const local = db.prepare('SELECT id, remote_id FROM calendars WHERE source_id = ?').all(source.id) as { id: string; remote_id: string }[]
       for (const l of local) if (!keep.has(l.remote_id)) db.prepare('DELETE FROM calendars WHERE id = ?').run(l.id)

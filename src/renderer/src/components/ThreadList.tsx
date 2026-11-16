@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Archive, ArrowLeft, FolderInput, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Trash2, type LucideIcon } from 'lucide-react'
+import {
+  Archive,
+  ArrowLeft,
+  FolderInput,
+  Mail,
+  MailOpen,
+  MoreHorizontal,
+  OctagonAlert,
+  Paperclip,
+  PenSquare,
+  Star,
+  Trash2,
+  type LucideIcon
+} from 'lucide-react'
 import type { Account, AccountMarker, Bundle, MailCategory, MailFilter, ThreadSummary } from '@shared/types'
 import { AccountDot, AccountTag, accountLabel, useAccountMarker } from '../lib/accounts'
 import { CATEGORY_ICON, CATEGORY_LABEL } from '../lib/categories'
@@ -82,7 +95,11 @@ function Row({
         }`}
       >
         {account && marker === 'stripe' && (
-          <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full" style={{ background: account.color, boxShadow: `0 0 8px ${account.color}` }} />
+          <span
+            aria-hidden
+            className="absolute inset-y-1.5 left-0 w-[3px] rounded-full"
+            style={{ background: account.color, boxShadow: `0 0 8px ${account.color}` }}
+          />
         )}
         <div className={`flex shrink-0 gap-3 ${compact ? 'items-center' : 'items-start pt-0.5'}`}>
           <span className={`${compact ? '' : 'pt-2'} ${checked ? '' : 'opacity-60 group-hover:opacity-100'}`}>
@@ -99,7 +116,11 @@ function Row({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className={`min-w-0 truncate text-[13px] ${isDraft ? 'text-danger' : t.unread ? 'font-semibold text-fg' : 'font-medium text-fg-2'}`}>{who}</span>
+            <span
+              className={`min-w-0 truncate text-[13px] ${isDraft ? 'text-danger' : t.unread ? 'font-semibold text-fg' : 'font-medium text-fg-2'}`}
+            >
+              {who}
+            </span>
             {t.count > 1 && <span className="tnum shrink-0 rounded bg-hover px-1 text-[10.5px] text-muted">{t.count}</span>}
             <span className="ml-auto flex shrink-0 items-center gap-1.5 text-muted">
               {t.hasAttachments && <Paperclip size={12} />}
@@ -128,7 +149,17 @@ function Row({
   )
 }
 
-function ToolButton({ icon: Icon, label, onClick, disabled }: { icon: LucideIcon; label: string; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; disabled?: boolean }) {
+function ToolButton({
+  icon: Icon,
+  label,
+  onClick,
+  disabled
+}: {
+  icon: LucideIcon
+  label: string
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+  disabled?: boolean
+}) {
   return (
     <button
       title={label}
@@ -234,14 +265,22 @@ export function ThreadList() {
     <section className={`@container flex min-w-0 flex-col ${single ? 'flex-1' : 'w-[clamp(320px,30vw,560px)] shrink-0 border-r border-line'}`}>
       <header className="flex shrink-0 items-start gap-2 px-5 pb-3 pt-4">
         {inBundle && (
-          <button onClick={() => s.setCategory('smart')} aria-label="Retour à la réception" title="Retour à la réception (Échap)" className="-ml-2 mt-0.5 grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+          <button
+            onClick={() => s.setCategory('smart')}
+            aria-label="Retour à la réception"
+            title="Retour à la réception (Échap)"
+            className="-ml-2 mt-0.5 grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+          >
             <ArrowLeft size={17} />
           </button>
         )}
         <div className="min-w-0 flex-1">
           <h1 className="flex items-center gap-2 truncate text-[18px] font-semibold tracking-[-0.02em]">
             {inBundle && (
-              <span className="grid size-6 place-items-center rounded-full" style={{ background: `color-mix(in oklch, ${CATEGORY_TINT[inBundle]} 18%, transparent)`, color: CATEGORY_TINT[inBundle] }}>
+              <span
+                className="grid size-6 place-items-center rounded-full"
+                style={{ background: `color-mix(in oklch, ${CATEGORY_TINT[inBundle]} 18%, transparent)`, color: CATEGORY_TINT[inBundle] }}
+              >
                 {(() => {
                   const I = CATEGORY_ICON[inBundle]
                   return <I size={13} />
@@ -251,7 +290,11 @@ export function ThreadList() {
             {view.type === 'search' ? `« ${view.query} »` : inBundle ? CATEGORY_LABEL[inBundle] : title}
           </h1>
           <p className="tnum mt-0.5 text-[12px] text-muted">
-            {busy && threads.length === 0 ? 'Synchronisation…' : unread ? `${unread} non lu${unread > 1 ? 's' : ''}` : `${threads.length} conversation${threads.length > 1 ? 's' : ''}`}
+            {busy && threads.length === 0
+              ? 'Synchronisation…'
+              : unread
+                ? `${unread} non lu${unread > 1 ? 's' : ''}`
+                : `${threads.length} conversation${threads.length > 1 ? 's' : ''}`}
           </p>
         </div>
         <ToolButton icon={PenSquare} label="Nouveau message (C)" onClick={() => s.compose()} />
@@ -292,22 +335,47 @@ export function ThreadList() {
         ) : (
           <ToolButton icon={Mail} label="Marquer comme non lu (U)" disabled={none} onClick={() => void s.act(targets, 'unread')} />
         )}
-        <ToolButton icon={Star} label="Suivre (S)" disabled={none} onClick={() => void s.act(targets, targets.every((t) => t.flagged) ? 'unflag' : 'flag')} />
+        <ToolButton
+          icon={Star}
+          label="Suivre (S)"
+          disabled={none}
+          onClick={() => void s.act(targets, targets.every((t) => t.flagged) ? 'unflag' : 'flag')}
+        />
         <span className="hidden @[380px]:contents">
-          <ToolButton icon={FolderInput} label="Déplacer vers… (V)" disabled={none || new Set(targets.map((t) => t.accountId)).size > 1} onClick={() => s.openMovePicker(targets)} />
+          <ToolButton
+            icon={FolderInput}
+            label="Déplacer vers… (V)"
+            disabled={none || new Set(targets.map((t) => t.accountId)).size > 1}
+            onClick={() => s.openMovePicker(targets)}
+          />
         </span>
         <span className="flex-1" />
-        <ToolButton icon={MoreHorizontal} label="Plus d’actions" disabled={none} onClick={(e) => setMenu({ anchor: e.currentTarget, threads: targets })} />
+        <ToolButton
+          icon={MoreHorizontal}
+          label="Plus d’actions"
+          disabled={none}
+          onClick={(e) => setMenu({ anchor: e.currentTarget, threads: targets })}
+        />
       </div>
 
       <div ref={parent} role="listbox" aria-label={title} className="min-h-0 flex-1 overflow-y-auto pb-2">
         {items.length === 0 ? (
           <div className="px-8 pt-20 text-center">
             <p className="text-[13.5px] font-medium text-fg-2">
-              {busy ? 'Synchronisation en cours…' : view.type === 'search' ? 'Aucun message ne correspond' : filter !== 'all' ? 'Aucune conversation pour ce filtre' : 'Tout est traité'}
+              {busy
+                ? 'Synchronisation en cours…'
+                : view.type === 'search'
+                  ? 'Aucun message ne correspond'
+                  : filter !== 'all'
+                    ? 'Aucune conversation pour ce filtre'
+                    : 'Tout est traité'}
             </p>
             <p className="mt-1 text-[12.5px] text-muted">
-              {view.type === 'search' ? 'Essayez un autre mot, un nom ou une adresse.' : filter !== 'all' ? 'Revenez à « Tous » pour tout afficher.' : 'Les nouveaux messages apparaîtront ici.'}
+              {view.type === 'search'
+                ? 'Essayez un autre mot, un nom ou une adresse.'
+                : filter !== 'all'
+                  ? 'Revenez à « Tous » pour tout afficher.'
+                  : 'Les nouveaux messages apparaîtront ici.'}
             </p>
           </div>
         ) : (

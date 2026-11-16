@@ -7,7 +7,10 @@ import { Label, Modal, fieldCls } from './Modal'
 function GoogleMark() {
   return (
     <svg viewBox="0 0 48 48" className="size-[18px]" aria-hidden>
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path
+        fill="#FFC107"
+        d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"
+      />
       <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
       <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
       <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z" />
@@ -73,7 +76,15 @@ export function AccountSetup() {
     const domain = form.email.split('@')[1] ?? ''
     setForm((f) => ({
       ...f,
-      ...(found ?? { imapHost: `imap.${domain}`, imapPort: 993, imapSecure: true, smtpHost: `smtp.${domain}`, smtpPort: 465, smtpSecure: true, username: f.email }),
+      ...(found ?? {
+        imapHost: `imap.${domain}`,
+        imapPort: 993,
+        imapSecure: true,
+        smtpHost: `smtp.${domain}`,
+        smtpPort: 465,
+        smtpSecure: true,
+        username: f.email
+      }),
       username: found?.username ?? f.email
     }))
     setDetected(!!found)
@@ -102,7 +113,11 @@ export function AccountSetup() {
     <Modal title={hasAccounts ? 'Ajouter un compte' : 'Bienvenue dans Mailbox'} onClose={close} closable={hasAccounts} width={480}>
       {step === 'choose' && (
         <div className="space-y-2 px-5 pb-5">
-          {!hasAccounts && <p className="mb-4 text-[13px] text-muted">Connectez une première adresse. Vos messages restent sur votre machine et sur votre serveur, nulle part ailleurs.</p>}
+          {!hasAccounts && (
+            <p className="mb-4 text-[13px] text-muted">
+              Connectez une première adresse. Vos messages restent sur votre machine et sur votre serveur, nulle part ailleurs.
+            </p>
+          )}
           <button
             onClick={google}
             disabled={busy || !googleReady}
@@ -114,7 +129,8 @@ export function AccountSetup() {
           </button>
           {!googleReady && (
             <p className="px-1 text-[11.5px] text-muted">
-              Connexion Google indisponible : renseignez MAIN_VITE_GOOGLE_CLIENT_ID et MAIN_VITE_GOOGLE_CLIENT_SECRET dans le fichier .env (voir README).
+              Connexion Google indisponible : renseignez MAIN_VITE_GOOGLE_CLIENT_ID et MAIN_VITE_GOOGLE_CLIENT_SECRET dans le fichier .env (voir
+              README).
             </p>
           )}
           <button
@@ -140,7 +156,14 @@ export function AccountSetup() {
             <input autoFocus value={form.name} onChange={(e) => set('name', e.target.value)} className={fieldCls} placeholder="Camille Martin" />
           </Label>
           <Label text="Adresse e-mail">
-            <input required type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={fieldCls} placeholder="camille@exemple.fr" />
+            <input
+              required
+              type="email"
+              value={form.email}
+              onChange={(e) => set('email', e.target.value)}
+              className={fieldCls}
+              placeholder="camille@exemple.fr"
+            />
           </Label>
           <Label text="Mot de passe" hint="Si votre fournisseur l’exige, utilisez un mot de passe d’application.">
             <input required type="password" value={form.password} onChange={(e) => set('password', e.target.value)} className={fieldCls} />
@@ -159,17 +182,25 @@ export function AccountSetup() {
       {step === 'servers' && (
         <form onSubmit={connect} className="space-y-3.5 px-5 pb-5">
           <p className="text-[12.5px] text-muted">
-            {detected ? 'Réglages trouvés automatiquement. Vérifiez-les puis connectez-vous.' : 'Réglages non trouvés automatiquement : voici une proposition, à corriger si besoin.'}
+            {detected
+              ? 'Réglages trouvés automatiquement. Vérifiez-les puis connectez-vous.'
+              : 'Réglages non trouvés automatiquement : voici une proposition, à corriger si besoin.'}
           </p>
           <div className="grid grid-cols-[1fr_88px] gap-2">
             <Label text="Serveur IMAP">
               <input required value={form.imapHost} onChange={(e) => set('imapHost', e.target.value)} className={fieldCls} />
             </Label>
             <Label text="Port">
-              <input required type="number" value={form.imapPort} onChange={(e) => {
+              <input
+                required
+                type="number"
+                value={form.imapPort}
+                onChange={(e) => {
                   const port = Number(e.target.value)
                   setForm((f) => ({ ...f, imapPort: port, imapSecure: port === 993 }))
-                }} className={fieldCls} />
+                }}
+                className={fieldCls}
+              />
             </Label>
           </div>
           <div className="grid grid-cols-[1fr_88px] gap-2">
@@ -193,7 +224,12 @@ export function AccountSetup() {
             <input required value={form.username} onChange={(e) => set('username', e.target.value)} className={fieldCls} />
           </Label>
           <Label text="Agenda CalDAV (facultatif)" hint="Ex. https://nextcloud.exemple.fr/remote.php/dav — mêmes identifiants que la messagerie.">
-            <input value={form.caldavUrl ?? ''} onChange={(e) => set('caldavUrl', e.target.value || null)} className={fieldCls} placeholder="https://" />
+            <input
+              value={form.caldavUrl ?? ''}
+              onChange={(e) => set('caldavUrl', e.target.value || null)}
+              className={fieldCls}
+              placeholder="https://"
+            />
           </Label>
           {errorBox}
           <div className="flex justify-between pt-2">

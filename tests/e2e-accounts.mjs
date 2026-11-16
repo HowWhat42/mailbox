@@ -14,7 +14,12 @@ const step = (msg) => console.log(`• ${msg}`)
 const accounts = [await freshEtherealAccount(), await freshEtherealAccount()]
 for (const [i, acc] of accounts.entries()) {
   const smtp = createTransport({ host: acc.smtp.host, port: acc.smtp.port, secure: acc.smtp.secure, auth: { user: acc.user, pass: acc.pass } })
-  await smtp.sendMail({ from: 'Léa Moreau <lea@example.com>', to: acc.user, subject: i === 0 ? 'Message pour le compte pro' : 'Message pour le compte perso', text: 'Bonjour !' })
+  await smtp.sendMail({
+    from: 'Léa Moreau <lea@example.com>',
+    to: acc.user,
+    subject: i === 0 ? 'Message pour le compte pro' : 'Message pour le compte perso',
+    text: 'Bonjour !'
+  })
 }
 step('one message sent to each of two mailboxes')
 

@@ -18,7 +18,11 @@ function rampFor(accent: string): [number, number, number][] {
       from.map((v, j) => Math.round(v + (to[j] - v) * k)) as [number, number, number]
     // Dark stops lean a little blue so the deep end reads as night, not mud.
     const deep = [Math.round(a[0] * 0.55), Math.round(a[1] * 0.55), Math.min(255, Math.round(a[2] * 0.75 + 25))]
-    out.push(t < 0.75 ? mix(t < 0.4 ? deep : a, t < 0.4 ? (t / 0.4) ** 1.6 : (t - 0.4) / 0.35, t < 0.4 ? [0, 0, 0] : deep) : mix([255, 255, 255], ((t - 0.75) / 0.25) * 0.55, a))
+    out.push(
+      t < 0.75
+        ? mix(t < 0.4 ? deep : a, t < 0.4 ? (t / 0.4) ** 1.6 : (t - 0.4) / 0.35, t < 0.4 ? [0, 0, 0] : deep)
+        : mix([255, 255, 255], ((t - 0.75) / 0.25) * 0.55, a)
+    )
   }
   return out
 }
@@ -45,7 +49,7 @@ function rng(seed: number): () => number {
 function makeNoise(random: () => number): (x: number, y: number) => number {
   const size = 64
   const lattice = Array.from({ length: size * size }, random)
-  const at = (x: number, y: number): number => lattice[((y % size) + size) % size * size + (((x % size) + size) % size)]
+  const at = (x: number, y: number): number => lattice[(((y % size) + size) % size) * size + (((x % size) + size) % size)]
   const smooth = (t: number): number => t * t * (3 - 2 * t)
   const value = (x: number, y: number): number => {
     const xi = Math.floor(x)

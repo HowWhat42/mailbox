@@ -37,7 +37,15 @@ function buildDoc(html: string, allowRemote: boolean): string {
   return clean.replace(/<head>/i, `<head>${base}`)
 }
 
-export function MessageBody({ html, text, allowRemoteByDefault = false }: { html: string | null; text: string | null; allowRemoteByDefault?: boolean }) {
+export function MessageBody({
+  html,
+  text,
+  allowRemoteByDefault = false
+}: {
+  html: string | null
+  text: string | null
+  allowRemoteByDefault?: boolean
+}) {
   const [allowRemote, setAllowRemote] = useState(allowRemoteByDefault)
   const frame = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(80)

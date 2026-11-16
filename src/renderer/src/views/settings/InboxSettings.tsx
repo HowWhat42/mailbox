@@ -31,7 +31,10 @@ export function InboxSettings() {
 
   return (
     <>
-      <Section title="Tri intelligent" description="Comme dans Spark : les messages de personnes d’un côté, le reste rangé automatiquement. Le tri se fait sur votre ordinateur, à partir des en-têtes des messages et des gens à qui vous écrivez.">
+      <Section
+        title="Tri intelligent"
+        description="Comme dans Spark : les messages de personnes d’un côté, le reste rangé automatiquement. Le tri se fait sur votre ordinateur, à partir des en-têtes des messages et des gens à qui vous écrivez."
+      >
         <Row label="Activer le tri intelligent" hint="Ajoute des onglets en haut de la boîte de réception.">
           <Toggle label="" checked={settings.smartInbox} onChange={(v) => void update({ smartInbox: v })} />
         </Row>
@@ -43,7 +46,10 @@ export function InboxSettings() {
           ))}
       </Section>
 
-      <Section title="Règles" description="Appliquées dans l’ordre à chaque nouveau message. La catégorie de la première règle qui correspond l’emporte ; les autres actions s’additionnent.">
+      <Section
+        title="Règles"
+        description="Appliquées dans l’ordre à chaque nouveau message. La catégorie de la première règle qui correspond l’emporte ; les autres actions s’additionnent."
+      >
         {rules.length === 0 && !editing && (
           <div className="px-4 py-6 text-center">
             <p className="text-[13px] text-fg-2">Aucune règle pour l’instant</p>
@@ -69,13 +75,27 @@ export function InboxSettings() {
                 <p className="truncate text-[12px] text-muted">{describeRule(r)}</p>
               </div>
               <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-                <button disabled={i === 0} onClick={() => void move(i, -1)} aria-label="Monter" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30">
+                <button
+                  disabled={i === 0}
+                  onClick={() => void move(i, -1)}
+                  aria-label="Monter"
+                  className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
+                >
                   <ArrowUp size={14} />
                 </button>
-                <button disabled={i === rules.length - 1} onClick={() => void move(i, 1)} aria-label="Descendre" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30">
+                <button
+                  disabled={i === rules.length - 1}
+                  onClick={() => void move(i, 1)}
+                  aria-label="Descendre"
+                  className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg disabled:opacity-30"
+                >
                   <ArrowDown size={14} />
                 </button>
-                <button onClick={() => setEditing(r)} aria-label="Modifier la règle" className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+                <button
+                  onClick={() => setEditing(r)}
+                  aria-label="Modifier la règle"
+                  className="grid size-7 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+                >
                   <Pencil size={14} />
                 </button>
                 <button
@@ -106,7 +126,16 @@ export function InboxSettings() {
         )}
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           <button
-            onClick={() => setEditing({ id: '', name: '', enabled: true, accountId: null, conditions: [{ field: 'from', op: 'contains', value: '' }], actions: { category: 'newsletters' } })}
+            onClick={() =>
+              setEditing({
+                id: '',
+                name: '',
+                enabled: true,
+                accountId: null,
+                conditions: [{ field: 'from', op: 'contains', value: '' }],
+                actions: { category: 'newsletters' }
+              })
+            }
             disabled={!!editing}
             className="btn-primary flex h-8 items-center gap-1.5 rounded-lg px-3 text-[12.5px] font-medium disabled:opacity-50"
           >

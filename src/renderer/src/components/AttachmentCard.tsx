@@ -19,7 +19,19 @@ const TINT: Record<string, string> = {
 }
 
 /** File tile: type badge, name, size; open on click, optional save / remove. */
-export function AttachmentCard({ name, size, onOpen, onSave, onRemove }: { name: string; size: number; onOpen?: () => void; onSave?: () => void; onRemove?: () => void }) {
+export function AttachmentCard({
+  name,
+  size,
+  onOpen,
+  onSave,
+  onRemove
+}: {
+  name: string
+  size: number
+  onOpen?: () => void
+  onSave?: () => void
+  onRemove?: () => void
+}) {
   const ext = extensionOf(name)
   return (
     <div className="group relative w-[148px]">

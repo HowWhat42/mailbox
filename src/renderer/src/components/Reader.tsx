@@ -29,15 +29,40 @@ import { AccountTag } from '../lib/accounts'
 import { TriageBanner } from './TriageBanner'
 import { Menu } from './ui/Menu'
 
-function ToolButton({ icon: Icon, label, onClick, active }: { icon: LucideIcon; label: string; onClick: (e: React.MouseEvent<HTMLButtonElement>) => void; active?: boolean }) {
+function ToolButton({
+  icon: Icon,
+  label,
+  onClick,
+  active
+}: {
+  icon: LucideIcon
+  label: string
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
+  active?: boolean
+}) {
   return (
-    <button title={label} aria-label={label} onClick={onClick} className="grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg">
+    <button
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className="grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg"
+    >
       <Icon size={15} strokeWidth={1.75} className={active ? 'fill-amber-400 text-amber-400' : ''} />
     </button>
   )
 }
 
-function Message({ m, expanded, onToggle, onReply }: { m: MessageDetail; expanded: boolean; onToggle: () => void; onReply: (m: MessageDetail) => void }) {
+function Message({
+  m,
+  expanded,
+  onToggle,
+  onReply
+}: {
+  m: MessageDetail
+  expanded: boolean
+  onToggle: () => void
+  onReply: (m: MessageDetail) => void
+}) {
   const { toast } = useStore.getState()
   const name = displayName(m.from)
 
@@ -170,8 +195,8 @@ export function Reader() {
           </div>
           <p className="text-[13.5px] font-medium text-fg-2">Aucune conversation ouverte</p>
           <p className="mt-1.5 text-[12.5px] leading-6 text-muted">
-            <kbd className="rounded border border-line px-1 text-fg-2">J</kbd> <kbd className="rounded border border-line px-1 text-fg-2">K</kbd> pour naviguer ·{' '}
-            <kbd className="rounded border border-line px-1 text-fg-2">Ctrl K</kbd> pour tout le reste
+            <kbd className="rounded border border-line px-1 text-fg-2">J</kbd> <kbd className="rounded border border-line px-1 text-fg-2">K</kbd> pour
+            naviguer · <kbd className="rounded border border-line px-1 text-fg-2">Ctrl K</kbd> pour tout le reste
           </p>
         </div>
       </section>
@@ -211,8 +236,17 @@ export function Reader() {
         <ToolButton icon={Trash2} label="Supprimer (#)" onClick={() => void s.act([thread], 'trash')} />
         <span className="hidden @[520px]:contents">
           <span className="mx-1 h-4 w-px bg-line" />
-          <ToolButton icon={thread.unread ? MailOpen : Mail} label={thread.unread ? 'Marquer comme lu (U)' : 'Marquer comme non lu (U)'} onClick={() => void s.act([thread], thread.unread ? 'read' : 'unread')} />
-          <ToolButton icon={Star} label={thread.flagged ? 'Ne plus suivre (S)' : 'Suivre (S)'} active={thread.flagged} onClick={() => void s.act([thread], thread.flagged ? 'unflag' : 'flag')} />
+          <ToolButton
+            icon={thread.unread ? MailOpen : Mail}
+            label={thread.unread ? 'Marquer comme lu (U)' : 'Marquer comme non lu (U)'}
+            onClick={() => void s.act([thread], thread.unread ? 'read' : 'unread')}
+          />
+          <ToolButton
+            icon={Star}
+            label={thread.flagged ? 'Ne plus suivre (S)' : 'Suivre (S)'}
+            active={thread.flagged}
+            onClick={() => void s.act([thread], thread.flagged ? 'unflag' : 'flag')}
+          />
           <ToolButton icon={FolderInput} label="Déplacer vers… (V)" onClick={() => s.openMovePicker([thread])} />
         </span>
         <span className="flex-1" />
@@ -286,15 +320,23 @@ export function Reader() {
                 <button onClick={() => reply('reply')} className="flex h-9 items-center gap-2 rounded-lg btn-primary px-4 text-[13px] font-medium">
                   <Reply size={15} /> Répondre
                 </button>
-                <button onClick={() => reply('replyAll')} className="flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-[13px] text-fg-2 hover:border-line-strong hover:text-fg">
+                <button
+                  onClick={() => reply('replyAll')}
+                  className="flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-[13px] text-fg-2 hover:border-line-strong hover:text-fg"
+                >
                   <ReplyAll size={15} /> Répondre à tous
                 </button>
-                <button onClick={() => reply('forward')} className="flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-[13px] text-fg-2 hover:border-line-strong hover:text-fg">
+                <button
+                  onClick={() => reply('forward')}
+                  className="flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-4 text-[13px] text-fg-2 hover:border-line-strong hover:text-fg"
+                >
                   <Forward size={15} /> Transférer
                 </button>
                 {messages.length > 1 && (
                   <button
-                    onClick={() => setExpanded(expanded.size === messages.length ? new Set([messages.at(-1)!.id]) : new Set(messages.map((m) => m.id)))}
+                    onClick={() =>
+                      setExpanded(expanded.size === messages.length ? new Set([messages.at(-1)!.id]) : new Set(messages.map((m) => m.id)))
+                    }
                     className="ml-auto flex h-9 items-center gap-1.5 rounded-lg px-3 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
                   >
                     <ChevronDown size={14} className={expanded.size === messages.length ? 'rotate-180' : ''} />

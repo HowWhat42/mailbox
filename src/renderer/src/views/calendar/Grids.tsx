@@ -55,7 +55,19 @@ function fill(color: string, e: CalendarEvent, strength = 24): React.CSSProperti
   }
 }
 
-function TimedChip({ e, color, onOpen, style, now }: { e: CalendarEvent; color: string; onOpen: OpenEvent; style: React.CSSProperties; now: number }) {
+function TimedChip({
+  e,
+  color,
+  onOpen,
+  style,
+  now
+}: {
+  e: CalendarEvent
+  color: string
+  onOpen: OpenEvent
+  style: React.CSSProperties
+  now: number
+}) {
   const short = e.end - e.start <= 45 * 60_000
   const canJoin = joinable(e, now)
   return (
@@ -73,7 +85,9 @@ function TimedChip({ e, color, onOpen, style, now }: { e: CalendarEvent; color: 
       style={{ ...style, ...fill(color, e) }}
     >
       <div className="flex min-w-0 items-start gap-1">
-        <span className={`min-w-0 flex-1 truncate font-medium ${short ? '' : 'whitespace-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'}`}>
+        <span
+          className={`min-w-0 flex-1 truncate font-medium ${short ? '' : 'whitespace-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]'}`}
+        >
           {e.title || '(sans titre)'}
         </span>
         {canJoin && (
@@ -148,9 +162,7 @@ export function TimeGrid({
         {days.map((d) => (
           <div key={d.getTime()} className="flex items-baseline gap-1.5 px-2 py-2">
             <span className={`text-[12px] ${isToday(d) ? 'text-accent' : 'text-muted'}`}>{format(d, 'EEE', { locale: fr })}</span>
-            <span
-              className={`tnum grid min-w-7 place-items-center rounded-md px-1 text-[15px] font-semibold ${isToday(d) ? 'btn-primary' : ''}`}
-            >
+            <span className={`tnum grid min-w-7 place-items-center rounded-md px-1 text-[15px] font-semibold ${isToday(d) ? 'btn-primary' : ''}`}>
               {format(d, 'd')}
             </span>
           </div>
@@ -159,7 +171,11 @@ export function TimeGrid({
           <>
             <div className="pr-2 pt-1.5 text-right text-[10.5px] text-muted">jour</div>
             {days.map((d) => (
-              <div key={d.getTime()} className="min-h-7 space-y-0.5 border-l border-line p-0.5" onDoubleClick={() => onCreate(d.getTime(), addDays(d, 1).getTime(), true)}>
+              <div
+                key={d.getTime()}
+                className="min-h-7 space-y-0.5 border-l border-line p-0.5"
+                onDoubleClick={() => onCreate(d.getTime(), addDays(d, 1).getTime(), true)}
+              >
                 {allDay(d).map((e) => (
                   <button
                     key={e.id}

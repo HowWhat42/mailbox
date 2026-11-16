@@ -34,7 +34,11 @@ export function TriageBanner({ thread, messageId }: { thread: ThreadSummary; mes
       <Icon size={15} className="text-muted" />
       <span className="flex-1 text-fg-2">Classé dans {CATEGORY_LABEL[thread.category]}</span>
       {thread.canUnsubscribe && (
-        <button onClick={() => void unsubscribe()} disabled={busy} className="flex h-7 items-center gap-1.5 rounded-lg border border-line px-2.5 text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50">
+        <button
+          onClick={() => void unsubscribe()}
+          disabled={busy}
+          className="flex h-7 items-center gap-1.5 rounded-lg border border-line px-2.5 text-fg-2 hover:bg-hover hover:text-fg disabled:opacity-50"
+        >
           <MailX size={13} /> {busy ? 'Désabonnement…' : 'Se désabonner'}
         </button>
       )}
