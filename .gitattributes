@@ -1,0 +1,4 @@
+# LF everywhere, whatever core.autocrlf says (the Windows CI runner checks out CRLF otherwise and oxfmt rejects it).
+* text=auto eol=lf
+*.png binary
+*.ico binary
