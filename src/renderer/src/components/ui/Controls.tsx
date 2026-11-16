@@ -94,14 +94,29 @@ export function Select<T extends string>({
   )
 }
 
-export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  ariaLabel,
+  disabled
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  /** Name for assistive tech when the visible label is elsewhere (label=""). */
+  ariaLabel?: string
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
-      className="flex items-center gap-2.5 text-[12.5px] text-fg-2"
+      className="flex items-center gap-2.5 text-[12.5px] text-fg-2 disabled:cursor-not-allowed"
     >
       <span className={`relative h-[18px] w-8 rounded-full transition-colors ${checked ? 'btn-primary' : 'bg-line-strong'}`}>
         <span className={`absolute top-0.5 size-3.5 rounded-full bg-white shadow transition-[left] ${checked ? 'left-4' : 'left-0.5'}`} />

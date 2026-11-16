@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { MapPin, Repeat } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { MapPin, Repeat, Video } from 'lucide-react'
 import type { Calendar, EventInput } from '@shared/types'
 import { api, confirmDialog, useStore } from '../store'
 import { Label, Modal, fieldCls } from '../components/Modal'
@@ -10,6 +10,8 @@ export interface EditorState {
   id: string | null
   input: EventInput
   recurring?: boolean
+  /** The event's existing video meeting, if any. */
+  meetingUrl?: string | null
 }
 
 const DAY = 86_400_000
@@ -39,6 +41,13 @@ export function EventEditor({
   const choices = readOnly ? calendars.filter((c) => c.id === input.calendarId) : calendars.filter((c) => !c.readOnly)
 
   const set = <K extends keyof EventInput>(k: K, v: EventInput[K]): void => setInput((i) => ({ ...i, [k]: v }))
+  // Meet rooms can only be created through Google's API: offer it on Google calendars.
+  const [googleSources, setGoogleSources] = useState<Set<string> | null>(null)
+  useEffect(() => {
+    void api.calendar.sources().then((list) => setGoogleSources(new Set(list.filter((s) => s.kind === 'google').map((s) => s.id))))
+  }, [])
+  const chosen = calendars.find((c) => c.id === input.calendarId)
+  const meetPossible = !!chosen && !!googleSources?.has(chosen.sourceId)
 
   // All-day events store an exclusive end (next midnight); the form shows the inclusive last day.
   const endShown = input.allDay ? input.end - DAY : input.end
@@ -49,8 +58,9 @@ export function EventEditor({
     if (invalid) return
     setBusy(true)
     try {
-      if (state.id) await api.calendar.update(state.id, input)
-      else await api.calendar.create(input)
+      const toSave = { ...input, addMeet: !!input.addMeet && meetPossible }
+      if (state.id) await api.calendar.update(state.id, toSave)
+      else await api.calendar.create(toSave)
       toast(state.id ? 'Événement modifié' : 'Événement créé')
       onSaved()
     } catch (err) {
@@ -166,6 +176,33 @@ export function EventEditor({
             />
           </div>
         </Label>
+        {state.meetingUrl ? (
+          <div className="flex items-center gap-2.5 rounded-lg border border-line px-3 py-2 text-[12.5px] text-fg-2">
+            <Video size={15} className="shrink-0 text-accent" />
+            <span className="min-w-0 flex-1 truncate">Visio : {state.meetingUrl}</span>
+          </div>
+        ) : (
+          !readOnly && (
+            <div className={`flex items-center gap-3 rounded-lg border border-line px-3 py-2.5 ${meetPossible ? '' : 'opacity-60'}`}>
+              <Video size={16} className={`shrink-0 ${input.addMeet ? 'text-accent' : 'text-muted'}`} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium">Ajouter une visio Google Meet</p>
+                <p className="text-[11.5px] text-muted">
+                  {meetPossible
+                    ? 'Le lien est créé à l’enregistrement, avec un bouton Rejoindre sur l’événement.'
+                    : 'Disponible sur un agenda Google : choisissez-en un ci-dessus.'}
+                </p>
+              </div>
+              <Toggle
+                label=""
+                ariaLabel="Ajouter une visio Google Meet"
+                checked={!!input.addMeet && meetPossible}
+                disabled={!meetPossible}
+                onChange={(v) => set('addMeet', v)}
+              />
+            </div>
+          )
+        )}
         <Label text="Notes">
           <textarea
             disabled={readOnly}

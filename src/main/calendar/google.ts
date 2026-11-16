@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Attendee, CalendarSource, EventInput, ResponseStatus } from '@shared/types'
 import { findMeeting } from '@shared/meeting'
 import { googleTokenForSource } from './sources'
@@ -146,19 +147,25 @@ function body(input: EventInput): string {
     location: input.location,
     description: input.description,
     start: toGTime(input.start, input.allDay),
-    end: toGTime(input.end, input.allDay)
+    end: toGTime(input.end, input.allDay),
+    // Google creates the Meet room itself; the link comes back with the event (hangoutLink).
+    ...(input.addMeet ? { conferenceData: { createRequest: { requestId: randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } } } } : {})
   })
 }
+
+/** conferenceDataVersion=1 is what lets the API create (and keep) the Meet room. */
+const withMeet = (path: string, input: EventInput): string =>
+  input.addMeet ? `${path}${path.includes('?') ? '&' : '?'}conferenceDataVersion=1` : path
 
 const eventPath = (calendarId: string, eventId: string): string =>
   `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`
 
 export async function googleCreate(source: CalendarSource, calendarId: string, input: EventInput): Promise<void> {
-  await call(source, `/calendars/${encodeURIComponent(calendarId)}/events`, { method: 'POST', body: body(input) })
+  await call(source, withMeet(`/calendars/${encodeURIComponent(calendarId)}/events`, input), { method: 'POST', body: body(input) })
 }
 
 export async function googleUpdate(source: CalendarSource, calendarId: string, eventId: string, input: EventInput): Promise<void> {
-  await call(source, eventPath(calendarId, eventId), { method: 'PATCH', body: body(input) })
+  await call(source, withMeet(eventPath(calendarId, eventId), input), { method: 'PATCH', body: body(input) })
 }
 
 export async function googleDelete(source: CalendarSource, calendarId: string, eventId: string): Promise<void> {

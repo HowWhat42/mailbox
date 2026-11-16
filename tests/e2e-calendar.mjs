@@ -111,6 +111,8 @@ await app.evaluate(({ shell }) => {
 const page = await app.firstWindow()
 const errors = []
 page.on('pageerror', (e) => errors.push(e.message))
+// Fixed interface size: on a large display the automatic zoom narrows the view to 3 days.
+await page.evaluate(() => window.mailbox.settings.set({ uiScale: 1 }))
 
 await page.click('text=Passer pour l’instant')
 await page.click('nav button[aria-label=Calendrier]')
@@ -182,6 +184,11 @@ await page.keyboard.press('w')
 await page.keyboard.press('n')
 await page.waitForSelector('text=Nouvel événement')
 await page.fill('input[placeholder=Titre]', 'Déjeuner client')
+// Google Meet needs a Google calendar: on CalDAV the option is offered greyed out, with the reason.
+const meet = page.locator('[role=switch][aria-label="Ajouter une visio Google Meet"]')
+await meet.waitFor()
+if (!(await meet.isDisabled())) throw new Error('Google Meet offered on a CalDAV calendar')
+await page.waitForSelector('text=Disponible sur un agenda Google')
 await page.click('button:has-text("Enregistrer")')
 await page.waitForSelector('text=Événement créé', { timeout: 30_000 })
 await page.click('[data-event-id]:has-text("Déjeuner client")')

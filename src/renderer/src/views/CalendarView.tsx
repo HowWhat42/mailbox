@@ -256,7 +256,8 @@ export function CalendarView() {
         end: e.end,
         allDay: e.allDay
       },
-      recurring: e.recurring
+      recurring: e.recurring,
+      meetingUrl: e.meetingUrl
     })
   }
 

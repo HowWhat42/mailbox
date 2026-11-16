@@ -293,6 +293,8 @@ export interface EventInput {
   start: number
   end: number
   allDay: boolean
+  /** Google calendars: create a Google Meet room for the event. */
+  addMeet?: boolean
 }
 
 export type ThemeMode = 'dark' | 'light' | 'system'
