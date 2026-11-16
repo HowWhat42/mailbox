@@ -24,7 +24,8 @@ import { threadMenu } from '../lib/threadActions'
 import { useLayout } from '../lib/layout'
 import { Avatar } from './Avatar'
 import { Checkbox } from './ui/Controls'
-import { Menu } from './ui/Menu'
+import { Menu, type MenuEntry } from './ui/Menu'
+import { folderMenu } from '../lib/folderActions'
 import type { Anchor } from './ui/Popover'
 
 const ROW = { comfortable: 92, compact: 60 }
@@ -200,6 +201,8 @@ export function ThreadList() {
   const s = useStore.getState()
   const parent = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<{ anchor: Anchor; threads: ThreadSummary[] } | null>(null)
+  const [viewMenu, setViewMenu] = useState<{ anchor: Anchor; items: MenuEntry[] } | null>(null)
+  const folders = useStore((st) => st.folders)
   // A single account's folder needs no marker; the unified boxes and search do.
   const markers = useAccountMarker(view.type !== 'folder')
 
@@ -297,6 +300,15 @@ export function ThreadList() {
                 : `${threads.length} conversation${threads.length > 1 ? 's' : ''}`}
           </p>
         </div>
+        <ToolButton
+          icon={MoreHorizontal}
+          label="Actions sur cette vue"
+          onClick={(e) => {
+            const folder = view.type === 'folder' ? folders.find((f) => f.id === view.folderId) : undefined
+            const scope = smart && category !== 'smart' && category !== 'all' ? (category as MailCategory) : 'all'
+            setViewMenu({ anchor: e.currentTarget, items: folderMenu(view, folder, scope) })
+          }}
+        />
         <ToolButton icon={PenSquare} label="Nouveau message (C)" onClick={() => s.compose()} />
       </header>
 
@@ -408,6 +420,7 @@ export function ThreadList() {
       </div>
 
       {menu && <Menu anchor={menu.anchor} items={threadMenu(menu.threads)} onClose={() => setMenu(null)} minWidth={230} />}
+      {viewMenu && <Menu anchor={viewMenu.anchor} align="end" items={viewMenu.items} onClose={() => setViewMenu(null)} minWidth={220} />}
     </section>
   )
 }

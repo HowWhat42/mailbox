@@ -75,6 +75,29 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
   }
 }
 
+/** Empties Trash or Junk for good (server and local copy). Returns how many messages went. */
+export async function emptyFolder(folderId: string): Promise<number> {
+  const db = getDb()
+  const folder = db.prepare('SELECT * FROM folders WHERE id = ?').get(folderId) as unknown as FolderRow | undefined
+  if (!folder) throw new Error('Dossier introuvable.')
+  if (folder.role !== 'trash' && folder.role !== 'junk') throw new Error('Seuls la corbeille et les indésirables peuvent être vidés.')
+  try {
+    await withImap(getAccount(folder.account_id), (client) =>
+      inMailbox(client, folder.path, async () => {
+        if ((client.mailbox as { exists?: number }).exists) await client.messageDelete('1:*')
+      })
+    )
+  } catch (err) {
+    if (isOffline(err)) throw new Error('Hors ligne : le dossier sera vidable au retour de la connexion.', { cause: err })
+    throw new Error(describeError(err), { cause: err })
+  }
+  const n = (db.prepare('SELECT count(*) AS n FROM messages WHERE folder_id = ?').get(folder.id) as { n: number }).n
+  db.prepare('DELETE FROM messages WHERE folder_id = ?').run(folder.id)
+  db.prepare('UPDATE folders SET unread = 0, total = 0 WHERE id = ?').run(folder.id)
+  emit('mail:changed', { accountId: folder.account_id })
+  return n
+}
+
 /** Performs queued or live actions on the server, one connection for all of them. */
 export async function runOnServer(accountId: string, ops: QueuedAction[]): Promise<void> {
   const account = getAccount(accountId)

@@ -7,8 +7,8 @@ import { deleteAccount, insertAccount, listAccounts, updateAccount } from './acc
 import { authorizeGoogle, googleConfigured } from './accounts/google'
 import { discoverSettings } from './accounts/discover'
 import { describeError, syncAccount } from './mail/sync'
-import { bundleMessageIds, listBundles, listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
-import { applyAction, threadTargets } from './mail/actions'
+import { bundleMessageIds, listBundles, unreadIdsOf, listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
+import { applyAction, emptyFolder, threadTargets } from './mail/actions'
 import { deleteDraft, saveDraft, sendOrQueue } from './mail/send'
 import { isOffline, outbox, pendingActionCount, takeFromOutbox } from './mail/queue'
 import { openAttachment, saveAttachment } from './mail/attachments'
@@ -139,7 +139,13 @@ const handlers: Handlers = {
     },
     fileInfo: async (paths) => fileInfo(paths),
     counts: async () => unifiedCounts(),
-    unsubscribe: (messageId) => unsubscribe(messageId)
+    unsubscribe: (messageId) => unsubscribe(messageId),
+    markAllRead: async (view, scope) => {
+      const ids = unreadIdsOf(view, scope)
+      await applyAction(ids, 'read')
+      return ids.length
+    },
+    emptyFolder: (folderId) => emptyFolder(folderId)
   },
   rules: {
     list: async () => listRules(),

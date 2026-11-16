@@ -24,6 +24,8 @@ import { api, useStore } from '../store'
 import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { useLayout } from '../lib/layout'
 import { NextUp } from './NextUp'
+import { Menu, type MenuEntry } from './ui/Menu'
+import { folderMenu } from '../lib/folderActions'
 import { accountLabel } from '../lib/accounts'
 
 const ROLE_ICON: Partial<Record<Exclude<FolderRole, null>, LucideIcon>> = {
@@ -49,7 +51,8 @@ function Item({
   onClick,
   color,
   emphasize,
-  collapsed
+  collapsed,
+  onMenu
 }: {
   icon: LucideIcon
   label: string
@@ -59,10 +62,19 @@ function Item({
   color?: string
   emphasize?: boolean
   collapsed?: boolean
+  /** Right-click menu for this entry (folder actions). */
+  onMenu?: (anchor: { x: number; y: number }) => void
 }) {
   return (
     <button
       onClick={onClick}
+      onContextMenu={
+        onMenu &&
+        ((e) => {
+          e.preventDefault()
+          onMenu({ x: e.clientX, y: e.clientY })
+        })
+      }
       title={collapsed ? (count ? `${label} (${count})` : label) : undefined}
       aria-label={label}
       className={`group relative flex h-8 w-full items-center gap-2.5 rounded-lg text-left text-[13px] transition-colors ${collapsed ? 'justify-center' : 'px-2.5'} ${
@@ -89,6 +101,8 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const { compose, setSetup, openSettings, updateSettings, toast } = useStore.getState()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
+  const [menu, setMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
+  const menuFor = (view: MailView, folder?: Folder) => (anchor: { x: number; y: number }) => setMenu({ anchor, items: folderMenu(view, folder) })
   const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
   const queue = useStore((st) => st.queue)
   const errored = accounts.filter((a) => a.syncError)
@@ -152,6 +166,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
             emphasize={counts.inbox > 0}
             active={active({ type: 'unified', role: 'inbox' })}
             onClick={() => setView({ type: 'unified', role: 'inbox' })}
+            onMenu={menuFor({ type: 'unified', role: 'inbox' })}
           />
           {!collapsed && accounts.length > 1 && (
             // One inbox per account, right under the unified one.
@@ -164,6 +179,10 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                   <button
                     key={a.id}
                     onClick={() => setView({ type: 'folder', folderId: inbox.id })}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      menuFor({ type: 'folder', folderId: inbox.id }, inbox)({ x: e.clientX, y: e.clientY })
+                    }}
                     title={a.email}
                     aria-label={`Réception ${accountLabel(a)}`}
                     className={`relative flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
@@ -219,6 +238,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                     emphasize={f.unread > 0}
                     active={active({ type: 'folder', folderId: f.id })}
                     onClick={() => setView({ type: 'folder', folderId: f.id })}
+                    onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
                   />
                 )
               })}
@@ -255,6 +275,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                           emphasize={f.role === 'inbox' && f.unread > 0}
                           active={active({ type: 'folder', folderId: f.id })}
                           onClick={() => setView({ type: 'folder', folderId: f.id })}
+                          onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
                         />
                       ))}
                     </div>
@@ -335,6 +356,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           </button>
         )}
       </div>
+      {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={220} />}
     </aside>
   )
 }

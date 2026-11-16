@@ -412,6 +412,10 @@ export interface MailboxApi {
     fileInfo(paths: string[]): Promise<OutgoingAttachment[]>
     counts(): Promise<{ inbox: number; flagged: number; categories: Record<MailCategory, number> }>
     unsubscribe(messageId: string): Promise<'done' | 'opened'>
+    /** Marks every unread message of a view as read; returns how many. */
+    markAllRead(view: MailView, scope: MailScope): Promise<number>
+    /** Permanently deletes everything in Trash or Junk; returns how many. */
+    emptyFolder(folderId: string): Promise<number>
   }
   rules: {
     list(): Promise<MailRule[]>

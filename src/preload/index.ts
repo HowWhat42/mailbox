@@ -24,6 +24,8 @@ const api = {
     'deleteDraft',
     'contacts',
     'unsubscribe',
+    'markAllRead',
+    'emptyFolder',
     'bundles',
     'bundleAct',
     'queue',

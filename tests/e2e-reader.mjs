@@ -78,6 +78,31 @@ for (const [subject, quoted, fresh] of [
 }
 await page.screenshot({ path: join(shots, 'r-01-quotes.png') })
 
+// Folder actions: mark the whole inbox read from the list's ⋯ menu, then empty the trash.
+const unreadInInbox = () =>
+  page.evaluate(() => window.mailbox.mail.list({ type: 'unified', role: 'inbox' }, 'unread', 'all', 50).then((r) => r.length))
+await page.click('button[aria-label="Marquer comme non lu (U)"]')
+await page.waitForFunction(() => window.mailbox.mail.list({ type: 'unified', role: 'inbox' }, 'unread', 'all', 50).then((r) => r.length === 1))
+await page.click('button[aria-label="Actions sur cette vue"]')
+await page.click('[role=menuitem]:has-text("Tout marquer comme lu")')
+await page.waitForSelector('text=1 message marqué comme lu', { timeout: 15_000 })
+if (await unreadInInbox()) throw new Error('inbox still has unread messages')
+step('"mark all as read" from the view menu')
+
+await page.click('[role=option]:has-text("Horaires")')
+await page.keyboard.press('#')
+await page.waitForTimeout(6_500) // undo window, then the move reaches the server
+await page.click('button[aria-label=Synchroniser]')
+await page.locator('nav button:has-text("Test")').click()
+await page.locator('nav button[aria-label=Corbeille]').waitFor({ timeout: 30_000 })
+await page.locator('nav button[aria-label=Corbeille]').click({ button: 'right' })
+await page.click('[role=menuitem]:has-text("Vider la corbeille")')
+await page.click('[role=alertdialog] button:has-text("Vider")')
+await page.waitForSelector('text=supprimé', { timeout: 30_000 })
+await page.locator('nav button[aria-label=Corbeille]').click()
+await page.waitForSelector('text=Tout est traité', { timeout: 10_000 })
+step('trash emptied from the folder right-click menu')
+
 await app.close()
 if (errors.length) {
   console.error(errors.join('\n'))

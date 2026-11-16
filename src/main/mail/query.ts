@@ -108,23 +108,39 @@ function scopeClause(scope: MailScope): { sql: string; params: string[] } {
   return excluded.length ? { sql: ` AND m.category NOT IN (${excluded.map(() => '?').join(',')})`, params: excluded } : { sql: '', params: [] }
 }
 
-export function listThreads(view: MailView, filter: MailFilter, scope: MailScope, limit: number): ThreadSummary[] {
+/** WHERE clause and parameters for the messages a view shows. */
+function viewWhere(view: MailView, filter: MailFilter, scope: MailScope): { sql: string; params: (string | number)[] } | null {
   const s = scopeClause(scope)
-  const params: (string | number)[] = [...s.params]
   const f = (FILTERS[filter] ?? '1') + s.sql
   switch (view.type) {
     case 'folder':
-      return summaries(`m.folder_id = ? AND ${f}`, [view.folderId, ...params], limit)
+      return { sql: `m.folder_id = ? AND ${f}`, params: [view.folderId, ...s.params] }
     case 'unified':
       if (view.role === 'flagged')
-        return summaries(`m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED} AND ${f}`, params, limit)
-      return summaries(`f.role = ? AND ${UNIFIED} AND ${f}`, [view.role, ...params], limit)
+        return { sql: `m.flagged = 1 AND coalesce(f.role, '') NOT IN ('trash', 'junk') AND ${UNIFIED} AND ${f}`, params: s.params }
+      return { sql: `f.role = ? AND ${UNIFIED} AND ${f}`, params: [view.role, ...s.params] }
     case 'search': {
-      const q = ftsQuery(view.query)
-      if (!q) return []
-      return summaries(`m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, [q, ...params], limit)
+      const query = ftsQuery(view.query)
+      if (!query) return null
+      return { sql: `m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, params: [query, ...s.params] }
     }
   }
+}
+
+export function listThreads(view: MailView, filter: MailFilter, scope: MailScope, limit: number): ThreadSummary[] {
+  const where = viewWhere(view, filter, scope)
+  return where ? summaries(where.sql, where.params, limit) : []
+}
+
+/** Unread messages of a view, for "mark all as read". */
+export function unreadIdsOf(view: MailView, scope: MailScope): string[] {
+  const where = viewWhere(view, 'unread', scope)
+  if (!where) return []
+  return (
+    getDb()
+      .prepare(`SELECT m.id FROM messages m JOIN folders f ON f.id = m.folder_id WHERE ${where.sql}`)
+      .all(...where.params) as { id: string }[]
+  ).map((r) => r.id)
 }
 
 /** WHERE clause selecting the inbox a view stands for (unified or one account's). */
