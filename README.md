@@ -97,6 +97,8 @@ pnpm dist   # produit dist/Mailbox Setup <version>.exe (non signé)
 
 ```bash
 pnpm typecheck
+pnpm run lint            # oxlint
+pnpm run format          # oxfmt (format:check en CI)
 pnpm test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi, archive, recherche
 pnpm test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
 pnpm test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
