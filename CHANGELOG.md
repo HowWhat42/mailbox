@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.1.5 — 16 novembre 2026
+
 ### Les mails s'ouvrent tout de suite
 
 Les messages récents sont téléchargés pendant la synchronisation : les ouvrir ne demande plus d'attendre le serveur (environ 0,1 s au lieu de 2 s). Les petits mails se lisent même hors ligne.
