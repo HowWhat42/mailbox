@@ -26,6 +26,8 @@ import { Avatar } from './Avatar'
 import { Checkbox } from './ui/Controls'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
+import { ResizeHandle } from './ui/ResizeHandle'
+import { LIST_RANGE } from '../lib/panes'
 import type { Anchor } from './ui/Popover'
 
 const ROW = { comfortable: 92, compact: 60 }
@@ -203,6 +205,7 @@ export function ThreadList() {
   const [menu, setMenu] = useState<{ anchor: Anchor; threads: ThreadSummary[] } | null>(null)
   const [viewMenu, setViewMenu] = useState<{ anchor: Anchor; items: MenuEntry[] } | null>(null)
   const folders = useStore((st) => st.folders)
+  const listWidth = useStore((st) => st.listWidth)
   // A single account's folder needs no marker; the unified boxes and search do.
   const markers = useAccountMarker(view.type !== 'folder')
 
@@ -265,7 +268,19 @@ export function ThreadList() {
   }
 
   return (
-    <section className={`@container flex min-w-0 flex-col ${single ? 'flex-1' : 'w-[clamp(320px,30vw,560px)] shrink-0 border-r border-line'}`}>
+    <section
+      className={`@container relative flex min-w-0 flex-col ${single ? 'flex-1' : `shrink-0 border-r border-line ${listWidth ? '' : 'w-[clamp(320px,30vw,560px)]'}`}`}
+      style={!single && listWidth ? { width: listWidth } : undefined}
+    >
+      {!single && (
+        <ResizeHandle
+          label="Largeur de la liste des messages"
+          min={LIST_RANGE.min}
+          max={LIST_RANGE.max}
+          onChange={(w) => useStore.getState().setListWidth(w)}
+          onReset={() => useStore.getState().setListWidth(null)}
+        />
+      )}
       <header className="flex shrink-0 items-start gap-2 px-5 pb-3 pt-4">
         {inBundle && (
           <button
@@ -395,7 +410,21 @@ export function ThreadList() {
             {vItems.map((v) => {
               const it = items[v.index]
               return (
-                <div key={v.key} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: v.size, transform: `translateY(${v.start}px)` }}>
+                <div
+                  key={v.key}
+                  // Bundles wrap their senders over one or two lines: measure them instead of trusting the estimate,
+                  // or a taller bundle spills over the next row. Threads and headers keep a fixed height.
+                  data-index={v.index}
+                  ref={it.type === 'bundle' ? virtual.measureElement : undefined}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: it.type === 'bundle' ? undefined : v.size,
+                    transform: `translateY(${v.start}px)`
+                  }}
+                >
                   {it.type === 'header' ? (
                     <div className="flex h-full items-end px-5 pb-1.5 text-[12px] font-medium text-muted">{it.label}</div>
                   ) : it.type === 'bundle' ? (

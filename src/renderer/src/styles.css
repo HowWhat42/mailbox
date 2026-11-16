@@ -324,3 +324,11 @@ textarea,
     animation: none;
   }
 }
+
+/* While a pane is being resized: follow the pointer exactly, and don't select text on the way. */
+body[data-resizing],
+body[data-resizing] * {
+  cursor: col-resize !important;
+  user-select: none !important;
+  transition: none !important;
+}

@@ -13,6 +13,7 @@ import type {
   ThreadSummary,
   UpdateStatus
 } from '@shared/types'
+import { SIDEBAR_WIDTH } from './lib/panes'
 import { applyAppearance } from './lib/appearance'
 
 export const api = window.mailbox
@@ -76,6 +77,10 @@ interface State {
   /** Theme actually shown (settings.theme resolved against the OS for 'system'). */
   theme: 'dark' | 'light'
   sidebarCollapsed: boolean
+  /** Expanded sidebar width chosen by dragging its edge (px). */
+  sidebarWidth: number
+  /** Message list width chosen by dragging, or null for the default fluid width. */
+  listWidth: number | null
   /** Window width, drives the responsive layout (see lib/layout). */
   viewport: number
   drawerOpen: boolean
@@ -114,6 +119,9 @@ interface State {
   openSettings(section?: SettingsSection): void
   updateSettings(patch: Partial<AppSettings>): Promise<void>
   toggleSidebar(): void
+  /** null goes back to the default. */
+  setSidebarWidth(width: number | null): void
+  setListWidth(width: number | null): void
   setDrawer(open: boolean): void
   setOutbox(open: boolean): void
   focusEvent(focus: { eventId: string; start: number } | null): void
@@ -155,6 +163,15 @@ function readPref<T extends string>(key: string, allowed: T[], fallback: T): T {
   }
 }
 
+function readWidthPref(key: string): number | null {
+  try {
+    const n = Number(localStorage.getItem(key))
+    return Number.isFinite(n) && n > 0 ? n : null
+  } catch {
+    return null
+  }
+}
+
 function writePref(key: string, value: string): void {
   try {
     localStorage.setItem(key, value)
@@ -190,6 +207,8 @@ export const useStore = create<State>((set, get) => ({
   settingsSection: 'general',
   theme: 'dark',
   sidebarCollapsed: readPref('sidebar', ['open', 'collapsed'], 'open') === 'collapsed',
+  sidebarWidth: readWidthPref('sidebarWidth') ?? SIDEBAR_WIDTH,
+  listWidth: readWidthPref('listWidth'),
   viewport: window.innerWidth,
   drawerOpen: false,
   calendarFocus: null,
@@ -336,6 +355,16 @@ export const useStore = create<State>((set, get) => ({
     const collapsed = !get().sidebarCollapsed
     writePref('sidebar', collapsed ? 'collapsed' : 'open')
     set({ sidebarCollapsed: collapsed })
+  },
+
+  setSidebarWidth(width) {
+    writePref('sidebarWidth', width === null ? '' : String(width))
+    set({ sidebarWidth: width ?? SIDEBAR_WIDTH })
+  },
+
+  setListWidth(width) {
+    writePref('listWidth', width === null ? '' : String(width))
+    set({ listWidth: width })
   },
 
   setView(view) {

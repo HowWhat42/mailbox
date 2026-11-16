@@ -97,6 +97,14 @@ const expectRows = async (label, texts) => {
 await expectRows('Personnes', ['On déjeune', 'Facture du traiteur'])
 for (const c of ['notifications', 'newsletters', 'invitations']) await bundle(c).waitFor()
 await page.screenshot({ path: join(shots, 't-01-bundles.png') })
+// No row may spill over the next one (bundles wrap their senders and are measured, not estimated).
+const overlaps = await page.$$eval('[data-index]', (els) =>
+  els
+    .map((e) => e.getBoundingClientRect())
+    .toSorted((a, b) => a.top - b.top)
+    .flatMap((r, i, all) => (i && all[i - 1].bottom > r.top + 0.5 ? [`${all[i - 1].bottom} > ${r.top}`] : []))
+)
+if (overlaps.length) throw new Error(`list rows overlap: ${overlaps.join(', ')}`)
 await bundle('notifications').click()
 await expectRows('Notifications', ['Nouvelle issue'])
 await back()

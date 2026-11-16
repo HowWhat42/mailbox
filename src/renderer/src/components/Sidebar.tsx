@@ -20,10 +20,11 @@ import {
   WifiOff,
   type LucideIcon
 } from 'lucide-react'
-import type { Folder, FolderRole, MailView } from '@shared/types'
+import type { Account, Folder, FolderRole, MailView } from '@shared/types'
 import { api, useStore } from '../store'
 import { avatarColor, ROLE_LABEL } from '../lib/format'
-import { useLayout } from '../lib/layout'
+import { SIDEBAR_RANGE, useLayout } from '../lib/layout'
+import { ResizeHandle } from './ui/ResizeHandle'
 import { NextUp } from './NextUp'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
@@ -95,6 +96,17 @@ function Item({
   )
 }
 
+/** Account in the sidebar: its label or name, and the address underneath to tell same-name accounts apart. */
+function AccountName({ account, strong }: { account: Account; strong?: boolean }) {
+  const name = account.label.trim() || account.name || account.email
+  return (
+    <span className="min-w-0 flex-1 leading-tight">
+      <span className={`block truncate ${strong ? 'font-semibold text-fg' : ''}`}>{name}</span>
+      {name !== account.email && <span className="block truncate text-[11px] text-muted">{account.email}</span>}
+    </span>
+  )
+}
+
 export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) {
   const { mode, view, accounts, folders, counts, syncing, theme } = useStore()
   const layout = useLayout()
@@ -136,8 +148,18 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
 
   return (
     <aside
-      className={`flex shrink-0 flex-col transition-[width] duration-150 ${forceExpanded ? 'h-full w-full' : collapsed ? 'w-[60px]' : 'w-[232px]'}`}
+      className={`relative flex shrink-0 flex-col transition-[width] duration-150 ${forceExpanded ? 'h-full w-full' : collapsed ? 'w-[60px]' : ''}`}
+      style={forceExpanded || collapsed ? undefined : { width: layout.sidebarWidth }}
     >
+      {!forceExpanded && !collapsed && (
+        <ResizeHandle
+          label="Largeur de la barre latérale"
+          min={SIDEBAR_RANGE.min}
+          max={SIDEBAR_RANGE.max}
+          onChange={(w) => useStore.getState().setSidebarWidth(w)}
+          onReset={() => useStore.getState().setSidebarWidth(null)}
+        />
+      )}
       <div className={collapsed ? 'px-2.5 pb-3' : 'px-3 pb-3'}>
         <button
           onClick={() => {
@@ -186,13 +208,13 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                       menuFor({ type: 'folder', folderId: inbox.id }, inbox)({ x: e.clientX, y: e.clientY })
                     }}
                     title={a.email}
-                    aria-label={`Réception ${accountLabel(a)}`}
-                    className={`relative flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
+                    aria-label={`Réception ${accountLabel(a)} (${a.email})`}
+                    className={`relative flex min-h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-1 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
                   >
                     <span className="grid size-4 place-items-center">
                       <span className="size-2.5 rounded-full" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} />
                     </span>
-                    <span className={`min-w-0 flex-1 truncate ${inbox.unread ? 'font-semibold text-fg' : ''}`}>{accountLabel(a)}</span>
+                    <AccountName account={a} strong={inbox.unread > 0} />
                     {!!inbox.unread && <span className="tnum text-[12px] text-fg-2">{inbox.unread}</span>}
                   </button>
                 )
@@ -224,18 +246,17 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           <Item collapsed={collapsed} icon={CalendarDays} label="Calendrier" active={mode === 'calendar'} onClick={() => setMode('calendar')} />
         </div>
 
-        {!collapsed && customFolders.length > 0 && (
+        {!collapsed && accounts.length === 1 && customFolders.length > 0 && (
           <div>
             <div className="mb-1 px-2.5 text-[12px] font-medium text-muted">Dossiers</div>
             <div className="space-y-0.5">
               {customFolders.map((f) => {
-                const account = accounts.find((a) => a.id === f.accountId)
                 return (
                   <Item
                     key={f.id}
                     icon={Tag}
                     color={avatarColor(f.path)}
-                    label={accounts.length > 1 ? `${f.name} · ${account?.name ?? ''}` : f.name}
+                    label={f.name}
                     count={f.unread}
                     emphasize={f.unread > 0}
                     active={active({ type: 'folder', folderId: f.id })}
@@ -257,12 +278,14 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                 <div key={account.id}>
                   <button
                     onClick={() => setOpen({ ...open, [account.id]: !expanded })}
-                    className="group flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+                    title={account.email}
+                    aria-expanded={expanded}
+                    className="group flex min-h-8 w-full items-center gap-2.5 rounded-lg px-2.5 py-1 text-left text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
                   >
                     <span className="grid size-4 place-items-center">
                       <span className="size-2.5 rounded-[3px]" style={{ background: account.color }} />
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{account.name}</span>
+                    <AccountName account={account} />
                     {account.syncError && <OctagonAlert size={13} className="text-danger" />}
                     <ChevronRight size={14} className={`text-muted transition-transform ${expanded ? 'rotate-90' : ''}`} />
                   </button>
@@ -280,6 +303,22 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                           onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
                         />
                       ))}
+                      {accounts.length > 1 &&
+                        customFolders
+                          .filter((f) => f.accountId === account.id)
+                          .map((f) => (
+                            <Item
+                              key={f.id}
+                              icon={Tag}
+                              color={avatarColor(f.path)}
+                              label={f.name}
+                              count={f.unread}
+                              emphasize={f.unread > 0}
+                              active={active({ type: 'folder', folderId: f.id })}
+                              onClick={() => setView({ type: 'folder', folderId: f.id })}
+                              onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
+                            />
+                          ))}
                     </div>
                   )}
                 </div>
