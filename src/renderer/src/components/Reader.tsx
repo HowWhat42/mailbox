@@ -25,6 +25,7 @@ import { useLayout } from '../lib/layout'
 import { Avatar } from './Avatar'
 import { AttachmentCard } from './AttachmentCard'
 import { MessageBody } from './MessageBody'
+import { AccountTag } from '../lib/accounts'
 import { TriageBanner } from './TriageBanner'
 import { Menu } from './ui/Menu'
 
@@ -234,9 +235,8 @@ export function Reader() {
                 {messages?.[0]?.subject || thread.subject || '(sans objet)'}
               </h2>
               {account && accounts.length > 1 && (
-                <span className="mt-1 flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2 py-0.5 text-[11.5px] text-fg-2">
-                  <span className="size-2 rounded-[3px]" style={{ background: account.color }} />
-                  {account.name}
+                <span className="mt-1" title={account.email}>
+                  <AccountTag account={account} size="md" />
                 </span>
               )}
             </div>

@@ -137,6 +137,7 @@ export function listBundles(view: MailView, categories: MailCategory[]): Bundle[
       )
       .get(...box.params, category) as { threads: number; unread: number; latest: number | null }
     if (!totals.threads) continue
+    const accounts = (db.prepare(`SELECT DISTINCT m.account_id AS a ${where}`).all(...box.params, category) as { a: string }[]).map((r) => r.a)
     const senders = db
       .prepare(
         `SELECT max(coalesce(nullif(m.from_name, ''), m.from_addr)) AS name, lower(m.from_addr) AS address,
@@ -150,7 +151,8 @@ export function listBundles(view: MailView, categories: MailCategory[]): Bundle[
       unread: totals.unread,
       latest: totals.latest ?? 0,
       senders: senders.slice(0, 6).map((s) => ({ name: s.name, address: s.address, count: s.count, unread: s.unread })),
-      moreSenders: Math.max(0, senders.length - 6)
+      moreSenders: Math.max(0, senders.length - 6),
+      accounts
     })
   }
   return out

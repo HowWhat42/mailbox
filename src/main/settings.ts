@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   accent: '#8f86f0',
   backdrop: 'nebula',
   density: 'comfortable',
+  accountMarker: 'stripe',
 
   mailNotifications: true,
   smartNotifications: true,

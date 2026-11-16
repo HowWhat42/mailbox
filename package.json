@@ -13,7 +13,8 @@
     "test:e2e:calendar": "electron-vite build && node tests/e2e-calendar.mjs",
     "test:e2e:responsive": "electron-vite build && node tests/e2e-responsive.mjs",
     "dist": "electron-vite build && electron-builder --win",
-    "test:e2e:triage": "electron-vite build && node tests/e2e-triage.mjs"
+    "test:e2e:triage": "electron-vite build && node tests/e2e-triage.mjs",
+    "test:e2e:accounts": "electron-vite build && node tests/e2e-accounts.mjs"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",

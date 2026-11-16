@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Archive, ArrowLeft, FolderInput, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Tag, Trash2, type LucideIcon } from 'lucide-react'
-import type { Bundle, MailCategory, MailFilter, ThreadSummary } from '@shared/types'
+import { Archive, ArrowLeft, FolderInput, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Trash2, type LucideIcon } from 'lucide-react'
+import type { Account, AccountMarker, Bundle, MailCategory, MailFilter, ThreadSummary } from '@shared/types'
+import { AccountDot, AccountTag, accountLabel, useAccountMarker } from '../lib/accounts'
 import { CATEGORY_ICON, CATEGORY_LABEL } from '../lib/categories'
 import { BundleRow, CATEGORY_TINT } from './BundleRow'
 import { threadKey, useStore } from '../store'
@@ -41,7 +42,8 @@ function Row({
   selected,
   checked,
   sentLike,
-  accountColor,
+  account,
+  marker,
   onContext,
   compact
 }: {
@@ -49,7 +51,8 @@ function Row({
   selected: boolean
   checked: boolean
   sentLike: boolean
-  accountColor?: string
+  account?: Account
+  marker: AccountMarker
   onContext: (e: React.MouseEvent) => void
   compact: boolean
 }) {
@@ -72,15 +75,22 @@ function Row({
         aria-selected={selected}
         onClick={(e) => (e.ctrlKey || e.metaKey ? toggleCheck(key) : select(key))}
         onContextMenu={onContext}
-        className={`group flex h-full cursor-default gap-3 rounded-lg px-3 transition-colors ${compact ? 'items-center py-1.5' : 'py-2.5'} ${
+        className={`group relative flex h-full cursor-default gap-3 rounded-lg px-3 transition-colors ${compact ? 'items-center py-1.5' : 'py-2.5'} ${
           selected ? 'lit' : checked ? 'bg-accent-soft' : 'hover:bg-hover'
         }`}
       >
+        {account && marker === 'stripe' && (
+          <span aria-hidden className="absolute inset-y-1.5 left-0 w-[3px] rounded-full" style={{ background: account.color, boxShadow: `0 0 8px ${account.color}` }} />
+        )}
         <div className={`flex shrink-0 gap-3 ${compact ? 'items-center' : 'items-start pt-0.5'}`}>
           <span className={`${compact ? '' : 'pt-2'} ${checked ? '' : 'opacity-60 group-hover:opacity-100'}`}>
             <Checkbox checked={checked} onChange={() => toggleCheck(key)} label="Sélectionner" />
           </span>
-          <span className="relative">
+          <span
+            className="relative rounded-full"
+            style={account && marker === 'ring' ? { boxShadow: `0 0 0 2px var(--surface-solid), 0 0 0 4px ${account.color}` } : undefined}
+            title={account && marker === 'ring' ? `${accountLabel(account)} · ${account.email}` : undefined}
+          >
             <Avatar name={displayName(person)} seed={person.address || displayName(person)} size={compact ? 26 : 32} />
             {t.unread && <span className="absolute -left-0.5 -top-0.5 size-2.5 rounded-full border-2 border-surface bg-accent" />}
           </span>
@@ -92,7 +102,8 @@ function Row({
             <span className="ml-auto flex shrink-0 items-center gap-1.5 text-muted">
               {t.hasAttachments && <Paperclip size={12} />}
               {t.flagged && <Star size={12} className="fill-amber-400 text-amber-400" />}
-              {accountColor && <Tag size={12} style={{ color: accountColor, fill: accountColor }} />}
+              {account && marker === 'tag' && <AccountTag account={account} />}
+              {account && marker === 'dot' && <AccountDot account={account} />}
               <span className={`tnum text-[11.5px] ${t.unread ? 'text-fg-2' : ''}`}>{listDate(t.date)}</span>
             </span>
           </div>
@@ -140,7 +151,6 @@ export function ThreadList() {
   const threads = useStore((s) => s.threads)
   const selected = useStore((s) => s.selected)
   const checked = useStore((s) => s.checked)
-  const accounts = useStore((s) => s.accounts)
   const view = useStore((s) => s.view)
   const filter = useStore((s) => s.filter)
   const syncing = useStore((s) => s.syncing)
@@ -157,8 +167,8 @@ export function ThreadList() {
   const s = useStore.getState()
   const parent = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<{ anchor: Anchor; threads: ThreadSummary[] } | null>(null)
-  const colorOf = useMemo(() => new Map(accounts.map((a) => [a.id, a.color])), [accounts])
-  const showAccount = accounts.length > 1 && view.type !== 'folder'
+  // A single account's folder needs no marker; the unified boxes and search do.
+  const markers = useAccountMarker(view.type !== 'folder')
 
   const items = useMemo<Item[]>(() => {
     // Bundles sit among the conversations at the date of their latest message.
@@ -313,7 +323,8 @@ export function ThreadList() {
                       selected={threadKey(it.t) === selected}
                       checked={checked.has(threadKey(it.t))}
                       sentLike={sentLike}
-                      accountColor={showAccount ? colorOf.get(it.t.accountId) : undefined}
+                      account={markers.account(it.t.accountId)}
+                      marker={markers.style}
                       onContext={(e) => openContext(e, it.t)}
                       compact={compact}
                     />

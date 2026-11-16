@@ -23,6 +23,7 @@ import { api, useStore } from '../store'
 import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { useLayout } from '../lib/layout'
 import { NextUp } from './NextUp'
+import { accountLabel } from '../lib/accounts'
 
 const ROLE_ICON: Partial<Record<Exclude<FolderRole, null>, LucideIcon>> = {
   inbox: Inbox,
@@ -138,7 +139,32 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
 
       <nav className={`min-h-0 flex-1 space-y-5 overflow-y-auto pb-3 ${collapsed ? 'px-2.5' : 'px-3'}`}>
         <div className="space-y-0.5">
-          <Item collapsed={collapsed} icon={Inbox} label="Réception" count={counts.inbox} emphasize={counts.inbox > 0} active={active({ type: 'unified', role: 'inbox' })} onClick={() => setView({ type: 'unified', role: 'inbox' })} />
+          <Item collapsed={collapsed} icon={Inbox} label={accounts.length > 1 ? 'Toutes les boîtes' : 'Réception'} count={counts.inbox} emphasize={counts.inbox > 0} active={active({ type: 'unified', role: 'inbox' })} onClick={() => setView({ type: 'unified', role: 'inbox' })} />
+          {!collapsed && accounts.length > 1 && (
+            // One inbox per account, right under the unified one.
+            <div className="ml-4 space-y-0.5 border-l border-line pl-2">
+              {accounts.map((a) => {
+                const inbox = folders.find((f) => f.accountId === a.id && f.role === 'inbox')
+                if (!inbox) return null
+                const isActive = active({ type: 'folder', folderId: inbox.id })
+                return (
+                  <button
+                    key={a.id}
+                    onClick={() => setView({ type: 'folder', folderId: inbox.id })}
+                    title={a.email}
+                    aria-label={`Réception ${accountLabel(a)}`}
+                    className={`relative flex h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
+                  >
+                    <span className="grid size-4 place-items-center">
+                      <span className="size-2.5 rounded-full" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} />
+                    </span>
+                    <span className={`min-w-0 flex-1 truncate ${inbox.unread ? 'font-semibold text-fg' : ''}`}>{accountLabel(a)}</span>
+                    {!!inbox.unread && <span className="tnum text-[12px] text-fg-2">{inbox.unread}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           <Item collapsed={collapsed} icon={Star} label="Suivis" count={counts.flagged} active={active({ type: 'unified', role: 'flagged' })} onClick={() => setView({ type: 'unified', role: 'flagged' })} />
           <Item collapsed={collapsed} icon={Send} label="Envoyés" active={active({ type: 'unified', role: 'sent' })} onClick={() => setView({ type: 'unified', role: 'sent' })} />
           <Item collapsed={collapsed} icon={File} label="Brouillons" active={active({ type: 'unified', role: 'drafts' })} onClick={() => setView({ type: 'unified', role: 'drafts' })} />

@@ -221,7 +221,8 @@ const MIGRATIONS: string[] = [
     position INTEGER NOT NULL,
     data TEXT NOT NULL
   );
-  `
+  `,
+  `ALTER TABLE accounts ADD COLUMN label TEXT NOT NULL DEFAULT '';`
 ]
 
 function migrate(d: DatabaseSync): void {

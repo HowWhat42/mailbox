@@ -18,6 +18,8 @@ export interface Account {
   lastSyncAt: number | null
   syncError: string | null
   /** Per-account preferences. */
+  /** Short name shown on markers ("Pro", "Perso"); empty = derived from the name. */
+  label: string
   notify: boolean
   inUnified: boolean
   /** Newest messages kept per folder. */
@@ -140,6 +142,8 @@ export interface Bundle {
   latest: number
   senders: { name: string; address: string; count: number; unread: number }[]
   moreSenders: number
+  /** Accounts that have mail in this bundle. */
+  accounts: string[]
 }
 
 export type RuleField = 'from' | 'domain' | 'to' | 'subject'
@@ -266,6 +270,7 @@ export interface EventInput {
 }
 
 export type ThemeMode = 'dark' | 'light' | 'system'
+export type AccountMarker = 'stripe' | 'tag' | 'ring' | 'dot' | 'none'
 
 export interface AppSettings {
   // Général
@@ -287,6 +292,8 @@ export interface AppSettings {
   accent: string
   backdrop: 'nebula' | 'plain'
   density: 'comfortable' | 'compact'
+  /** How a conversation shows which mailbox it comes from (when several accounts are connected). */
+  accountMarker: AccountMarker
 
   // Notifications
   mailNotifications: boolean
@@ -353,7 +360,7 @@ export interface MailboxApi {
     discover(email: string): Promise<ServerSettings | null>
     addImap(input: ImapAccountInput): Promise<Account>
     addGoogle(): Promise<Account>
-    update(id: string, patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>): Promise<void>
+    update(id: string, patch: Partial<Pick<Account, 'name' | 'label' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>): Promise<void>
     remove(id: string): Promise<void>
     googleConfigured(): Promise<boolean>
   }

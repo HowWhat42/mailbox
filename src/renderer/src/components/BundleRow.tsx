@@ -4,6 +4,7 @@ import { api, confirmDialog, useStore } from '../store'
 import { CATEGORY_ICON, CATEGORY_LABEL } from '../lib/categories'
 import { listDate } from '../lib/format'
 import { Avatar } from './Avatar'
+import { AccountDot } from '../lib/accounts'
 
 export const CATEGORY_TINT: Record<MailCategory, string> = {
   people: '#8f86f0',
@@ -15,6 +16,7 @@ export const CATEGORY_TINT: Record<MailCategory, string> = {
 /** Spark-style bundle: a whole category in one row, summarised by sender. Click to open it. */
 export function BundleRow({ bundle, compact }: { bundle: Bundle; compact: boolean }) {
   const { setCategory, view, toast, refreshMail } = useStore.getState()
+  const accounts = useStore((s) => s.accounts)
   const Icon = CATEGORY_ICON[bundle.category]
   const tint = CATEGORY_TINT[bundle.category]
   const label = CATEGORY_LABEL[bundle.category]
@@ -58,6 +60,14 @@ export function BundleRow({ bundle, compact }: { bundle: Bundle; compact: boolea
           <div className="flex items-center gap-2">
             <span className={`text-[13px] ${bundle.unread ? 'font-semibold text-fg' : 'font-medium text-fg-2'}`}>{label}</span>
             <span className={`tnum text-[11.5px] ${bundle.unread ? 'font-semibold text-accent' : 'text-muted'}`}>{bundle.unread || bundle.threads}</span>
+            {accounts.length > 1 && (
+              <span className="flex items-center gap-1" aria-label="Comptes concernés">
+                {bundle.accounts.map((id) => {
+                  const a = accounts.find((x) => x.id === id)
+                  return a ? <AccountDot key={id} account={a} size={7} /> : null
+                })}
+              </span>
+            )}
             <span className="ml-auto flex shrink-0 items-center gap-0.5">
               <span className="tnum text-[11.5px] text-muted group-hover:hidden">{listDate(bundle.latest)}</span>
               <span className="hidden items-center gap-0.5 group-hover:flex">

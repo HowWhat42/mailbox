@@ -8,6 +8,7 @@ import { AttachmentCard } from './AttachmentCard'
 import { RecipientInput, isValidAddress } from './RecipientInput'
 import { Select } from './ui/Controls'
 import { useLayout } from '../lib/layout'
+import { accountLabel } from '../lib/accounts'
 
 const AUTOSAVE_MS = 2500
 const TITLES: Record<ComposeDraft['kind'], string> = {
@@ -333,7 +334,7 @@ export function Composer() {
               ariaLabel="Compte d’envoi"
               value={draft.accountId}
               onChange={(v) => set('accountId', v)}
-              options={accounts.map((a) => ({ value: a.id, label: `${a.name} <${a.email}>`, swatch: a.color }))}
+              options={accounts.map((a) => ({ value: a.id, label: `${accountLabel(a)} · ${a.name} <${a.email}>`, swatch: a.color }))}
               className="max-w-[420px] flex-1"
             />
           </Row>

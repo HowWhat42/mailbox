@@ -23,6 +23,7 @@ interface AccountRow {
   signature: string
   last_sync_at: number | null
   sync_error: string | null
+  label: string
   notify: number
   in_unified: number
   sync_depth: number
@@ -46,6 +47,7 @@ function toAccount(r: AccountRow): Account {
     signature: r.signature,
     lastSyncAt: r.last_sync_at,
     syncError: r.sync_error,
+    label: r.label,
     notify: !!r.notify,
     inUnified: !!r.in_unified,
     syncDepth: r.sync_depth
@@ -73,7 +75,7 @@ export function setSecret(id: string, secret: AccountSecret): void {
   getDb().prepare('UPDATE accounts SET secret = ? WHERE id = ?').run(sealSecret(secret), id)
 }
 
-export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError' | 'notify' | 'inUnified' | 'syncDepth'>
+export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError' | 'label' | 'notify' | 'inUnified' | 'syncDepth'>
 
 export function insertAccount(input: NewAccount, secret: AccountSecret): Account {
   const db = getDb()
@@ -109,10 +111,11 @@ export function insertAccount(input: NewAccount, secret: AccountSecret): Account
 
 export function updateAccount(
   id: string,
-  patch: Partial<Pick<Account, 'name' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>
+  patch: Partial<Pick<Account, 'name' | 'label' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>
 ): void {
   const cols: Record<string, string> = {
     name: 'name',
+    label: 'label',
     color: 'color',
     signature: 'signature',
     caldavUrl: 'caldav_url',

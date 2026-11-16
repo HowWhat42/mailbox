@@ -5,8 +5,11 @@ import { api, confirmDialog, useStore } from '../../store'
 import { Select, Toggle } from '../../components/ui/Controls'
 import { fieldCls } from '../../components/Modal'
 import { Row, Section } from './parts'
+import { MarkerSample } from './MarkerPicker'
+import { accountLabel } from '../../lib/accounts'
+import { isHex } from '../../lib/appearance'
 
-const COLORS = ['#8f86f0', '#5b8cff', '#2dd4bf', '#4ade80', '#f5b041', '#fb7c5c', '#f472b6', '#c084fc']
+const COLORS = ['#8f86f0', '#5b8cff', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635', '#f5b041', '#fb7c5c', '#f87171', '#f472b6', '#c084fc', '#94a3b8']
 
 /** Settings of one mailbox: identity, signature, notifications, sync, calendar. */
 export function AccountSettings({ account }: { account: Account }) {
@@ -14,6 +17,13 @@ export function AccountSettings({ account }: { account: Account }) {
   const [name, setName] = useState(account.name)
   const [signature, setSignature] = useState(account.signature)
   const [caldavUrl, setCaldavUrl] = useState(account.caldavUrl ?? '')
+  const [label, setLabel] = useState(account.label)
+  const [hex, setHex] = useState(account.color)
+  const marker = useStore((s) => s.settings?.accountMarker ?? 'stripe')
+  useEffect(() => {
+    setLabel(account.label)
+    setHex(account.color)
+  }, [account.id, account.label, account.color])
   useEffect(() => {
     setName(account.name)
     setSignature(account.signature)
@@ -68,19 +78,6 @@ export function AccountSettings({ account }: { account: Account }) {
         <Row label="Signature" hint="Ajoutée aux nouveaux messages, réponses et transferts." stack>
           <textarea value={signature} onChange={(e) => setSignature(e.target.value)} rows={4} className={`${fieldCls} h-auto resize-y py-2`} aria-label="Signature" />
         </Row>
-        <Row label="Couleur du compte" hint="Repère du compte dans la boîte unifiée.">
-          <div className="flex gap-1.5">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                onClick={() => patch({ color: c })}
-                aria-label={`Couleur ${c}`}
-                className={`size-5 rounded-md ${account.color === c ? 'ring-2 ring-fg ring-offset-2 ring-offset-[var(--surface-solid)]' : ''}`}
-                style={{ background: c }}
-              />
-            ))}
-          </div>
-        </Row>
         {dirty && (
           <div className="flex justify-end px-4 py-3">
             <button onClick={() => void save()} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium">
@@ -88,6 +85,51 @@ export function AccountSettings({ account }: { account: Account }) {
             </button>
           </div>
         )}
+      </Section>
+
+      <Section title="Repère dans la boîte unifiée" description="Pour reconnaître d’un coup d’œil les messages de ce compte.">
+        <Row label="Nom court" hint="Affiché sur l’étiquette et dans la barre latérale. Vide : déduit du nom du compte.">
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value.slice(0, 12))}
+            onBlur={() => label !== account.label && patch({ label: label.trim() })}
+            onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+            placeholder={accountLabel({ ...account, label: '' })}
+            aria-label="Nom court du compte"
+            className={`${fieldCls} w-40`}
+          />
+        </Row>
+        <Row label="Couleur" stack>
+          <div className="flex flex-wrap items-center gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => patch({ color: c })}
+                aria-label={`Couleur ${c}`}
+                className={`size-6 rounded-full transition-transform hover:scale-110 ${account.color.toLowerCase() === c ? 'ring-2 ring-fg ring-offset-2 ring-offset-[var(--surface-solid)]' : ''}`}
+                style={{ background: c }}
+              />
+            ))}
+            <span className="ml-2 size-6 rounded-md border border-line" style={{ background: isHex(hex) ? hex : 'transparent' }} />
+            <input
+              value={hex}
+              onChange={(e) => {
+                const v = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
+                setHex(v)
+                if (isHex(v)) patch({ color: v.toLowerCase() })
+              }}
+              maxLength={7}
+              spellCheck={false}
+              aria-label="Couleur personnalisée du compte"
+              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:outline-none"
+            />
+          </div>
+        </Row>
+        <Row label="Aperçu" hint={<button onClick={() => openSettings('appearance')} className="text-accent hover:underline">Changer le style de repère</button>} stack>
+          <div className="max-w-[420px]">
+            <MarkerSample marker={marker === 'none' ? 'stripe' : marker} account={{ ...account, label }} />
+          </div>
+        </Row>
       </Section>
 
       <Section title="Boîte de réception">

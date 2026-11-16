@@ -6,6 +6,7 @@ import { ACCENTS, isHex } from '../../lib/appearance'
 import { Avatar } from '../../components/Avatar'
 import { Row, Section, Segmented } from './parts'
 import { Select } from '../../components/ui/Controls'
+import { MarkerPicker } from './MarkerPicker'
 
 const THEMES: { value: ThemeMode; label: string; icon: typeof Moon }[] = [
   { value: 'dark', label: 'Nuit', icon: Moon },
@@ -98,6 +99,10 @@ export function AppearanceSettings() {
           </div>
           <Preview />
         </div>
+      </Section>
+
+      <Section title="Repère du compte" description="Dans la boîte unifiée, comment voir d’un coup d’œil de quelle boîte vient chaque message. La couleur et le nom court se règlent dans la page de chaque compte.">
+        <MarkerPicker />
       </Section>
 
       <Section title="Affichage">
