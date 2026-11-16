@@ -57,7 +57,8 @@ function labelsOf(flags: Set<string> | undefined, gmailLabels: Set<string> | und
     if (f.startsWith('\\')) continue
     const tb = THUNDERBIRD_TAGS[f.toLowerCase()]
     if (tb) out.add(tb)
-    else if (!SYSTEM_KEYWORDS.test(f)) out.add(f)
+    // Keywords can't hold spaces: Mailbox writes them as underscores (see labels.ts).
+    else if (!SYSTEM_KEYWORDS.test(f)) out.add(f.replace(/_/g, ' '))
   }
   return [...out]
 }

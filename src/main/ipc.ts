@@ -35,6 +35,7 @@ import { getSettings, loginItemStatus, setSettings } from './settings'
 import { classifySender, listRules, reapplyRules, removeRule, reorderRules, saveRule } from './mail/rules'
 import { checkForUpdates, installUpdate, updateStatus } from './updater'
 import { listTemplates, removeTemplate, saveTemplate } from './templates'
+import { knownLabels, setThreadLabels } from './mail/labels'
 import { unsubscribe } from './mail/unsubscribe'
 
 const DAY = 86_400_000
@@ -155,6 +156,8 @@ const handlers: Handlers = {
       if (!folder) throw new Error('Le dossier a été créé mais n’apparaît pas encore : synchronisez le compte.')
       return folder
     },
+    knownLabels: async (accountId) => knownLabels(accountId),
+    setLabels: (accountId, threadId, add, remove) => setThreadLabels(accountId, threadId, add, remove),
     setFolderFavorite: async (folderId, favorite) => {
       getDb()
         .prepare('UPDATE folders SET favorite = ? WHERE id = ?')

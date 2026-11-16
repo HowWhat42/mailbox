@@ -98,6 +98,28 @@ await page.locator('h2:has-text("Devis cuisine") ~ span >> text=Urgent').waitFor
 await page.screenshot({ path: join(shots, 'f-00-labels.png') })
 step('labels shown on the row and in the reader, updated by a sync')
 
+// Edit labels: L opens the picker on the open conversation; untick one, create another.
+await page.keyboard.press('l')
+const picker = page.locator('[role=dialog][aria-label="Libellés"]')
+await picker.locator('[role=option]:has-text("Urgent")').click()
+await page.fill('input[aria-label="Rechercher ou créer un libellé"]', 'Client VIP')
+await page.keyboard.press('Enter')
+await page.keyboard.press('Escape')
+await page.locator('h2:has-text("Devis cuisine") ~ span >> text=Client VIP').waitFor()
+if (await page.locator('h2:has-text("Devis cuisine") ~ span >> text=Urgent').count()) throw new Error('removed label still shown')
+const server = imap()
+await server.connect()
+await server.mailboxOpen('INBOX')
+let flags = []
+for await (const m of server.fetch('1:*', { flags: true })) flags = [...m.flags]
+await server.logout()
+if (!flags.includes('Client_VIP') || flags.includes('Urgent')) throw new Error(`server keywords not updated: ${flags.join(', ')}`)
+await page.waitForFunction(() => !document.querySelector('button[aria-label=Synchroniser] .animate-spin'), null, { timeout: 60_000 })
+await page.click('button[aria-label=Synchroniser]')
+await page.waitForTimeout(3000)
+await page.locator('h2:has-text("Devis cuisine") ~ span >> text=Client VIP').waitFor()
+step(`labels edited from the picker (L): server keywords now ${flags.filter((f) => !f.startsWith('$') || f === '$label2').join(', ')}`)
+
 // Create a folder, then a subfolder in it.
 await nav.locator('button[aria-expanded]:has-text("Camille")').click()
 await nav.locator('button[aria-label="Nouveau dossier"]').click()

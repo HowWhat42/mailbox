@@ -111,6 +111,10 @@ export function useMailShortcuts(): void {
         case 'u':
           void s.act(targets, targets.some((t) => t.unread) ? 'read' : 'unread')
           break
+        case 'l':
+          e.preventDefault()
+          if (current) s.openLabels(current)
+          break
         case 'v':
           e.preventDefault()
           if (new Set(targets.map((t) => t.accountId)).size === 1) s.openMovePicker(targets)

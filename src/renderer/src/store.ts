@@ -109,6 +109,8 @@ interface State {
   paletteOpen: boolean
   setupOpen: boolean
   movePicker: ThreadSummary[] | null
+  /** Label picker open for a conversation, anchored to a button or a point. */
+  labelPicker: { thread: ThreadSummary; anchor: HTMLElement | { x: number; y: number } } | null
   toasts: Toast[]
   dialog: DialogRequest | null
 
@@ -147,6 +149,7 @@ interface State {
   setPalette(open: boolean): void
   setSetup(open: boolean): void
   openMovePicker(threads: ThreadSummary[] | null): void
+  openLabels(thread: ThreadSummary | null, anchor?: HTMLElement | { x: number; y: number }): void
   toast(text: string, tone?: Toast['tone'], action?: Toast['action']): number
   dismiss(id: number): void
   undoLast(): void
@@ -233,6 +236,7 @@ export const useStore = create<State>((set, get) => ({
   paletteOpen: false,
   setupOpen: false,
   movePicker: null,
+  labelPicker: null,
   toasts: [],
   dialog: null,
 
@@ -536,6 +540,13 @@ export const useStore = create<State>((set, get) => ({
   setSetup(open) {
     set({ setupOpen: open })
   },
+  openLabels(thread, anchor) {
+    if (!thread) return set({ labelPicker: null })
+    // From a menu or the keyboard: anchor to the reader's Libellés button when it is on screen.
+    const at = anchor ?? document.querySelector<HTMLElement>('[data-labels-button]') ?? { x: window.innerWidth - 40, y: 96 }
+    set({ labelPicker: { thread, anchor: at } })
+  },
+
   openMovePicker(threads) {
     set({ movePicker: threads && threads.length ? threads : null })
   },

@@ -28,6 +28,8 @@ const api = {
     'emptyFolder',
     'createFolder',
     'setFolderFavorite',
+    'knownLabels',
+    'setLabels',
     'bundles',
     'bundleAct',
     'queue',

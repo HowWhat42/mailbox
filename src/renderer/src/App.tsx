@@ -14,6 +14,7 @@ import { OutboxDialog } from './components/OutboxDialog'
 import { DialogHost } from './components/ui/DialogHost'
 import { CalendarView } from './views/CalendarView'
 import { useMailShortcuts } from './lib/shortcuts'
+import { LabelPicker } from './components/LabelPicker'
 import { useLayout } from './lib/layout'
 
 export function App() {
@@ -80,6 +81,7 @@ export function App() {
       {paletteOpen && <CommandPalette />}
       {setupOpen && <AccountSetup />}
       <MovePicker />
+      <LabelPicker />
       {outboxOpen && <OutboxDialog onClose={() => useStore.getState().setOutbox(false)} />}
       <DialogHost />
       <Toasts />

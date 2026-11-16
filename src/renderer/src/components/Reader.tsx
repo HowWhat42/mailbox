@@ -14,6 +14,7 @@ import {
   Reply,
   ReplyAll,
   Star,
+  Tag,
   Trash2,
   WifiOff,
   type LucideIcon
@@ -391,6 +392,9 @@ export function Reader() {
             onClick={() => void s.act([thread], thread.flagged ? 'unflag' : 'flag')}
           />
           <ToolButton icon={FolderInput} label="Déplacer vers… (V)" onClick={() => s.openMovePicker([thread])} />
+          <span data-labels-button className="contents">
+            <ToolButton icon={Tag} label="Libellés (L)" onClick={(e) => s.openLabels(thread, e.currentTarget)} />
+          </span>
         </span>
         <span className="flex-1" />
         <span className="hidden @[420px]:contents">

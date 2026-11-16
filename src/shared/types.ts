@@ -452,6 +452,10 @@ export interface MailboxApi {
     /** Creates a folder on the server, at the top of the account or inside `parentId`. */
     createFolder(accountId: string, name: string, parentId?: string): Promise<Folder>
     setFolderFavorite(folderId: string, favorite: boolean): Promise<void>
+    /** Labels already used on an account (and Gmail's label folders), to pick from. */
+    knownLabels(accountId: string): Promise<string[]>
+    /** Adds / removes labels on a whole conversation (Gmail labels, or IMAP keywords). */
+    setLabels(accountId: string, threadId: string, add: string[], remove: string[]): Promise<void>
   }
   templates: {
     /** One account's templates, or all of them. */

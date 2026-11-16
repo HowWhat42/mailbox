@@ -1,4 +1,4 @@
-import { Archive, FolderInput, Forward, Mail, MailOpen, OctagonAlert, Reply, ReplyAll, Star, StarOff, Trash2 } from 'lucide-react'
+import { Archive, FolderInput, Forward, Mail, MailOpen, OctagonAlert, Reply, ReplyAll, Star, StarOff, Tag, Trash2 } from 'lucide-react'
 import { MAIL_CATEGORIES, type ThreadSummary } from '@shared/types'
 import { api, useStore } from '../store'
 import { CATEGORY_ICON, CATEGORY_LABEL } from './categories'
@@ -36,6 +36,7 @@ export function threadMenu(threads: ThreadSummary[]): MenuEntry[] {
     'separator',
     { label: 'Archiver', icon: Archive, hint: 'E', onSelect: () => void s.act(threads, 'archive') },
     { label: 'Déplacer vers…', icon: FolderInput, hint: 'V', disabled: !sameAccount, onSelect: () => s.openMovePicker(threads) },
+    ...(single ? ([{ label: 'Libellés…', icon: Tag, hint: 'L', onSelect: () => s.openLabels(single) }] satisfies MenuEntry[]) : []),
     { label: 'Indésirable', icon: OctagonAlert, hint: '!', onSelect: () => void s.act(threads, 'junk') },
     { label: 'Supprimer', icon: Trash2, hint: '#', danger: true, onSelect: () => void s.act(threads, 'trash') },
     // Spark-style: teach the triage where this sender belongs.
