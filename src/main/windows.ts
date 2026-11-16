@@ -22,8 +22,10 @@ export function loadPage(win: BrowserWindow, page: 'index' | 'notify'): void {
   else void win.loadFile(join(__dirname, `../renderer/${page}.html`))
 }
 
+/** App icon (.ico on Windows, sharper in the taskbar) or tray icon (tray@2x.png is picked up on HiDPI). */
 export function iconPath(name: 'icon' | 'tray'): string {
-  return join(__dirname, `../../resources/${name}.png`)
+  const ext = name === 'icon' && process.platform === 'win32' ? 'ico' : 'png'
+  return join(__dirname, `../../resources/${name}.${ext}`)
 }
 
 export function createMainWindow({ hidden }: { hidden: boolean }): BrowserWindow {
