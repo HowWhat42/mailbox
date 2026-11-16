@@ -10,12 +10,12 @@ import { syncAccountSources } from './calendar/sources'
 import { startReminders, stopReminders } from './calendar/reminders'
 import { applyZoom, createMainWindow, iconPath, showMainWindow, TITLEBAR } from './windows'
 import { createTray } from './tray'
+import { APP_ID, isolateDevData } from './identity'
 
+isolateDevData()
 if (!app.requestSingleInstanceLock()) app.quit()
 
 app.on('second-instance', () => showMainWindow())
-
-const APP_ID = 'app.mailbox.desktop'
 
 /**
  * Windows names the taskbar entry and toasts after the Start Menu shortcut that carries the app's
