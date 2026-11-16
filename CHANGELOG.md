@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.1.6 — 16 novembre 2026
+
 - Les grands vides qui pouvaient apparaître dans la liste des messages, au-dessus de « Aujourd'hui » ou « Ce mois-ci », ont disparu.
 - Les sélecteurs de couleur et de libellés n'ont plus de double cadre.
 
