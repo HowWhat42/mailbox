@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { PanelLeft, Search, X } from 'lucide-react'
 import type { MailView } from '@shared/types'
 import { useStore } from '../store'
+import logo from '../assets/logo.png'
 import { useLayout } from '../lib/layout'
 
 function SearchBox() {
@@ -79,7 +80,12 @@ export function TitleBar() {
         >
           <PanelLeft size={16} strokeWidth={1.75} />
         </button>
-        {!layout.rail && !layout.drawer && <span className="truncate text-[13px] font-semibold tracking-[-0.01em]">Mailbox</span>}
+        {!layout.rail && !layout.drawer && (
+          <span className="flex min-w-0 items-center gap-2">
+            <img src={logo} alt="" className="size-[18px] shrink-0" draggable={false} />
+            <span className="truncate text-[13px] font-semibold tracking-[-0.01em]">Mailbox</span>
+          </span>
+        )}
       </div>
       <div className="flex min-w-0 justify-center px-2 sm:px-4">
         <SearchBox />

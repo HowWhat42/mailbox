@@ -79,11 +79,20 @@ export function SettingsView() {
         ))}
         {!single && <p className="px-2.5 pb-1 pt-4 text-[12px] font-medium text-muted">Comptes</p>}
         {accounts.map((a) => (
-          <button key={a.id} onClick={() => openSettings(`account:${a.id}`)} className={item(section === `account:${a.id}`)}>
+          <button
+            key={a.id}
+            onClick={() => openSettings(`account:${a.id}`)}
+            title={a.email}
+            aria-label={`Compte ${a.label.trim() || a.name} (${a.email})`}
+            className={`${item(section === `account:${a.id}`)} h-auto min-h-8 py-1`}
+          >
             <span className="grid size-[15px] place-items-center">
               <span className="size-2.5 rounded-[3px]" style={{ background: a.color }} />
             </span>
-            <span className="truncate">{a.name}</span>
+            <span className="min-w-0 leading-tight">
+              <span className="block truncate">{a.label.trim() || a.name}</span>
+              <span className="block truncate text-[11px] text-muted">{a.email}</span>
+            </span>
           </button>
         ))}
         <button onClick={() => setSetup(true)} className={item(false)}>
