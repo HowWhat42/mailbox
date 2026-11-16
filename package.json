@@ -84,5 +84,6 @@
       "shortcutName": "Mailbox",
       "runAfterFinish": true
     }
-  }
+  },
+  "packageManager": "pnpm@11.1.1"
 }

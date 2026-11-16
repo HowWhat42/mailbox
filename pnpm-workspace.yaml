@@ -1,0 +1,3 @@
+allowBuilds:
+  # Squirrel installer helper pulled in by electron-builder; we ship NSIS, its build step is not needed.
+  electron-winstaller: false

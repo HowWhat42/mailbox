@@ -7,11 +7,11 @@ Client mail + calendrier desktop (Windows / macOS / Linux). Pensé clavier d'abo
 ## Démarrer
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
-Node 22+ requis. Aucune compilation native : la base locale utilise `node:sqlite` intégré à Electron.
+Node 22+ et pnpm 11 requis. Aucune compilation native : la base locale utilise `node:sqlite` intégré à Electron.
 
 ### Comptes Gmail / Google Workspace
 
@@ -90,17 +90,17 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 ## Installeur Windows
 
 ```bash
-npm run dist   # produit dist/Mailbox Setup <version>.exe (non signé)
+pnpm dist   # produit dist/Mailbox Setup <version>.exe (non signé)
 ```
 
 ## Tests
 
 ```bash
-npm run typecheck
-npm run test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi, archive, recherche
-npm run test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
-npm run test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
-npm run test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
+pnpm typecheck
+pnpm test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi, archive, recherche
+pnpm test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
+pnpm test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
+pnpm test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
 ```
 
 ## Architecture
