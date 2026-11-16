@@ -99,8 +99,8 @@ export function ColorPicker({ value, onChange, label }: { value: string; onChang
         <Pipette size={13} className="text-muted" />
       </button>
       {anchor && (
-        <Popover anchor={anchor} onClose={() => setAnchor(null)}>
-          <div role="dialog" aria-label={label} className="w-60 space-y-3 rounded-xl border border-line glass p-3">
+        <Popover anchor={anchor} onClose={() => setAnchor(null)} className="!p-0">
+          <div role="dialog" aria-label={label} className="w-60 space-y-3 p-3">
             <div
               role="slider"
               tabIndex={0}

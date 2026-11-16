@@ -50,8 +50,8 @@ function Picker({ thread, anchor }: { thread: ThreadSummary; anchor: Anchor }) {
   }
 
   return (
-    <Popover anchor={anchor} onClose={close} align="end" className="w-72">
-      <div role="dialog" aria-label="Libellés" className="overflow-hidden rounded-xl border border-line glass">
+    <Popover anchor={anchor} onClose={close} align="end" className="w-72 overflow-hidden !p-0">
+      <div role="dialog" aria-label="Libellés">
         <div className="flex items-center gap-2 border-b border-line px-3">
           <Search size={14} className="shrink-0 text-muted" />
           <input
