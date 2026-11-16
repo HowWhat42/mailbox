@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify'
 import { ImageOff } from 'lucide-react'
 import { textToHtml } from '../lib/format'
 import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
+import { useStore } from '../store'
 
 const REMOTE = /(<img[^>]+src=["']?https?:|url\(\s*["']?https?:|<image[^>]+href=["']?https?:)/i
 
@@ -43,16 +44,11 @@ function buildDoc(html: string, allowRemote: boolean): string {
   return `<!doctype html>${parsed.documentElement.outerHTML}`
 }
 
-export function MessageBody({
-  html,
-  text,
-  allowRemoteByDefault = false
-}: {
-  html: string | null
-  text: string | null
-  allowRemoteByDefault?: boolean
-}) {
-  const [allowRemote, setAllowRemote] = useState(allowRemoteByDefault)
+export function MessageBody({ html, text }: { html: string | null; text: string | null }) {
+  // Settings › Lecture › Images distantes, live: switching it applies to messages already open.
+  const always = useStore((s) => s.settings?.remoteImages === 'allow')
+  const [allowedHere, setAllowedHere] = useState(false)
+  const allowRemote = always || allowedHere
   const frame = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(80)
   const source =
@@ -101,8 +97,18 @@ export function MessageBody({
         <div className="mb-2 flex items-center gap-2 text-[12px] text-muted">
           <ImageOff size={13} />
           Images distantes bloquées pour protéger votre vie privée.
-          <button onClick={() => setAllowRemote(true)} className="font-medium text-accent hover:underline">
+          <button onClick={() => setAllowedHere(true)} className="font-medium text-accent hover:underline">
             Afficher les images
+          </button>
+          <span aria-hidden>·</span>
+          <button
+            onClick={() => {
+              void useStore.getState().updateSettings({ remoteImages: 'allow' })
+              useStore.getState().toast('Images distantes affichées pour tous les messages (Réglages › Général pour revenir en arrière)')
+            }}
+            className="font-medium text-accent hover:underline"
+          >
+            Toujours afficher
           </button>
         </div>
       )}

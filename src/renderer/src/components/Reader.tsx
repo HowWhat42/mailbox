@@ -187,7 +187,7 @@ function Message({
                 Ce message n’est pas encore téléchargé. Il s’affichera dès le retour de la connexion.
               </div>
             ) : (
-              <MessageBody html={m.html} text={m.text} allowRemoteByDefault={useStore.getState().settings?.remoteImages === 'allow'} />
+              <MessageBody html={m.html} text={m.text} />
             )}
             {m.attachments.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2.5">
