@@ -7,7 +7,7 @@ import { deleteAccount, insertAccount, listAccounts, updateAccount } from './acc
 import { authorizeGoogle, googleConfigured } from './accounts/google'
 import { discoverSettings } from './accounts/discover'
 import { describeError, syncAccount } from './mail/sync'
-import { listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
+import { bundleMessageIds, listBundles, listFolders, listThreads, searchContacts, threadMessages, unifiedCounts } from './mail/query'
 import { applyAction, threadTargets } from './mail/actions'
 import { deleteDraft, saveDraft, sendMessage } from './mail/send'
 import { openAttachment, saveAttachment } from './mail/attachments'
@@ -101,7 +101,13 @@ const handlers: Handlers = {
   },
   mail: {
     folders: async () => listFolders(),
-    list: async (view, filter, category, limit) => listThreads(view, filter, category, limit),
+    list: async (view, filter, scope, limit) => listThreads(view, filter, scope, limit),
+    bundles: async (view, categories) => listBundles(view, categories),
+    bundleAct: async (view, category, action) => {
+      const ids = bundleMessageIds(view, category, action === 'read')
+      await applyAction(ids, action)
+      return ids.length
+    },
     thread: (accountId, threadId) => threadMessages(accountId, threadId),
     act: (ids, action) => applyAction(ids, action),
     actThread: (accountId, threadId, folderId, action, destFolderId) =>

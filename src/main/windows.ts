@@ -1,5 +1,5 @@
 import { join } from 'node:path'
-import { app, BrowserWindow, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme, screen, shell } from 'electron'
 import { getSettings } from './settings'
 
 export const TITLEBAR = {
@@ -68,9 +68,31 @@ export function createMainWindow({ hidden }: { hidden: boolean }): BrowserWindow
     if (!getSettings().backgroundMode) app.quit()
   })
 
+  // Re-evaluate the automatic zoom when the window lands on another screen.
+  win.webContents.on('did-finish-load', () => applyZoom(win))
+  win.on('moved', () => applyZoom(win))
+  win.on('resize', () => applyZoom(win))
+
   loadPage(win, 'index')
   main = win
   return win
+}
+
+/**
+ * Interface zoom: the user's choice, or automatic from the width of the screen the window
+ * is on, so a 2560px+ monitor doesn't get a postage-stamp UI.
+ */
+export function zoomFor(win: BrowserWindow): number {
+  const chosen = getSettings().uiScale
+  if (chosen > 0) return chosen
+  const width = screen.getDisplayMatching(win.getBounds()).workAreaSize.width
+  return width >= 3400 ? 1.35 : width >= 2400 ? 1.2 : width >= 1900 ? 1.05 : 1
+}
+
+export function applyZoom(win: BrowserWindow | null = getMainWindow()): void {
+  if (!win || win.isDestroyed()) return
+  const factor = zoomFor(win)
+  if (Math.abs(win.webContents.getZoomFactor() - factor) > 0.001) win.webContents.setZoomFactor(factor)
 }
 
 export function getMainWindow(): BrowserWindow | null {

@@ -72,7 +72,8 @@ await inputs.nth(3).fill(String(account.smtp.port))
 await page.click('button:has-text("Connecter le compte")')
 
 const rows = () => page.locator('[role=option]')
-const tab = (name) => page.locator(`[role=tab][aria-label="${name}"]`)
+const bundle = (c) => page.locator(`[data-bundle="${c}"]`)
+const back = () => page.click('button[aria-label="Retour à la réception"]')
 const expectRows = async (label, texts) => {
   await page.waitForFunction(
     (want) => {
@@ -87,16 +88,18 @@ const expectRows = async (label, texts) => {
 }
 
 await expectRows('Personnes', ['On déjeune', 'Facture du traiteur'])
-await page.screenshot({ path: join(shots, 't-01-people.png') })
-await tab('Notifications').click()
+for (const c of ['notifications', 'newsletters', 'invitations']) await bundle(c).waitFor()
+await page.screenshot({ path: join(shots, 't-01-bundles.png') })
+await bundle('notifications').click()
 await expectRows('Notifications', ['Nouvelle issue'])
-await tab('Newsletters').click()
-await expectRows('Newsletters', ['nouveautés'])
-await tab('Invitations').click()
+await back()
+await bundle('invitations').click()
 await expectRows('Invitations', ['Revue de sprint'])
-step('smart inbox sorted people / notifications / newsletters / invitations')
+await page.keyboard.press('Escape')
+await bundle('newsletters').click()
+await expectRows('Newsletters', ['nouveautés'])
+step('smart inbox: people listed, notifications / newsletters / invitations bundled')
 
-await tab('Newsletters').click()
 await rows().first().click()
 await page.waitForSelector('text=Classé dans Newsletters')
 await page.screenshot({ path: join(shots, 't-02-newsletter.png') })
@@ -110,7 +113,7 @@ step('unsubscribed through List-Unsubscribe (mailto)')
 await rows().first().click({ button: 'right' })
 await page.click('[role=menuitem]:has-text("Toujours classer dans Personnes")')
 await page.waitForSelector('text=iront dans Personnes')
-await tab('Personnes').click()
+await back()
 await expectRows('Personnes after sender rule', ['On déjeune', 'Facture du traiteur', 'nouveautés'])
 step('"always sort this sender into People" created a rule and re-sorted')
 
@@ -127,10 +130,13 @@ await page.screenshot({ path: join(shots, 't-03-rule-editor.png') })
 await page.click('button:has-text("Enregistrer la règle")')
 await page.waitForSelector('text=Règle enregistrée')
 await page.keyboard.press('Escape')
-await page.waitForSelector('[role=tab]')
-await tab('Personnes').click()
 await expectRows('Personnes after subject rule', ['On déjeune', 'nouveautés'])
 step('subject rule moved the invoice to Notifications')
+
+await bundle('notifications').hover()
+await page.click('button[aria-label="Tout marquer comme lu dans Notifications"]')
+await page.waitForSelector('text=marqués comme lus')
+step('bundle "mark all read"')
 
 // Appearance: accent + density.
 await page.click('button[aria-label=Réglages]')
@@ -139,9 +145,16 @@ await page.click('button[aria-label="Accent Corail"]')
 const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--accent').trim())
 if (accent !== '#fb7c5c') throw new Error(`accent not applied: ${accent}`)
 await page.click('[role=radio]:has-text("Compacte")')
+await page.locator('[aria-label="Taille de l’interface"]').click()
+await page.click('[role=menuitem]:has-text("120 %")')
+await page.waitForTimeout(400)
+const zoom = await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.getZoomFactor())
+if (Math.abs(zoom - 1.2) > 0.01) throw new Error(`interface zoom not applied: ${zoom}`)
+await page.locator('[aria-label="Taille de l’interface"]').click()
+await page.click('[role=menuitem]:has-text("Automatique")')
 await page.waitForTimeout(500)
 await page.screenshot({ path: join(shots, 't-04-appearance.png') })
-step('accent colour and density applied live')
+step('accent colour, density and interface size applied live')
 
 await page.click('nav[aria-label="Sections des réglages"] button:has-text("Notifications")')
 await page.screenshot({ path: join(shots, 't-05-notifications.png') })
@@ -159,8 +172,12 @@ await page.waitForSelector('text=Pas lancé au démarrage.', { timeout: 10_000 }
 step('start-with-Windows registered with the OS, then removed')
 
 await page.keyboard.press('Escape')
-await page.waitForSelector('[role=tab]')
+await page.waitForSelector('[data-bundle]')
 await page.screenshot({ path: join(shots, 't-07-inbox-compact.png') })
+// Maximised on the current screen: bigger list, automatic zoom.
+await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].maximize())
+await page.waitForTimeout(800)
+await page.screenshot({ path: join(shots, 't-08-maximized.png') })
 
 await app.close()
 if (errors.length) {

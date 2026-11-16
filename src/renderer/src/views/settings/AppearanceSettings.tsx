@@ -5,6 +5,7 @@ import { useStore } from '../../store'
 import { ACCENTS, isHex } from '../../lib/appearance'
 import { Avatar } from '../../components/Avatar'
 import { Row, Section, Segmented } from './parts'
+import { Select } from '../../components/ui/Controls'
 
 const THEMES: { value: ThemeMode; label: string; icon: typeof Moon }[] = [
   { value: 'dark', label: 'Nuit', icon: Moon },
@@ -100,6 +101,18 @@ export function AppearanceSettings() {
       </Section>
 
       <Section title="Affichage">
+        <Row label="Taille de l’interface" hint="Automatique : plus grande sur les écrans larges (2560 px et plus), recalculée quand la fenêtre change d’écran.">
+          <Select
+            ariaLabel="Taille de l’interface"
+            className="w-48"
+            value={String(settings.uiScale)}
+            onChange={(v) => void update({ uiScale: Number(v) })}
+            options={[
+              { value: '0', label: 'Automatique' },
+              ...[0.9, 1, 1.1, 1.2, 1.35, 1.5].map((f) => ({ value: String(f), label: `${Math.round(f * 100)} %` }))
+            ]}
+          />
+        </Row>
         <Row label="Fond" hint="La nébuleuse pixélisée derrière les panneaux (thème Nuit).">
           <Segmented
             ariaLabel="Fond"

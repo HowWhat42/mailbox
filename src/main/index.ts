@@ -1,12 +1,12 @@
 import { app, BrowserWindow, ipcMain, nativeTheme } from 'electron'
 import { getDb } from './db'
 import { registerIpc } from './ipc'
-import { applyLoginItem, getSettings } from './settings'
+import { applyLoginItem, getSettings, onUiScaleChange } from './settings'
 import { startWatching, stopWatching } from './mail/watch'
 import { startCalendarSync, stopCalendarSync } from './calendar'
 import { syncAccountSources } from './calendar/sources'
 import { startReminders, stopReminders } from './calendar/reminders'
-import { createMainWindow, showMainWindow, TITLEBAR } from './windows'
+import { applyZoom, createMainWindow, showMainWindow, TITLEBAR } from './windows'
 import { createTray } from './tray'
 
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -27,6 +27,7 @@ app.whenReady().then(() => {
   })
   applyLoginItem()
 
+  onUiScaleChange(() => applyZoom())
   createMainWindow({ hidden: process.argv.includes('--hidden') })
   createTray()
   startWatching()

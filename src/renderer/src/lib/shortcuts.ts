@@ -82,7 +82,9 @@ export function useMailShortcuts(): void {
           return
         case 'Escape':
           if (s.checked.size) s.setChecked([])
-          else s.select(null)
+          else if (s.selected) s.select(null)
+          // Leave a bundle (Notifications, Newsletters…) back to the inbox.
+          else if (s.category !== 'smart' && s.category !== 'all' && s.smartView()) s.setCategory('smart')
           return
         case 'x':
           if (s.selected) s.toggleCheck(s.selected)

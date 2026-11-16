@@ -23,7 +23,9 @@ const api = {
     'saveDraft',
     'deleteDraft',
     'contacts',
-    'unsubscribe'
+    'unsubscribe',
+    'bundles',
+    'bundleAct'
   ]),
   calendar: invoker('calendar', [
     'sources',

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Archive, FolderInput, Inbox, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Tag, Trash2, type LucideIcon } from 'lucide-react'
-import type { MailCategory, MailFilter, ThreadSummary } from '@shared/types'
+import { Archive, ArrowLeft, FolderInput, Mail, MailOpen, MoreHorizontal, OctagonAlert, Paperclip, PenSquare, Star, Tag, Trash2, type LucideIcon } from 'lucide-react'
+import type { Bundle, MailCategory, MailFilter, ThreadSummary } from '@shared/types'
 import { CATEGORY_ICON, CATEGORY_LABEL } from '../lib/categories'
+import { BundleRow, CATEGORY_TINT } from './BundleRow'
 import { threadKey, useStore } from '../store'
 import { dateGroup, displayName, listDate, ROLE_LABEL } from '../lib/format'
 import { threadMenu } from '../lib/threadActions'
@@ -15,7 +16,7 @@ import type { Anchor } from './ui/Popover'
 const ROW = { comfortable: 92, compact: 60 }
 const HEADER = 34
 
-type Item = { type: 'header'; label: string } | { type: 'thread'; t: ThreadSummary }
+type Item = { type: 'header'; label: string } | { type: 'thread'; t: ThreadSummary } | { type: 'bundle'; b: Bundle }
 
 function useViewInfo(): { title: string; sentLike: boolean } {
   const view = useStore((s) => s.view)
@@ -146,10 +147,12 @@ export function ThreadList() {
   const { title, sentLike } = useViewInfo()
   const settings = useStore((s) => s.settings)
   const category = useStore((s) => s.category)
-  const counts = useStore((s) => s.counts)
+  const bundles = useStore((s) => s.bundles)
   const compact = settings?.density === 'compact'
   const rowHeight = ROW[compact ? 'compact' : 'comfortable']
-  const tabs = useStore((s) => s.smartView()) ? (['people', ...(settings?.categories ?? []).filter((c) => c !== 'people')] as MailCategory[]) : []
+  const smart = useStore((s) => s.smartView())
+  // Inside a bundle (Notifications, Newsletters…): the list gets a back button.
+  const inBundle = smart && category !== 'smart' && category !== 'all' ? (category as MailCategory) : null
   const { single } = useLayout()
   const s = useStore.getState()
   const parent = useRef<HTMLDivElement>(null)
@@ -158,21 +161,27 @@ export function ThreadList() {
   const showAccount = accounts.length > 1 && view.type !== 'folder'
 
   const items = useMemo<Item[]>(() => {
+    // Bundles sit among the conversations at the date of their latest message.
+    const shown = bundles.filter((b) => filter === 'all' || (filter === 'unread' && b.unread > 0))
+    const merged: ({ date: number } & ({ type: 'thread'; t: ThreadSummary } | { type: 'bundle'; b: Bundle }))[] = [
+      ...threads.map((t) => ({ type: 'thread' as const, t, date: t.date })),
+      ...shown.map((b) => ({ type: 'bundle' as const, b, date: b.latest }))
+    ].sort((a, b) => b.date - a.date)
     const out: Item[] = []
     let last = ''
-    for (const t of threads) {
-      const g = dateGroup(t.date)
+    for (const it of merged) {
+      const g = dateGroup(it.date)
       if (g !== last) out.push({ type: 'header', label: g })
       last = g
-      out.push({ type: 'thread', t })
+      out.push(it.type === 'thread' ? { type: 'thread', t: it.t } : { type: 'bundle', b: it.b })
     }
     return out
-  }, [threads])
+  }, [threads, bundles, filter])
 
   const virtual = useVirtualizer({
     count: items.length,
     getScrollElement: () => parent.current,
-    estimateSize: (i) => (items[i].type === 'header' ? HEADER : rowHeight),
+    estimateSize: (i) => (items[i].type === 'header' ? HEADER : items[i].type === 'bundle' ? (compact ? 48 : 66) : rowHeight),
     overscan: 10
   })
 
@@ -209,10 +218,25 @@ export function ThreadList() {
   }
 
   return (
-    <section className={`@container flex min-w-0 flex-col ${single ? 'flex-1' : 'w-[clamp(320px,32vw,440px)] shrink-0 border-r border-line'}`}>
+    <section className={`@container flex min-w-0 flex-col ${single ? 'flex-1' : 'w-[clamp(320px,30vw,560px)] shrink-0 border-r border-line'}`}>
       <header className="flex shrink-0 items-start gap-2 px-5 pb-3 pt-4">
+        {inBundle && (
+          <button onClick={() => s.setCategory('smart')} aria-label="Retour à la réception" title="Retour à la réception (Échap)" className="-ml-2 mt-0.5 grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg">
+            <ArrowLeft size={17} />
+          </button>
+        )}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[18px] font-semibold tracking-[-0.02em]">{view.type === 'search' ? `« ${view.query} »` : title}</h1>
+          <h1 className="flex items-center gap-2 truncate text-[18px] font-semibold tracking-[-0.02em]">
+            {inBundle && (
+              <span className="grid size-6 place-items-center rounded-full" style={{ background: `color-mix(in oklch, ${CATEGORY_TINT[inBundle]} 18%, transparent)`, color: CATEGORY_TINT[inBundle] }}>
+                {(() => {
+                  const I = CATEGORY_ICON[inBundle]
+                  return <I size={13} />
+                })()}
+              </span>
+            )}
+            {view.type === 'search' ? `« ${view.query} »` : inBundle ? CATEGORY_LABEL[inBundle] : title}
+          </h1>
           <p className="tnum mt-0.5 text-[12px] text-muted">
             {busy && threads.length === 0 ? 'Synchronisation…' : unread ? `${unread} non lu${unread > 1 ? 's' : ''}` : `${threads.length} conversation${threads.length > 1 ? 's' : ''}`}
           </p>
@@ -220,34 +244,7 @@ export function ThreadList() {
         <ToolButton icon={PenSquare} label="Nouveau message (C)" onClick={() => s.compose()} />
       </header>
 
-      {tabs.length > 0 && (
-        <div role="tablist" aria-label="Catégories" className="no-scrollbar flex shrink-0 gap-0.5 overflow-x-auto border-b border-line px-3">
-          {[...tabs, 'all' as const].map((c) => {
-            const active = category === c
-            const Icon = c === 'all' ? Inbox : CATEGORY_ICON[c]
-            const n = c === 'all' ? counts.inbox : counts.categories[c]
-            return (
-              <button
-                key={c}
-                role="tab"
-                aria-selected={active}
-                onClick={() => s.setCategory(c)}
-                title={c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}
-                aria-label={c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}
-                className={`relative flex h-10 shrink-0 items-center gap-1.5 px-2.5 text-[12.5px] ${active ? 'font-medium text-fg' : 'text-muted hover:text-fg'}`}
-              >
-                <Icon size={14} />
-                {/* Narrow list: only the active tab spells its name out. */}
-                <span className={active ? '' : 'hidden @[600px]:inline'}>{c === 'all' ? 'Tout' : CATEGORY_LABEL[c]}</span>
-                {n > 0 && <span className={`tnum rounded-md px-1.5 text-[10.5px] font-semibold ${active ? 'bg-accent text-accent-fg' : 'bg-hover text-fg-2'}`}>{n}</span>}
-                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent shadow-[0_0_10px_var(--accent)]" />}
-              </button>
-            )
-          })}
-        </div>
-      )}
-
-      <div className={`no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-5 pb-3 ${tabs.length ? 'pt-3' : ''}`}>
+      <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto px-5 pb-3">
         {FILTERS.map((f) => (
           <button
             key={f.value}
@@ -291,7 +288,7 @@ export function ThreadList() {
       </div>
 
       <div ref={parent} role="listbox" aria-label={title} className="min-h-0 flex-1 overflow-y-auto pb-2">
-        {threads.length === 0 ? (
+        {items.length === 0 ? (
           <div className="px-8 pt-20 text-center">
             <p className="text-[13.5px] font-medium text-fg-2">
               {busy ? 'Synchronisation en cours…' : view.type === 'search' ? 'Aucun message ne correspond' : filter !== 'all' ? 'Aucune conversation pour ce filtre' : 'Tout est traité'}
@@ -308,6 +305,8 @@ export function ThreadList() {
                 <div key={v.key} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: v.size, transform: `translateY(${v.start}px)` }}>
                   {it.type === 'header' ? (
                     <div className="flex h-full items-end px-5 pb-1.5 text-[12px] font-medium text-muted">{it.label}</div>
+                  ) : it.type === 'bundle' ? (
+                    <BundleRow bundle={it.b} compact={compact} />
                   ) : (
                     <Row
                       t={it.t}

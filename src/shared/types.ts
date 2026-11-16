@@ -129,6 +129,19 @@ export type MailFilter = 'all' | 'unread' | 'flagged' | 'attachments'
 export type MailCategory = 'people' | 'notifications' | 'newsletters' | 'invitations'
 export const MAIL_CATEGORIES: MailCategory[] = ['people', 'notifications', 'newsletters', 'invitations']
 
+/** Which part of a box a list shows: everything, one category, or everything except bundled categories. */
+export type MailScope = 'all' | MailCategory | { exclude: MailCategory[] }
+
+/** A Spark-style bundle row: one category of the inbox, summarised by sender. */
+export interface Bundle {
+  category: MailCategory
+  threads: number
+  unread: number
+  latest: number
+  senders: { name: string; address: string; count: number; unread: number }[]
+  moreSenders: number
+}
+
 export type RuleField = 'from' | 'domain' | 'to' | 'subject'
 export type RuleOp = 'contains' | 'is'
 
@@ -268,6 +281,8 @@ export interface AppSettings {
 
   // Apparence
   theme: ThemeMode
+  /** Interface zoom; 0 = automatic from the screen size. */
+  uiScale: number
   /** Hex colour. */
   accent: string
   backdrop: 'nebula' | 'plain'
@@ -344,7 +359,10 @@ export interface MailboxApi {
   }
   mail: {
     folders(): Promise<Folder[]>
-    list(view: MailView, filter: MailFilter, category: MailCategory | 'all', limit: number): Promise<ThreadSummary[]>
+    list(view: MailView, filter: MailFilter, scope: MailScope, limit: number): Promise<ThreadSummary[]>
+    bundles(view: MailView, categories: MailCategory[]): Promise<Bundle[]>
+    /** Marks read or archives a whole bundle; returns the number of messages touched. */
+    bundleAct(view: MailView, category: MailCategory, action: 'read' | 'archive'): Promise<number>
     thread(accountId: string, threadId: string): Promise<MessageDetail[]>
     act(messageIds: string[], action: MessageAction): Promise<void>
     actThread(accountId: string, threadId: string, folderId: string, action: MessageAction, destFolderId?: string): Promise<void>

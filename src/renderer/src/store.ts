@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Account, Address, AppSettings, Folder, MailCategory, MailFilter, MailView, MessageAction, OutgoingAttachment, ThreadSummary } from '@shared/types'
+import type { Account, Address, AppSettings, Bundle, Folder, MailCategory, MailFilter, MailView, MessageAction, OutgoingAttachment, ThreadSummary } from '@shared/types'
 import { applyAppearance } from './lib/appearance'
 
 export const api = window.mailbox
@@ -73,7 +73,9 @@ interface State {
   syncing: Record<string, boolean>
   view: MailView
   filter: MailFilter
-  category: MailCategory | 'all'
+  /** 'smart' = inbox with bundles, a category = inside one bundle, 'all' = plain list. */
+  category: MailCategory | 'all' | 'smart'
+  bundles: Bundle[]
   counts: { inbox: number; flagged: number; categories: Record<MailCategory, number> }
   threads: ThreadSummary[]
   limit: number
@@ -98,7 +100,9 @@ interface State {
   focusEvent(focus: { eventId: string; start: number } | null): void
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
-  setCategory(category: MailCategory | 'all'): void
+  setCategory(category: MailCategory | 'all' | 'smart'): void
+  /** Categories shown as bundles in the smart inbox. */
+  bundled(): MailCategory[]
   /** Whether the current view shows smart-inbox tabs. */
   smartView(): boolean
   loadMore(): void
@@ -176,7 +180,8 @@ export const useStore = create<State>((set, get) => ({
   syncing: {},
   view: { type: 'unified', role: 'inbox' },
   filter: 'all',
-  category: 'people',
+  category: 'smart',
+  bundles: [],
   threads: [],
   limit: PAGE,
   selected: null,
@@ -195,13 +200,14 @@ export const useStore = create<State>((set, get) => ({
       const theme = applyAppearance(s)
       void api.app.setTheme(theme)
       set({ settings: s, theme, category: get().smartView() && s.smartInbox ? get().category : 'all' })
+      void get().refreshMail()
     }
     apply(settings)
     if (!settings.smartInbox) set({ category: 'all' })
     api.app.on('settings:changed', (s) => {
       const smartChanged = s.smartInbox !== get().settings?.smartInbox
       apply(s)
-      if (smartChanged) get().setCategory(s.smartInbox && get().smartView() ? 'people' : 'all')
+      if (smartChanged) get().setCategory(s.smartInbox && get().smartView() ? 'smart' : 'all')
     })
     // "Système" follows the OS live.
     window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
@@ -237,9 +243,18 @@ export const useStore = create<State>((set, get) => ({
 
   async refreshMail() {
     const { view, filter, limit, category } = get()
-    const [folders, threads, counts] = await Promise.all([api.mail.folders(), api.mail.list(view, filter, get().smartView() ? category : 'all', limit), api.mail.counts()])
+    const smart = get().smartView()
+    const bundled = get().bundled()
+    const scope = !smart || category === 'all' ? 'all' : category === 'smart' ? { exclude: bundled } : category
+    const [folders, threads, counts, bundles] = await Promise.all([
+      api.mail.folders(),
+      api.mail.list(view, filter, scope, limit),
+      api.mail.counts(),
+      smart && category === 'smart' ? api.mail.bundles(view, bundled) : Promise.resolve([] as Bundle[])
+    ])
     // Ignore stale responses if the view changed meanwhile.
     if (get().view !== view || get().filter !== filter || get().category !== category) return
+    set({ bundles })
     const hidden = get().hidden
     const visible = threads.filter((t) => !hidden.has(threadKey(t)))
     const keys = new Set(visible.map(threadKey))
@@ -285,7 +300,7 @@ export const useStore = create<State>((set, get) => ({
 
   setView(view) {
     set({ view, mode: 'mail', selected: null, checked: new Set(), limit: PAGE, threads: [], filter: 'all', composer: null })
-    set({ category: get().smartView() ? 'people' : 'all' })
+    set({ category: get().smartView() ? 'smart' : 'all', bundles: [] })
     void get().refreshMail()
   },
 
@@ -297,8 +312,12 @@ export const useStore = create<State>((set, get) => ({
     return false
   },
 
+  bundled() {
+    return (get().settings?.categories ?? []).filter((c) => c !== 'people')
+  },
+
   setCategory(category) {
-    set({ category, selected: null, checked: new Set(), limit: PAGE, threads: [] })
+    set({ category, selected: null, checked: new Set(), limit: PAGE, threads: [], bundles: [] })
     void get().refreshMail()
   },
 

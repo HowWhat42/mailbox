@@ -75,6 +75,8 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - Fonctionne en arrière-plan depuis la barre des tâches (option), lancement au démarrage (version installée).
 - Brouillons enregistrés automatiquement sur le serveur ; archiver, supprimer et abandonner un brouillon s'annulent (`Z`) pendant 5 s.
 - Destinataires en pastilles avec autocomplétion, déplacement vers un dossier, sélection multiple, menu contextuel.
+- Tri intelligent façon Spark : les messages de personnes dans la liste, Notifications / Newsletters / Invitations regroupées en lignes résumées par expéditeur (tout marquer lu, tout archiver), règles personnalisables, désabonnement en un clic.
+- Réglages complets : par compte (notifications, boîte unifiée, profondeur de synchro), par agenda (rappels), apparence (couleur d'accent, thème, fond, densité, taille de l'interface), heures calmes, démarrage avec Windows.
 - Interface responsive : sidebar en rail puis en tiroir, un seul panneau sous 1100 px, calendrier en 3 jours sur fenêtre étroite.
 - Thème « nuit » (nébuleuse pixélisée générée au lancement) et thème clair. Mots de passe et jetons chiffrés par le trousseau de l'OS (`safeStorage`).
 
@@ -84,7 +86,12 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - Gmail « Tous les messages » n'est pas synchronisé (doublons des libellés) ; l'archivage y déplace bien les messages.
 - CalDAV : modifier une occurrence d'un événement récurrent n'est pas pris en charge ; la suppression et la réponse à une invitation s'appliquent à toute la série.
 - Rappels : pas pour les événements « toute la journée ».
-- Pas d'installeur packagé pour l'instant.
+
+## Installeur Windows
+
+```bash
+npm run dist   # produit dist/Mailbox Setup <version>.exe (non signé)
+```
 
 ## Tests
 
@@ -92,6 +99,7 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 npm run typecheck
 npm run test:e2e            # boîte jetable Ethereal : synchro, threads, PJ, envoi, archive, recherche
 npm run test:e2e:calendar   # Radicale local : sources CalDAV + .ics, récurrences, réponse, rappel flottant, Rejoindre
+npm run test:e2e:triage     # tri intelligent, regroupements, règles, désabonnement, accent, zoom, démarrage avec Windows
 npm run test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
 ```
 

@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   remoteImages: 'block',
 
   theme: 'dark',
+  uiScale: 0,
   accent: '#8f86f0',
   backdrop: 'nebula',
   density: 'comfortable',
@@ -43,8 +44,15 @@ export function setSettings(patch: Partial<AppSettings>): AppSettings {
   }
   const next = getSettings()
   if ('launchAtLogin' in patch || 'startHidden' in patch) applyLoginItem()
+  if ('uiScale' in patch) onScaleChange?.()
   emit('settings:changed', next)
   return next
+}
+
+let onScaleChange: (() => void) | null = null
+/** Lets the window module react to the zoom setting without an import cycle. */
+export function onUiScaleChange(fn: () => void): void {
+  onScaleChange = fn
 }
 
 /** Is `now` inside the user's quiet hours (which may wrap past midnight)? */

@@ -1,4 +1,4 @@
-import { MAIL_CATEGORIES, type Address, type Folder, type MailCategory, type MailFilter, type MailView, type MessageDetail, type ThreadSummary } from '@shared/types'
+import { MAIL_CATEGORIES, type Address, type Bundle, type Folder, type MailCategory, type MailFilter, type MailScope, type MailView, type MessageDetail, type ThreadSummary } from '@shared/types'
 import { getDb } from '../db'
 import { ensureBodies } from './sync'
 
@@ -89,13 +89,17 @@ const FILTERS: Record<MailFilter, string> = {
 /** Accounts the user chose to keep out of the unified boxes. */
 const UNIFIED = 'm.account_id IN (SELECT id FROM accounts WHERE in_unified = 1)'
 
-export function listThreads(view: MailView, filter: MailFilter, category: MailCategory | 'all', limit: number): ThreadSummary[] {
-  const params: (string | number)[] = []
-  let f = FILTERS[filter] ?? '1'
-  if (category !== 'all' && MAIL_CATEGORIES.includes(category)) {
-    f += ' AND m.category = ?'
-    params.push(category)
-  }
+function scopeClause(scope: MailScope): { sql: string; params: string[] } {
+  if (scope === 'all') return { sql: '', params: [] }
+  if (typeof scope === 'string') return MAIL_CATEGORIES.includes(scope) ? { sql: ' AND m.category = ?', params: [scope] } : { sql: '', params: [] }
+  const excluded = scope.exclude.filter((c) => MAIL_CATEGORIES.includes(c))
+  return excluded.length ? { sql: ` AND m.category NOT IN (${excluded.map(() => '?').join(',')})`, params: excluded } : { sql: '', params: [] }
+}
+
+export function listThreads(view: MailView, filter: MailFilter, scope: MailScope, limit: number): ThreadSummary[] {
+  const s = scopeClause(scope)
+  const params: (string | number)[] = [...s.params]
+  const f = (FILTERS[filter] ?? '1') + s.sql
   switch (view.type) {
     case 'folder':
       return summaries(`m.folder_id = ? AND ${f}`, [view.folderId, ...params], limit)
@@ -108,6 +112,62 @@ export function listThreads(view: MailView, filter: MailFilter, category: MailCa
       return summaries(`m.rowid IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?) AND ${f}`, [q, ...params], limit)
     }
   }
+}
+
+/** WHERE clause selecting the inbox a view stands for (unified or one account's). */
+function inboxOf(view: MailView): { sql: string; params: string[] } | null {
+  if (view.type === 'unified' && view.role === 'inbox') return { sql: `f.role = 'inbox' AND ${UNIFIED}`, params: [] }
+  if (view.type === 'folder') return { sql: 'm.folder_id = ?', params: [view.folderId] }
+  return null
+}
+
+/** Spark-style bundles: each category of the inbox summarised by its senders. */
+export function listBundles(view: MailView, categories: MailCategory[]): Bundle[] {
+  const box = inboxOf(view)
+  if (!box) return []
+  const db = getDb()
+  const out: Bundle[] = []
+  for (const category of categories) {
+    const where = `FROM messages m JOIN folders f ON f.id = m.folder_id WHERE ${box.sql} AND m.category = ?`
+    const totals = db
+      .prepare(
+        `SELECT count(DISTINCT m.account_id || m.thread_id) AS threads,
+                count(DISTINCT CASE WHEN m.unread = 1 THEN m.account_id || m.thread_id END) AS unread,
+                max(m.date) AS latest ${where}`
+      )
+      .get(...box.params, category) as { threads: number; unread: number; latest: number | null }
+    if (!totals.threads) continue
+    const senders = db
+      .prepare(
+        `SELECT max(coalesce(nullif(m.from_name, ''), m.from_addr)) AS name, lower(m.from_addr) AS address,
+                count(*) AS count, sum(m.unread) AS unread, max(m.date) AS last
+         ${where} GROUP BY lower(m.from_addr) ORDER BY last DESC`
+      )
+      .all(...box.params, category) as { name: string; address: string; count: number; unread: number }[]
+    out.push({
+      category,
+      threads: totals.threads,
+      unread: totals.unread,
+      latest: totals.latest ?? 0,
+      senders: senders.slice(0, 6).map((s) => ({ name: s.name, address: s.address, count: s.count, unread: s.unread })),
+      moreSenders: Math.max(0, senders.length - 6)
+    })
+  }
+  return out
+}
+
+/** Message ids of a bundle, for "mark all read" / "archive all". */
+export function bundleMessageIds(view: MailView, category: MailCategory, unreadOnly: boolean): string[] {
+  const box = inboxOf(view)
+  if (!box) return []
+  return (
+    getDb()
+      .prepare(
+        `SELECT m.id FROM messages m JOIN folders f ON f.id = m.folder_id
+         WHERE ${box.sql} AND m.category = ?${unreadOnly ? ' AND m.unread = 1' : ''}`
+      )
+      .all(...box.params, category) as { id: string }[]
+  ).map((r) => r.id)
 }
 
 /** Correspondents matching `query`, most frequent first: the composer's autocomplete. */
