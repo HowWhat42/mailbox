@@ -1,8 +1,48 @@
-<img src="assets/icon.svg" width="64" height="64" alt="">
+<p align="center">
+  <img src="resources/icon.png" width="112" height="112" alt="Logo Mailbox">
+</p>
 
-# Mailbox
+<h1 align="center">Mailbox</h1>
 
-Client mail + calendrier desktop (Windows / macOS / Linux). Pensé clavier d'abord, rapide, sans compte cloud intermédiaire : vos messages vont de votre serveur à votre machine, point.
+<p align="center">
+  Vos mails et votre agenda au même endroit, pensés clavier d’abord.<br>
+  Gmail, IMAP et CalDAV, sans serveur intermédiaire : tout reste sur votre machine.
+</p>
+
+<p align="center">
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows</b></a>
+  ·
+  <a href="https://mailbox-app.pages.dev/privacy">Confidentialité</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/inbox.png" alt="Boîte unifiée avec une conversation ouverte : chaque échange sur un fil, du plus récent au plus ancien">
+</p>
+
+## En images
+
+**Tri intelligent.** Les personnes d’abord ; notifications et newsletters regroupées, résumées par expéditeur, à traiter d’un clic.
+
+<img src="docs/screenshots/smart-inbox.png" alt="Boîte de réception avec les notifications et les newsletters regroupées">
+
+**Agendas réunis.** Google, CalDAV et abonnements .ics côte à côte, chacun sa couleur, avec un bouton pour rejoindre les visios.
+
+<img src="docs/screenshots/calendar.png" alt="Vue semaine du calendrier avec un agenda Travail et un agenda Perso">
+
+**Thème clair, ou nuit avec la couleur d’accent de votre choix.** Chaque compte garde sa couleur et son étiquette dans la boîte unifiée.
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/light.png" alt="Thème clair"></td>
+    <td><img src="docs/screenshots/accent-ambre.png" alt="Thème nuit, accent ambre"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/accent-lagon.png" alt="Thème nuit, accent lagon"></td>
+    <td><img src="docs/screenshots/settings.png" alt="Réglages d’apparence : thème, couleur d’accent, repère des comptes"></td>
+  </tr>
+</table>
+
+<sub>Captures générées depuis des données de démonstration : <code>pnpm build && node scripts/screenshots.mjs</code>.</sub>
 
 ## Démarrer
 
@@ -17,11 +57,12 @@ Node 22+ et pnpm 11 requis. Aucune compilation native : la base locale utilise `
 
 La connexion Google passe par OAuth (navigateur système, PKCE, redirection loopback). Il faut un client OAuth à vous :
 
-1. [console.cloud.google.com](https://console.cloud.google.com) → nouveau projet.
-2. Activer **Gmail API** et **Google Calendar API**.
-3. Écran de consentement OAuth : type « Externe », ajoutez votre adresse comme utilisateur test.
-4. Identifiants → Créer → **ID client OAuth** → type **Application de bureau**.
-5. Copier `.env.example` en `.env` et renseigner `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_GOOGLE_CLIENT_SECRET`.
+1. [console.cloud.google.com](https://console.cloud.google.com) → nouveau projet ; activer **Gmail API** et **Google Calendar API**.
+2. **Google Auth Platform** : audience « Externe », page d’accueil et règles de confidentialité renseignées (domaine vérifié dans Search Console), puis **Publier l’application**. En mode Test, Google coupe l’accès au bout de 7 jours.
+3. **Clients** → créer un client de type **Application de bureau**.
+4. Copier `.env.example` en `.env` et renseigner `MAIN_VITE_GOOGLE_CLIENT_ID` / `MAIN_VITE_GOOGLE_CLIENT_SECRET` (secrets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` du dépôt pour les versions publiées).
+
+Sans validation Google, l’accès complet à Gmail est bloqué pour les adresses @gmail.com : ajoutez ces boîtes en **IMAP** avec un [mot de passe d’application](https://myaccount.google.com/apppasswords), et Google Agenda via Réglages › Agendas (accès agenda seul).
 
 ### Autres comptes (IMAP)
 
