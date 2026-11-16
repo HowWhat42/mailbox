@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import type { UpdateStatus } from '@shared/types'
 import { api, useStore } from '../../store'
 import { Select, Toggle } from '../../components/ui/Controls'
+import { ReleaseNotes } from '../../components/ReleaseNotes'
 import { Row, Section, Segmented } from './parts'
 
 function updateHint(u: UpdateStatus): string {
@@ -27,11 +28,24 @@ function updateHint(u: UpdateStatus): string {
 
 function UpdatesSection() {
   const update = useStore((s) => s.update)
+  const [notesOpen, setNotesOpen] = useState(false)
   if (!update) return null
   const busy = update.state === 'checking' || update.state === 'downloading'
   return (
     <Section title="Mises à jour" description="Les nouvelles versions se téléchargent en arrière-plan ; un redémarrage suffit pour les installer.">
-      <Row label={`Mailbox ${update.current}`} hint={updateHint(update)}>
+      <Row
+        label={`Mailbox ${update.current}`}
+        hint={
+          <>
+            {updateHint(update)}
+            {update.notes && (update.state === 'ready' || update.state === 'downloading') && (
+              <button onClick={() => setNotesOpen(true)} className="ml-1.5 font-medium text-accent hover:underline">
+                Voir les nouveautés
+              </button>
+            )}
+          </>
+        }
+      >
         {update.state === 'ready' ? (
           <button onClick={() => void api.updates.install()} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium">
             Redémarrer maintenant
@@ -46,6 +60,7 @@ function UpdatesSection() {
           </button>
         )}
       </Row>
+      {notesOpen && <ReleaseNotes update={update} onClose={() => setNotesOpen(false)} />}
     </Section>
   )
 }

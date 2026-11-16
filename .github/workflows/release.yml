@@ -43,9 +43,13 @@ jobs:
 
       # One draft up front: electron-builder uploads into it instead of racing to create the
       # release (it once made two, with the files split between them). Installed apps ignore drafts.
+      # The notes are this version's section of CHANGELOG.md: the app shows them before updating.
       - name: Create draft release
         shell: bash
-        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Mailbox ${GITHUB_REF_NAME#v}" --generate-notes
+        run: |
+          node scripts/changelog.mjs notes "${GITHUB_REF_NAME#v}" > notes.md
+          if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Mailbox ${GITHUB_REF_NAME#v}" "${notes[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

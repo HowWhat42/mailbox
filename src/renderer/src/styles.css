@@ -358,3 +358,49 @@ body[data-resizing] * {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Release notes in the "what's new" dialog. */
+.release-notes {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--fg-2);
+}
+.release-notes h1,
+.release-notes h2,
+.release-notes h3 {
+  margin: 18px 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.release-notes > :first-child {
+  margin-top: 0;
+}
+.release-notes p {
+  margin: 0 0 8px;
+}
+.release-notes ul {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  list-style: disc;
+}
+.release-notes li {
+  margin: 2px 0;
+}
+.release-notes li::marker {
+  color: var(--accent);
+}
+.release-notes strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+.release-notes code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--hover);
+  font-size: 12px;
+}
+.release-notes a {
+  color: var(--accent);
+}

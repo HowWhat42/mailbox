@@ -137,6 +137,10 @@ pnpm dist              # installeur local : dist/Mailbox-Setup-<version>.exe (no
 pnpm release           # publie une version : patch par défaut, ou `pnpm release minor|major`
 ```
 
+Les nouveautés s’écrivent au fil de l’eau dans [`CHANGELOG.md`](CHANGELOG.md), sous « ## À venir », pour les personnes qui
+utilisent l’app. `pnpm release` refuse de publier si cette section est vide ; sinon elle devient « ## X.Y.Z — date », sert de
+notes à la Release GitHub, et s’affiche dans l’app (« Voir les nouveautés ») quand la mise à jour est prête.
+
 `pnpm release` vérifie que `main` est propre et à jour, lance `pnpm check`, monte la version, commit,
 tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur sur Windows, le publie en
 GitHub Release (avec `latest.yml` et le blockmap pour les mises à jour différentielles) et attache une

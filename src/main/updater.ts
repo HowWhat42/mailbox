@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
+import type { UpdateInfo } from 'electron-updater'
 import type { UpdateStatus } from '@shared/types'
 import { emit } from './events'
 import { isOffline } from './mail/queue'
@@ -40,15 +41,28 @@ export function startUpdater(): void {
   autoUpdater.on('checking-for-update', () => set({ state: 'checking', error: undefined }))
   autoUpdater.on('update-not-available', () => set({ state: 'latest', checkedAt: Date.now() }))
   autoUpdater.on('update-available', (info) => {
-    set({ state: 'downloading', available: info.version, percent: 0, checkedAt: Date.now() })
+    set({ state: 'downloading', available: info.version, percent: 0, checkedAt: Date.now(), notes: notesOf(info) })
     autoUpdater.downloadUpdate().catch((err: unknown) => set({ state: 'error', error: describe(err) }))
   })
   autoUpdater.on('download-progress', (p) => set({ state: 'downloading', percent: Math.round(p.percent) }))
-  autoUpdater.on('update-downloaded', (info) => set({ state: 'ready', available: info.version, percent: 100 }))
+  autoUpdater.on('update-downloaded', (info) => set({ state: 'ready', available: info.version, percent: 100, notes: notesOf(info) }))
   autoUpdater.on('error', (err) => set({ state: 'error', error: describe(err) }))
 
   setTimeout(() => void checkForUpdates(), feed ? 0 : FIRST_CHECK_AFTER)
   setInterval(() => void checkForUpdates(), CHECK_EVERY)
+}
+
+/** Release notes as one text, whether the feed gives a string or one note per version. */
+function notesOf(info: UpdateInfo): string | null {
+  const n = info.releaseNotes
+  if (!n) return null
+  if (typeof n === 'string') return n
+  return (
+    n
+      .map((v) => v.note ?? '')
+      .filter(Boolean)
+      .join('\n\n') || null
+  )
 }
 
 function describe(err: unknown): string {

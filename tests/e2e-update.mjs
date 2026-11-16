@@ -2,20 +2,32 @@
 // finds it, downloads and verifies it, then offers a restart. (The installer itself isn't run.)
 // Usage: pnpm build && node tests/e2e-update.mjs [screenshot-dir]
 import { execFileSync } from 'node:child_process'
-import { createReadStream, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron } from 'playwright'
+import { upcomingNotes } from '../scripts/changelog.mjs'
 
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
 const feedDir = mkdtempSync(join(tmpdir(), 'mailbox-feed-'))
+// The release notes are the real "À venir" section of CHANGELOG.md.
+const notesFile = join(mkdtempSync(join(tmpdir(), 'mailbox-notes-')), 'notes.md')
+writeFileSync(notesFile, upcomingNotes(readFileSync('CHANGELOG.md', 'utf8')))
 execFileSync(
   process.execPath,
-  ['node_modules/electron-builder/cli.js', '--win', '--publish', 'never', '-c.extraMetadata.version=9.9.9', `-c.directories.output=${feedDir}`],
+  [
+    'node_modules/electron-builder/cli.js',
+    '--win',
+    '--publish',
+    'never',
+    '-c.extraMetadata.version=9.9.9',
+    `-c.directories.output=${feedDir}`,
+    `-c.releaseInfo.releaseNotesFile=${notesFile}`
+  ],
   { stdio: 'ignore' }
 )
 if (!existsSync(join(feedDir, 'latest.yml'))) throw new Error('no latest.yml in the build output')
@@ -49,6 +61,16 @@ await page.waitForSelector('[role=status]:has-text("Mise à jour prête")', { ti
 await page.waitForSelector('[role=status] >> text=9.9.9')
 await page.locator('[role=status]:has-text("Mise à jour prête")').screenshot({ path: join(shots, 'u-01-ready.png') })
 step('update found, downloaded and verified: "Mise à jour prête · 9.9.9"')
+
+// What's new, before restarting.
+await page.click('[role=status] button:has-text("Voir les nouveautés")')
+const notes = page.locator('[role=dialog][aria-label="Nouveautés de Mailbox 9.9.9"]')
+await notes.locator(`h3:has-text("Les mails s'ouvrent tout de suite")`).waitFor()
+if ((await notes.locator('.release-notes li').count()) < 3) throw new Error('release notes lists not rendered')
+if (await notes.locator('text=/^#{2,}/').count()) throw new Error('raw Markdown shown in the release notes')
+await page.screenshot({ path: join(shots, 'u-00-notes.png') })
+await notes.locator('button:has-text("Plus tard")').click()
+step('release notes shown, formatted, before restarting')
 
 await page.click('button[title="Réglages"]')
 await page.waitForSelector('text=Mises à jour')

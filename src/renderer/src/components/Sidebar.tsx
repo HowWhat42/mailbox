@@ -27,6 +27,7 @@ import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { SIDEBAR_RANGE, useLayout } from '../lib/layout'
 import { ResizeHandle } from './ui/ResizeHandle'
 import { useFolderDrop } from '../lib/dnd'
+import { ReleaseNotes } from './ReleaseNotes'
 import { NextUp } from './NextUp'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
@@ -231,6 +232,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
   const queue = useStore((st) => st.queue)
   const update = useStore((st) => st.update)
+  const [notesOpen, setNotesOpen] = useState(false)
   const errored = accounts.filter((a) => a.syncError)
 
   const active = (v: MailView): boolean => mode === 'mail' && sameView(view, v)
@@ -506,6 +508,11 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
               <span className="truncate">Mise à jour prête</span>
               <span className="ml-auto shrink-0 text-[11.5px] font-normal text-muted">{update.available}</span>
             </p>
+            {update.notes && (
+              <button onClick={() => setNotesOpen(true)} className="mt-1.5 text-[12px] font-medium text-accent hover:underline">
+                Voir les nouveautés
+              </button>
+            )}
             <button onClick={() => void api.updates.install()} className="btn-primary mt-2 h-7 w-full rounded-md text-[12px] font-medium">
               Redémarrer pour installer
             </button>
@@ -558,6 +565,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
         )}
       </div>
       {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={220} />}
+      {notesOpen && update && <ReleaseNotes update={update} onClose={() => setNotesOpen(false)} />}
       {creating && <NewFolderDialog accountId={creating.accountId} parent={creating.parent} onClose={() => setCreating(null)} />}
     </aside>
   )

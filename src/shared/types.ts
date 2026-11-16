@@ -393,6 +393,8 @@ export interface UpdateStatus {
   percent?: number
   error?: string
   checkedAt?: number
+  /** What's new in `available`: the release notes (HTML from GitHub, Markdown from a plain feed). */
+  notes?: string | null
 }
 
 export interface AppEvents {
