@@ -53,7 +53,7 @@ export async function discoverSettings(email: string): Promise<ServerSettings | 
   }
 
   try {
-    const mx = (await resolveMx(domain)).sort((a, b) => a.priority - b.priority).map((r) => r.exchange)
+    const mx = (await resolveMx(domain)).toSorted((a, b) => a.priority - b.priority).map((r) => r.exchange)
     const hosted = byMx(mx)
     if (hosted) return fromProvider(hosted, email, 'détecté via MX')
     for (const base of new Set(mx.map(baseDomain))) {
