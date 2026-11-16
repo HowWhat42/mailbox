@@ -252,7 +252,9 @@ const MIGRATIONS: string[] = [
   `
   ALTER TABLE folders ADD COLUMN parent_path TEXT;
   ALTER TABLE folders ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
-  `
+  `,
+  // Gmail labels / IMAP keywords of each message.
+  `ALTER TABLE messages ADD COLUMN labels TEXT NOT NULL DEFAULT '[]';`
 ]
 
 function migrate(d: DatabaseSync): void {

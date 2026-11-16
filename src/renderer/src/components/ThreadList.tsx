@@ -29,6 +29,7 @@ import { folderMenu } from '../lib/folderActions'
 import { ResizeHandle } from './ui/ResizeHandle'
 import { LIST_RANGE } from '../lib/panes'
 import { endThreadDrag, startThreadDrag } from '../lib/dnd'
+import { LabelChips } from './LabelChips'
 import type { Anchor } from './ui/Popover'
 
 const ROW = { comfortable: 92, compact: 60 }
@@ -142,11 +143,17 @@ function Row({
               <span className={`shrink-0 truncate ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`} style={{ maxWidth: '65%' }}>
                 {t.subject || '(sans objet)'}
               </span>
+              <LabelChips labels={t.labels} accountId={t.accountId} max={1} />
               <span className="min-w-0 truncate text-muted">{t.snippet}</span>
             </div>
           ) : (
             <>
-              <div className={`truncate text-[13px] ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`}>{t.subject || '(sans objet)'}</div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className={`min-w-0 truncate text-[13px] ${t.unread ? 'font-semibold text-fg' : 'text-fg-2'}`}>
+                  {t.subject || '(sans objet)'}
+                </span>
+                <LabelChips labels={t.labels} accountId={t.accountId} max={2} />
+              </div>
               <p className="line-clamp-2 text-[12px] leading-[1.45] text-muted">{t.snippet || ' '}</p>
             </>
           )}

@@ -109,6 +109,8 @@ export interface ThreadSummary {
   category: MailCategory
   /** The sender offers List-Unsubscribe. */
   canUnsubscribe: boolean
+  /** Gmail labels / IMAP keywords on the conversation's messages (system ones left out). */
+  labels: string[]
 }
 
 export interface Attachment {

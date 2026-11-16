@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ImapFlow } from 'imapflow'
+import { createTransport } from 'nodemailer'
 import { _electron as electron } from 'playwright'
 import { freshEtherealAccount } from './ethereal.mjs'
 
@@ -27,8 +28,23 @@ await other.connect()
 const delimiter = (await other.list()).find((f) => f.delimiter)?.delimiter ?? '/'
 await other.mailboxCreate(`Archives 2024`)
 await other.mailboxCreate(`Archives 2024${delimiter}Janvier`)
+// A message tagged by another client: a Thunderbird tag and a plain keyword.
+await createTransport({
+  host: account.smtp.host,
+  port: account.smtp.port,
+  secure: account.smtp.secure,
+  auth: { user: account.user, pass: account.pass }
+}).sendMail({
+  from: 'Léa <lea@example.com>',
+  to: account.user,
+  subject: 'Devis cuisine',
+  text: 'Voici le devis.'
+})
+for (let i = 0; i < 20 && !(await other.status('INBOX', { messages: true })).messages; i++) await new Promise((r) => setTimeout(r, 1000))
+await other.mailboxOpen('INBOX')
+await other.messageFlagsAdd('1:*', ['$label2', 'Devis'])
 await other.logout()
-step(`"Archives 2024${delimiter}Janvier" created by another client`)
+step(`"Archives 2024${delimiter}Janvier" created and a message tagged by another client`)
 
 const app = await electron.launch({ args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`] })
 const page = await app.firstWindow()
@@ -62,6 +78,25 @@ const indent = async (name) =>
   nav.locator(`button:has-text("${name}")`).evaluate((el) => el.closest('[style*="padding-left"]')?.style.paddingLeft ?? '0px')
 if ((await indent('Janvier')) === (await indent('Archives 2024'))) throw new Error('subfolder not indented under its parent')
 step('existing subfolder nested under its parent, behind a chevron')
+
+// Labels: the Thunderbird tag reads "Travail", the keyword as it is; one added later shows after a sync.
+const row = page.locator('[role=option]:has-text("Devis cuisine")')
+await row.locator('text=Travail').waitFor({ timeout: 30_000 })
+await row.locator('span:text-is("Devis")').waitFor()
+const later = imap()
+await later.connect()
+await later.mailboxOpen('INBOX')
+await later.messageFlagsAdd('1:*', ['Urgent'])
+await later.logout()
+// A click during a running sync joins it; wait for it to end so this one reads the new flags.
+await page.waitForFunction(() => !document.querySelector('button[aria-label=Synchroniser] .animate-spin'), null, { timeout: 60_000 })
+await page.click('button[aria-label=Synchroniser]')
+// The row shows two labels then +1; the reader shows them all.
+await row.locator('text=+1').waitFor({ timeout: 30_000 })
+await row.click()
+await page.locator('h2:has-text("Devis cuisine") ~ span >> text=Urgent').waitFor()
+await page.screenshot({ path: join(shots, 'f-00-labels.png') })
+step('labels shown on the row and in the reader, updated by a sync')
 
 // Create a folder, then a subfolder in it.
 await nav.locator('button[aria-expanded]:has-text("Camille")').click()

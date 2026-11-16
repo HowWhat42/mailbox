@@ -30,6 +30,7 @@ interface SummaryRow {
   any_flagged: number
   any_att: number
   senders: string | null
+  all_labels: string | null
   role: Folder['role']
   category: MailCategory
   list_unsubscribe: string | null
@@ -48,7 +49,8 @@ function summaries(where: string, params: (string | number)[], limit: number): T
            max(unread) OVER w AS any_unread,
            max(flagged) OVER w AS any_flagged,
            max(has_attachments) OVER w AS any_att,
-           group_concat(coalesce(nullif(from_name, ''), from_addr), char(1)) OVER w AS senders
+           group_concat(coalesce(nullif(from_name, ''), from_addr), char(1)) OVER w AS senders,
+           group_concat(labels, char(1)) OVER w AS all_labels
          FROM v
          WINDOW w AS (PARTITION BY account_id, thread_id),
                 w_desc AS (PARTITION BY account_id, thread_id ORDER BY date DESC)
@@ -73,7 +75,8 @@ function summaries(where: string, params: (string | number)[], limit: number): T
     hasAttachments: !!r.any_att,
     count: r.cnt,
     category: r.category,
-    canUnsubscribe: !!r.list_unsubscribe
+    canUnsubscribe: !!r.list_unsubscribe,
+    labels: [...new Set((r.all_labels ?? '').split('\u0001').flatMap((j) => (j ? (JSON.parse(j) as string[]) : [])))]
   }))
 }
 

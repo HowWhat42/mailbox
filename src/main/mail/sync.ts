@@ -36,6 +36,32 @@ const ROLE_BY_SPECIAL_USE: Record<string, FolderRole> = {
   '\\Flagged': 'flagged'
 }
 
+/** Gmail's own labels and the usual IMAP keywords: state, not something the user filed the mail under. */
+const SYSTEM_LABELS = new Set(['\\inbox', '\\sent', '\\important', '\\starred', '\\draft', '\\drafts', '\\trash', '\\spam', '\\all'])
+// Keywords starting with $ are set by software ($Forwarded, $Junk, $MDNSent, server markers…), not by people.
+const SYSTEM_KEYWORDS = /^(\$|(non)?junk$)/i
+/** Thunderbird's built-in tags. */
+const THUNDERBIRD_TAGS: Record<string, string> = {
+  $label1: 'Important',
+  $label2: 'Travail',
+  $label3: 'Personnel',
+  $label4: 'À faire',
+  $label5: 'Plus tard'
+}
+
+/** Labels of a message: Gmail labels when the server has them, plus keywords set by other clients. */
+function labelsOf(flags: Set<string> | undefined, gmailLabels: Set<string> | undefined): string[] {
+  const out = new Set<string>()
+  for (const l of gmailLabels ?? []) if (!SYSTEM_LABELS.has(l.toLowerCase())) out.add(l)
+  for (const f of flags ?? []) {
+    if (f.startsWith('\\')) continue
+    const tb = THUNDERBIRD_TAGS[f.toLowerCase()]
+    if (tb) out.add(tb)
+    else if (!SYSTEM_KEYWORDS.test(f)) out.add(f)
+  }
+  return [...out]
+}
+
 /** Folders that only mirror messages stored elsewhere (Gmail): not synced, still usable as move targets. */
 const MIRROR_ROLES = new Set<FolderRole>(['all', 'flagged', 'important'])
 
@@ -211,6 +237,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
     }
 
     const remoteUids = mailbox.exists ? (await client.search({ all: true }, { uid: true })) || [] : []
+    // Gmail exposes labels (X-GM-LABELS); elsewhere they are keywords among the flags.
+    const gmail = client.capabilities.has('X-GM-EXT-1')
     const remoteSet = new Set(remoteUids)
     const localUids = (db.prepare('SELECT uid FROM messages WHERE folder_id = ?').all(folder.id) as { uid: number }[]).map((r) => r.uid)
     const localSet = new Set(localUids)
@@ -228,14 +256,14 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
     const kept = localUids.filter((uid) => remoteSet.has(uid))
     if (kept.length) {
       const minUid = kept.reduce((a, b) => Math.min(a, b))
-      const update = db.prepare('UPDATE messages SET unread = ?, flagged = ? WHERE folder_id = ? AND uid = ?')
-      const changes: [number, number, number][] = []
-      for await (const msg of client.fetch(`${minUid}:*`, { uid: true, flags: true }, { uid: true })) {
+      const update = db.prepare('UPDATE messages SET unread = ?, flagged = ?, labels = ? WHERE folder_id = ? AND uid = ?')
+      const changes: [number, number, string, number][] = []
+      for await (const msg of client.fetch(`${minUid}:*`, { uid: true, flags: true, labels: gmail }, { uid: true })) {
         if (!localSet.has(msg.uid) || !msg.flags) continue
-        changes.push([msg.flags.has('\\Seen') ? 0 : 1, msg.flags.has('\\Flagged') ? 1 : 0, msg.uid])
+        changes.push([msg.flags.has('\\Seen') ? 0 : 1, msg.flags.has('\\Flagged') ? 1 : 0, JSON.stringify(labelsOf(msg.flags, msg.labels)), msg.uid])
       }
       tx(() => {
-        for (const [unread, flagged, uid] of changes) update.run(unread, flagged, folder.id, uid)
+        for (const [unread, flagged, labels, uid] of changes) update.run(unread, flagged, labels, folder.id, uid)
       })
     }
 
@@ -266,6 +294,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           internalDate: true,
           bodyStructure: true,
           threadId: true,
+          labels: gmail,
           size: true,
           headers: TRIAGE_HEADERS,
           source: { maxLength: PREVIEW_BYTES }
@@ -328,7 +357,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           JSON.stringify((env?.bcc ?? []).map((a) => ({ name: a.name ?? '', address: a.address ?? '' }))),
           category,
           JSON.stringify(signals),
-          headers['list-unsubscribe'] ?? null
+          headers['list-unsubscribe'] ?? null,
+          JSON.stringify(labelsOf(msg.flags, msg.labels))
         ])
         if (notifyNew && !seen && !actions.mute) newUnread.push({ from: from?.name || from?.address || '', subject, category })
       }
@@ -336,8 +366,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
         const insert = db.prepare(
           `INSERT OR IGNORE INTO messages (id, account_id, folder_id, uid, thread_id, message_id_header, refs, subject,
              from_name, from_addr, to_json, cc_json, reply_to_json, date, snippet, unread, flagged, has_attachments, bcc_json,
-             category, signals, list_unsubscribe)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+             category, signals, list_unsubscribe, labels)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         for (const row of rows) insert.run(...(row as (string | number | null)[]))
       })

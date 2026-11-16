@@ -29,6 +29,7 @@ import { AttachmentCard } from './AttachmentCard'
 import { MessageBody } from './MessageBody'
 import { AccountTag } from '../lib/accounts'
 import { TriageBanner } from './TriageBanner'
+import { LabelChips } from './LabelChips'
 import { Menu } from './ui/Menu'
 
 function ToolButton({
@@ -408,11 +409,14 @@ export function Reader() {
               <h2 className="min-w-0 flex-1 text-[19px] font-semibold @[600px]:text-[21px] leading-tight tracking-[-0.02em] select-text">
                 {messages?.[0]?.subject || thread.subject || '(sans objet)'}
               </h2>
-              {account && accounts.length > 1 && (
-                <span className="mt-1" title={account.email}>
-                  <AccountTag account={account} size="md" />
-                </span>
-              )}
+              <span className="mt-1 flex shrink-0 items-center gap-1.5">
+                <LabelChips labels={thread.labels} accountId={thread.accountId} max={6} size="md" />
+                {account && accounts.length > 1 && (
+                  <span title={account.email}>
+                    <AccountTag account={account} size="md" />
+                  </span>
+                )}
+              </span>
             </div>
 
             {messages && messages.length > 1 && (
