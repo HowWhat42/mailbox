@@ -4,5 +4,5 @@
   "semi": false,
   "singleQuote": true,
   "trailingComma": "none",
-  "ignorePatterns": ["out/**", "dist/**", "resources/**", "pnpm-lock.yaml"]
+  "ignorePatterns": ["out/**", "dist/**", "resources/**", "pnpm-lock.yaml", "docs/google*.html"]
 }
