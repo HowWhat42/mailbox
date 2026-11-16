@@ -72,7 +72,8 @@ export const ROLE_LABEL: Record<Exclude<FolderRole, null>, string> = {
   junk: 'Indésirables',
   archive: 'Archives',
   all: 'Tous les messages',
-  flagged: 'Suivis'
+  flagged: 'Suivis',
+  important: 'Important'
 }
 
 export function escapeHtml(s: string): string {

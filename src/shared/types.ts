@@ -54,7 +54,7 @@ export interface ServerSettings {
   note?: string
 }
 
-export type FolderRole = 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive' | 'all' | 'flagged' | null
+export type FolderRole = 'inbox' | 'sent' | 'drafts' | 'trash' | 'junk' | 'archive' | 'all' | 'flagged' | 'important' | null
 
 export interface Folder {
   id: string

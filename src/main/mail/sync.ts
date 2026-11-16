@@ -33,7 +33,39 @@ const ROLE_BY_SPECIAL_USE: Record<string, FolderRole> = {
 }
 
 /** Folders that only mirror messages stored elsewhere (Gmail): not synced, still usable as move targets. */
-const MIRROR_ROLES = new Set<FolderRole>(['all', 'flagged'])
+const MIRROR_ROLES = new Set<FolderRole>(['all', 'flagged', 'important'])
+
+/** Servers without SPECIAL-USE: recognise the usual names (English, French, Outlook) of top-level folders. */
+const ROLE_BY_NAME: [Exclude<FolderRole, null>, RegExp][] = [
+  ['sent', /^(sent( items| messages| mail)?|envoy[ée]s|(é|e)l(é|e)ments envoy(é|e)s|messages envoy(é|e)s)$/i],
+  ['trash', /^(trash|bin|deleted( items| messages)?|corbeille|(é|e)l(é|e)ments supprim(é|e)s)$/i],
+  ['drafts', /^(drafts?|brouillons?)$/i],
+  ['junk', /^(junk( e-?mail)?|spam|courrier ind(é|e)sirable|ind(é|e)sirables)$/i],
+  ['archive', /^archives?$/i]
+]
+
+/** Role of each folder: INBOX, SPECIAL-USE flags (and Gmail's \Important), then names for roles still missing. */
+function folderRoles(remote: ListResponse[]): Map<string, FolderRole> {
+  const roles = new Map<string, FolderRole>()
+  for (const f of remote) {
+    const role =
+      f.path.toUpperCase() === 'INBOX' ? 'inbox' : f.flags.has('\\Important') ? 'important' : (ROLE_BY_SPECIAL_USE[f.specialUse ?? ''] ?? null)
+    roles.set(f.path, role)
+  }
+  const taken = new Set(roles.values())
+  for (const f of remote) {
+    if (roles.get(f.path)) continue
+    // Top level only, or directly under INBOX ("INBOX.Sent" on Courier/Dovecot-style servers).
+    const parent = f.parentPath ?? ''
+    if (parent && parent.toUpperCase() !== 'INBOX') continue
+    const match = ROLE_BY_NAME.find(([role, re]) => !taken.has(role) && re.test(f.name))
+    if (match) {
+      roles.set(f.path, match[0])
+      taken.add(match[0])
+    }
+  }
+  return roles
+}
 
 export interface FolderRow {
   id: string
@@ -118,10 +150,12 @@ async function syncFolderList(client: ImapFlow, account: Account): Promise<Folde
       `INSERT INTO folders (id, account_id, path, name, role) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT (account_id, path) DO UPDATE SET name = excluded.name, role = excluded.role`
     )
-    for (const f of remote) {
-      const role = f.path.toUpperCase() === 'INBOX' ? 'inbox' : (ROLE_BY_SPECIAL_USE[f.specialUse ?? ''] ?? null)
-      upsert.run(folderId(account.id, f.path), account.id, f.path, f.name, role)
-    }
+    const roles = folderRoles(remote)
+    for (const f of remote) upsert.run(folderId(account.id, f.path), account.id, f.path, f.name, roles.get(f.path) ?? null)
+    // Mirrors are never synced: drop copies stored back when they were taken for ordinary folders.
+    db.prepare(
+      `DELETE FROM messages WHERE folder_id IN (SELECT id FROM folders WHERE account_id = ? AND role IN (${[...MIRROR_ROLES].map(() => '?').join(',')}))`
+    ).run(account.id, ...([...MIRROR_ROLES] as string[]))
     const keep = new Set(remote.map((f) => f.path))
     for (const local of foldersOf(account.id)) {
       if (!keep.has(local.path)) db.prepare('DELETE FROM folders WHERE id = ?').run(local.id)
