@@ -1,0 +1,162 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+:root,
+[data-theme='dark'] {
+  --bg: #0f1013;
+  --panel: #15161a;
+  --raised: #1b1c21;
+  --hover: #1f2026;
+  --line: #24252b;
+  --line-strong: #31323a;
+  --fg: #e7e7ea;
+  --fg-2: #b4b4bc;
+  --muted: #8b8b94;
+  --faint: #5d5e66;
+  --accent: #2dd4bf;
+  --accent-fg: #04201c;
+  --accent-soft: rgb(45 212 191 / 0.12);
+  --danger: #f87171;
+  --paper: #ffffff;
+  --shadow: 0 24px 64px -16px rgb(0 0 0 / 0.6), 0 0 0 1px var(--line);
+  color-scheme: dark;
+}
+
+[data-theme='light'] {
+  --bg: #fbfbfc;
+  --panel: #f4f4f6;
+  --raised: #ffffff;
+  --hover: #ececf0;
+  --line: #e4e4e9;
+  --line-strong: #d4d4db;
+  --fg: #18181b;
+  --fg-2: #3f3f46;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --accent: #0d9488;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(13 148 136 / 0.1);
+  --danger: #dc2626;
+  --paper: #ffffff;
+  --shadow: 0 24px 64px -16px rgb(15 15 30 / 0.25), 0 0 0 1px var(--line);
+  color-scheme: light;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-paper: var(--paper);
+  --shadow-pop: var(--shadow);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.45;
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose-compose {
+  outline: none;
+  min-height: 220px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.prose-compose a {
+  color: var(--accent);
+}
+.prose-compose ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.prose-compose ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.prose-compose blockquote {
+  border-left: 2px solid var(--line-strong);
+  padding-left: 12px;
+  color: var(--muted);
+  margin: 8px 0;
+}
+.prose-compose:empty::before {
+  content: attr(data-placeholder);
+  color: var(--faint);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+.pop-in {
+  animation: pop-in 140ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in {
+    animation: none;
+  }
+}

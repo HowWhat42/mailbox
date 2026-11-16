@@ -1,0 +1,35 @@
+import { contextBridge, ipcRenderer } from 'electron'
+import type { AppEvents, MailboxApi } from '@shared/types'
+
+function invoker<NS extends string>(ns: NS, methods: string[]): Record<string, (...args: unknown[]) => Promise<unknown>> {
+  return Object.fromEntries(methods.map((m) => [m, (...args: unknown[]) => ipcRenderer.invoke(`${ns}:${m}`, ...args)]))
+}
+
+const api = {
+  accounts: invoker('accounts', ['list', 'discover', 'addImap', 'addGoogle', 'update', 'remove', 'googleConfigured']),
+  mail: invoker('mail', [
+    'folders',
+    'list',
+    'thread',
+    'act',
+    'actThread',
+    'send',
+    'sync',
+    'openAttachment',
+    'saveAttachment',
+    'pickFiles',
+    'counts'
+  ]),
+  calendar: invoker('calendar', ['calendars', 'setEnabled', 'events', 'refresh', 'create', 'update', 'remove']),
+  app: {
+    openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+    setTheme: (theme: 'dark' | 'light') => ipcRenderer.invoke('app:setTheme', theme),
+    on: <K extends keyof AppEvents>(event: K, cb: (payload: AppEvents[K]) => void) => {
+      const listener = (_e: unknown, payload: AppEvents[K]): void => cb(payload)
+      ipcRenderer.on(`event:${event}`, listener)
+      return () => ipcRenderer.removeListener(`event:${event}`, listener)
+    }
+  }
+} as unknown as MailboxApi
+
+contextBridge.exposeInMainWorld('mailbox', api)
