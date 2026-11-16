@@ -3,17 +3,17 @@
 import { mkdtempSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import nodemailer from 'nodemailer'
+import { createTestAccount, createTransport } from 'nodemailer'
 import { _electron as electron } from 'playwright'
 
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
-const account = await nodemailer.createTestAccount()
+const account = await createTestAccount()
 step(`test account ${account.user}`)
 
-const smtp = nodemailer.createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
+const smtp = createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
 const first = await smtp.sendMail({
   from: 'Léa Moreau <lea@example.com>',
   to: account.user,

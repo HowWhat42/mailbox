@@ -76,6 +76,9 @@ function SelectionToolbar({ editor }: { editor: React.RefObject<HTMLDivElement |
 
   return (
     <div
+      role="toolbar"
+      aria-label="Mise en forme"
+      tabIndex={-1}
       className="pop-in fixed z-[65] flex -translate-x-1/2 -translate-y-full items-center gap-0.5 rounded-lg border border-line glass p-1"
       style={{ left: pos.x, top: pos.y - 8 }}
       onMouseDown={(e) => {
@@ -287,7 +290,9 @@ export function Composer() {
   const close = (): void => closeComposer()
 
   return (
+    // Keyboard shortcuts and file drops are handled for the whole composer.
     <section
+      role="presentation"
       className="@container relative flex min-w-0 flex-1 flex-col"
       onKeyDown={(e) => {
         if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {

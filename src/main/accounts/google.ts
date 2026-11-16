@@ -68,20 +68,20 @@ export async function authorizeGoogle(scope: keyof typeof SCOPES = 'mail'): Prom
       )
       clearTimeout(timer)
       server.close()
-      if (ok) resolve({ code: url.searchParams.get('code')!, redirectUri })
+      if (ok) resolve({ code: url.searchParams.get('code')!, redirectUri: loopbackUri })
       else reject(new Error(error ? `Google : ${error}` : 'Réponse OAuth invalide.'))
     })
-    let redirectUri = ''
+    let loopbackUri = ''
     const timer = setTimeout(() => {
       server.close()
       reject(new Error('Délai de connexion Google dépassé.'))
     }, 5 * 60_000)
     server.listen(0, '127.0.0.1', () => {
-      redirectUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+      loopbackUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
       const url = new URL(AUTH_URL)
       url.search = new URLSearchParams({
         client_id: clientId,
-        redirect_uri: redirectUri,
+        redirect_uri: loopbackUri,
         response_type: 'code',
         scope: SCOPES[scope].join(' '),
         code_challenge: challenge,

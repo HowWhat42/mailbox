@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer'
+import { createTransport } from 'nodemailer'
 import MailComposer from 'nodemailer/lib/mail-composer'
 import type Mail from 'nodemailer/lib/mailer'
 import type { Account, OutgoingAttachment, OutgoingMessage } from '@shared/types'
@@ -44,7 +44,7 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
   const account = getAccount(msg.accountId)
   const { raw, envelope } = await buildMime(account, msg, { requireRecipients: true })
 
-  const transport = nodemailer.createTransport({
+  const transport = createTransport({
     host: account.smtpHost,
     port: account.smtpPort,
     secure: account.smtpSecure,
@@ -56,7 +56,7 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
   try {
     await transport.sendMail({ envelope, raw })
   } catch (err) {
-    throw new Error(`Envoi impossible : ${describeError(err)}`)
+    throw new Error(`Envoi impossible : ${describeError(err)}`, { cause: err })
   } finally {
     transport.close()
   }

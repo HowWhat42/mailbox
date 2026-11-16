@@ -15,7 +15,7 @@ function dayLabel(d: number): string {
 
 /** Outlook-style agenda: every upcoming event, day by day, with Join right there. */
 export function AgendaList({ events, colorOf, nameOf, onOpen }: { events: CalendarEvent[]; colorOf: (id: string) => string; nameOf: (id: string) => string; onOpen: OpenEvent }) {
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000)
     return () => clearInterval(t)
@@ -30,7 +30,7 @@ export function AgendaList({ events, colorOf, nameOf, onOpen }: { events: Calend
       if (!e.allDay) break
     }
   }
-  const days = [...byDay.keys()].sort((a, b) => a - b)
+  const days = [...byDay.keys()].toSorted((a, b) => a - b)
 
   if (!days.length) {
     return (
@@ -51,7 +51,7 @@ export function AgendaList({ events, colorOf, nameOf, onOpen }: { events: Calend
           <div className="space-y-1">
             {byDay
               .get(d)!
-              .sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start)
+              .toSorted((a, b) => Number(b.allDay) - Number(a.allDay) || a.start - b.start)
               .map((e) => {
                 const { faded } = answerStyle(e)
                 const live = !e.allDay && now >= e.start && now < e.end

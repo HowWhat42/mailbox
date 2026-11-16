@@ -65,7 +65,7 @@ export function App() {
         </main>
       </div>
       {layout.drawer && drawerOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && useStore.getState().setDrawer(false)}>
+        <div role="presentation" className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && useStore.getState().setDrawer(false)}>
           <div className="pop-in flex h-full w-[260px] flex-col rounded-r-xl border-r border-line bg-surface-solid pt-3 shadow-pop">
             <Sidebar forceExpanded />
           </div>

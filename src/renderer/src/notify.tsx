@@ -93,7 +93,7 @@ function Card({ r, now }: { r: Reminder; now: number }) {
 
 function Stack() {
   const [items, setItems] = useState<Reminder[]>([])
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
   const seen = useRef(new Set<string>())
 
   useEffect(() => {

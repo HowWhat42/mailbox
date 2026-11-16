@@ -68,7 +68,7 @@ export function unwatch(accountId: string): void {
 }
 
 export function stopWatching(): void {
-  for (const id of [...watchers.keys()]) unwatch(id)
+  for (const id of watchers.keys()) unwatch(id)
   if (timer) clearInterval(timer)
   timer = null
 }

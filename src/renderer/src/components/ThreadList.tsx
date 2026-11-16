@@ -73,7 +73,9 @@ function Row({
       <div
         role="option"
         aria-selected={selected}
+        tabIndex={-1}
         onClick={(e) => (e.ctrlKey || e.metaKey ? toggleCheck(key) : select(key))}
+        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && select(key)}
         onContextMenu={onContext}
         className={`group relative flex h-full cursor-default gap-3 rounded-lg px-3 transition-colors ${compact ? 'items-center py-1.5' : 'py-2.5'} ${
           selected ? 'lit' : checked ? 'bg-accent-soft' : 'hover:bg-hover'
@@ -176,7 +178,7 @@ export function ThreadList() {
     const merged: ({ date: number } & ({ type: 'thread'; t: ThreadSummary } | { type: 'bundle'; b: Bundle }))[] = [
       ...threads.map((t) => ({ type: 'thread' as const, t, date: t.date })),
       ...shown.map((b) => ({ type: 'bundle' as const, b, date: b.latest }))
-    ].sort((a, b) => b.date - a.date)
+    ].toSorted((a, b) => b.date - a.date)
     const out: Item[] = []
     let last = ''
     for (const it of merged) {
@@ -188,6 +190,7 @@ export function ThreadList() {
     return out
   }, [threads, bundles, filter])
 
+  // oxlint-disable-next-line react/incompatible-library -- no React Compiler here; the virtualizer is used as documented.
   const virtual = useVirtualizer({
     count: items.length,
     getScrollElement: () => parent.current,

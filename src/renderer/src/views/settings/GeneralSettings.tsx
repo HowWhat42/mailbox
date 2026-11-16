@@ -9,8 +9,10 @@ export function GeneralSettings() {
   const update = useStore((s) => s.updateSettings)
   const [login, setLogin] = useState<{ enabled: boolean; packaged: boolean } | null>(null)
 
+  // Ask the OS again after each change to the start-up settings.
   useEffect(() => {
     void api.settings.loginItem().then(setLogin)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- re-running on this change is the point
   }, [settings.launchAtLogin, settings.startHidden])
 
   return (

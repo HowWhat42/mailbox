@@ -481,7 +481,7 @@ export const useStore = create<State>((set, get) => ({
     set({ toasts: get().toasts.filter((t) => t.id !== id) })
   },
   undoLast() {
-    const last = [...get().toasts].reverse().find((t) => t.action)
+    const last = get().toasts.toReversed().find((t) => t.action)
     if (!last?.action) return
     last.action.run()
     get().dismiss(last.id)

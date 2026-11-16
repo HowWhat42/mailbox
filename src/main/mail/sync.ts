@@ -60,7 +60,7 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
   try {
     await withImap(account, async (client) => {
       const folders = inboxOnly ? foldersOf(accountId).filter((f) => f.role === 'inbox') : await syncFolderList(client, account)
-      const order = [...folders].sort((a, b) => rank(a.role) - rank(b.role))
+      const order = folders.toSorted((a, b) => rank(a.role) - rank(b.role))
       for (const folder of order) {
         if (MIRROR_ROLES.has(folder.role)) continue
         await syncFolder(client, account, folder)
@@ -75,7 +75,7 @@ async function runSync(accountId: string, inboxOnly: boolean): Promise<void> {
     if (account.kind === 'google') forgetGoogleToken(accountId)
     setSyncResult(accountId, message)
     emit('sync:status', { accountId, state: 'error', message })
-    throw new Error(message)
+    throw new Error(message, { cause: err })
   }
 }
 
@@ -170,7 +170,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
 
     // 3. New messages: newer than our window, or the newest N on first sync.
     const minLocal = kept.length ? kept.reduce((a, b) => Math.min(a, b)) : 0
-    let fresh = remoteUids.filter((uid) => !localSet.has(uid) && uid > minLocal).sort((a, b) => b - a)
+    let fresh = remoteUids.filter((uid) => !localSet.has(uid) && uid > minLocal).toSorted((a, b) => b - a)
     fresh = fresh.slice(0, account.syncDepth || INITIAL_WINDOW)
     const notifyNew = folder.role === 'inbox' && kept.length > 0
     const newUnread: Incoming[] = []

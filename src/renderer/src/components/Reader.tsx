@@ -60,15 +60,15 @@ function Message({ m, expanded, onToggle, onReply }: { m: MessageDetail; expande
         <button onClick={onToggle} className="shrink-0" aria-label="Replier le message">
           <Avatar name={name} seed={m.from.address} size={36} />
         </button>
-        <div className="min-w-0 flex-1" onClick={onToggle}>
-          <div className="flex items-baseline gap-2">
+        <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left" aria-label={`Replier le message de ${name}`}>
+          <span className="flex items-baseline gap-2">
             <span className="truncate text-[13.5px] font-semibold">{name}</span>
             {m.from.name && <span className="truncate text-[12px] text-muted select-text">{m.from.address}</span>}
-          </div>
-          <div className="truncate text-[12px] text-muted select-text" title={recipients.join('\n')}>
+          </span>
+          <span className="block truncate text-[12px] text-muted select-text" title={recipients.join('\n')}>
             {recipients.join(' · ')}
-          </div>
-        </div>
+          </span>
+        </button>
         <time className="tnum hidden shrink-0 pt-0.5 text-[12px] text-muted @[640px]:block">{fullDate(m.date)}</time>
         <time className="tnum shrink-0 pt-0.5 text-[12px] text-muted @[640px]:hidden" title={fullDate(m.date)}>
           {listDate(m.date)}
@@ -121,9 +121,9 @@ function People({ people, accountId }: { people: Address[]; accountId: string })
 export function Reader() {
   const thread = useStore((s) => s.threads.find((t) => threadKey(t) === s.selected))
   const accounts = useStore((s) => s.accounts)
-  const [messages, setMessages] = useState<MessageDetail[] | null>(null)
+  // What was loaded, and for which thread: anything for another thread reads as "loading".
+  const [loaded, setLoaded] = useState<{ key: string; messages: MessageDetail[] | null; error: string | null } | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [error, setError] = useState<string | null>(null)
   const [more, setMore] = useState<HTMLElement | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const { single } = useLayout()
@@ -131,21 +131,19 @@ export function Reader() {
 
   const accountId = thread?.accountId
   const threadId = thread?.threadId
+  const key = accountId && threadId ? `${accountId}|${threadId}` : null
+  const messages = loaded && loaded.key === key ? loaded.messages : null
+  const error = loaded && loaded.key === key ? loaded.error : null
 
   useEffect(() => {
-    if (!accountId || !threadId) {
-      setMessages(null)
-      return
-    }
+    if (!accountId || !threadId || !key) return
     let cancelled = false
     let markTimer: ReturnType<typeof setTimeout> | undefined
-    setMessages(null)
-    setError(null)
     api.mail
       .thread(accountId, threadId)
       .then((msgs) => {
         if (cancelled) return
-        setMessages(msgs)
+        setLoaded({ key, messages: msgs, error: null })
         setExpanded(new Set(msgs.filter((m, i) => m.unread || i === msgs.length - 1).map((m) => m.id)))
         scroller.current?.scrollTo({ top: 0 })
         const delay = useStore.getState().settings?.markReadDelay ?? 0
@@ -156,12 +154,12 @@ export function Reader() {
           }, delay)
         }
       })
-      .catch((e: Error) => !cancelled && setError(e.message))
+      .catch((e: Error) => !cancelled && setLoaded({ key, messages: null, error: e.message }))
     return () => {
       cancelled = true
       clearTimeout(markTimer)
     }
-  }, [accountId, threadId])
+  }, [accountId, threadId, key])
 
   if (!thread) {
     return (
@@ -191,8 +189,8 @@ export function Reader() {
   const people = new Map<string, Address>()
   for (const m of messages ?? []) {
     for (const a of [m.from, ...m.to, ...m.cc]) {
-      const key = a.address.toLowerCase()
-      if (key && key !== account?.email.toLowerCase() && !people.has(key)) people.set(key, a)
+      const email = a.address.toLowerCase()
+      if (email && email !== account?.email.toLowerCase() && !people.has(email)) people.set(email, a)
     }
   }
   const allAttachments = (messages ?? []).flatMap((m) => m.attachments.map((a) => ({ m, a })))

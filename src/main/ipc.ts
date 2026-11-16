@@ -212,7 +212,7 @@ async function testImap(input: ImapAccountInput) {
     await client.logout()
   } catch (err) {
     client.close()
-    throw new Error(describeError(err))
+    throw new Error(describeError(err), { cause: err })
   }
   return draft
 }

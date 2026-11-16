@@ -34,7 +34,7 @@ export function EventPeek({
   const [busy, setBusy] = useState<ResponseStatus | 'delete' | null>(null)
   const readOnly = !calendar || calendar.readOnly
   const color = calendar?.color ?? 'var(--accent)'
-  const people = [...event.attendees].sort((a, b) => Number(b.organizer) - Number(a.organizer))
+  const people = event.attendees.toSorted((a, b) => Number(b.organizer) - Number(a.organizer))
 
   const respond = async (status: Exclude<ResponseStatus, 'needsAction'>): Promise<void> => {
     setBusy(status)

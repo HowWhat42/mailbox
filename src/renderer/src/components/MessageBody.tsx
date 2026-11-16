@@ -45,6 +45,7 @@ export function MessageBody({ html, text, allowRemoteByDefault = false }: { html
   const hasRemote = useMemo(() => REMOTE.test(source), [source])
   const doc = useMemo(() => buildDoc(source, allowRemote), [source, allowRemote])
 
+  // A new document means a new iframe load to measure.
   useEffect(() => {
     const el = frame.current
     if (!el) return
@@ -67,6 +68,7 @@ export function MessageBody({ html, text, allowRemoteByDefault = false }: { html
       el.removeEventListener('load', onLoad)
       observer?.disconnect()
     }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- re-running on this change is the point
   }, [doc])
 
   return (

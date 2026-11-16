@@ -32,7 +32,7 @@ const snoozed = new Map<string, { until: number; reminder: Reminder }>()
 let timer: NodeJS.Timeout | null = null
 
 export function activeReminders(): Reminder[] {
-  return [...active.values()].sort((a, b) => a.start - b.start)
+  return [...active.values()].toSorted((a, b) => a.start - b.start)
 }
 
 function publish(): void {

@@ -38,7 +38,7 @@ export function RecipientInput({
   const [text, setText] = useState('')
   const [suggestions, setSuggestions] = useState<Address[]>([])
   const [active, setActive] = useState(0)
-  const box = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState<HTMLDivElement | null>(null)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -47,10 +47,7 @@ export function RecipientInput({
 
   useEffect(() => {
     const q = text.trim()
-    if (q.length < 1) {
-      setSuggestions([])
-      return
-    }
+    if (!q) return
     const t = setTimeout(() => {
       void api.mail.contacts(q).then((list) => {
         const taken = new Set(value.map((v) => v.address.toLowerCase()))
@@ -82,7 +79,8 @@ export function RecipientInput({
   }
 
   return (
-    <div ref={box} className="flex min-h-9 flex-1 flex-wrap items-center gap-1 py-1" onClick={() => input.current?.focus()}>
+    // Clicking the field's empty space focuses the text input (keyboard users tab straight to it).
+    <div ref={setBox} role="presentation" className="flex min-h-9 flex-1 flex-wrap items-center gap-1 py-1" onClick={() => input.current?.focus()}>
       {value.map((a, i) => {
         const valid = isValidAddress(a)
         return (
@@ -113,7 +111,10 @@ export function RecipientInput({
         ref={input}
         aria-label={ariaLabel}
         value={text}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => {
+          setText(e.target.value)
+          if (!e.target.value.trim()) setSuggestions([])
+        }}
         onPaste={(e) => {
           const pasted = e.clipboardData.getData('text')
           if (/[,;\n]/.test(pasted) || EMAIL.test(pasted.trim())) {
@@ -144,9 +145,9 @@ export function RecipientInput({
         className="h-7 min-w-[160px] flex-1 bg-transparent text-[13px] text-fg placeholder:text-faint focus:outline-none"
         placeholder={value.length ? '' : 'Nom ou adresse'}
       />
-      {suggestions.length > 0 && box.current && (
-        <Popover anchor={box.current} onClose={() => setSuggestions([])} offset={2}>
-          <div className="w-[340px]" onMouseDown={(e) => e.preventDefault()}>
+      {suggestions.length > 0 && box && (
+        <Popover anchor={box} onClose={() => setSuggestions([])} offset={2}>
+          <div role="presentation" className="w-[340px]" onMouseDown={(e) => e.preventDefault()}>
             {suggestions.map((c, i) => (
               <button
                 key={c.address}

@@ -15,7 +15,7 @@ function when(e: CalendarEvent, now: number): string {
 /** "My day" card: the next meeting of the next 12 hours, with Join one click away. */
 export function NextUp() {
   const [next, setNext] = useState<CalendarEvent | null>(null)
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     const load = (): void => {

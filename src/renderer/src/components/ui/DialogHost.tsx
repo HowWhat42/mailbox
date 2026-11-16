@@ -6,8 +6,10 @@ export function DialogHost() {
   const dialog = useStore((s) => s.dialog)
   const confirmBtn = useRef<HTMLButtonElement>(null)
 
+  // Re-focus the confirm button whenever a new dialog opens.
   useEffect(() => {
     confirmBtn.current?.focus()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- re-running on this change is the point
   }, [dialog])
 
   if (!dialog) return null
@@ -15,6 +17,7 @@ export function DialogHost() {
 
   return (
     <div
+      role="presentation"
       className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-6 backdrop-blur-[2px]"
       onMouseDown={(e) => e.target === e.currentTarget && dialog.resolve(false)}
       onKeyDown={(e) => {

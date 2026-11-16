@@ -259,9 +259,14 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           <RefreshCw size={14} strokeWidth={1.75} className={isSyncing ? 'animate-spin' : ''} />
         </button>
         {!collapsed && (
-          <kbd onClick={() => useStore.getState().setPalette(true)} className="ml-auto cursor-pointer rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted hover:text-fg">
-            Ctrl K
-          </kbd>
+          <button
+            type="button"
+            onClick={() => useStore.getState().setPalette(true)}
+            title="Palette de commandes"
+            className="ml-auto rounded-md border border-line px-1.5 py-0.5 text-[11px] text-muted hover:text-fg"
+          >
+            <kbd>Ctrl K</kbd>
+          </button>
         )}
       </div>
     </aside>

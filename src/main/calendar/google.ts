@@ -15,8 +15,8 @@ async function call<T>(source: CalendarSource, path: string, init: RequestInit =
     }
   })
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
-    throw new Error(`Google Agenda : ${body?.error?.message ?? res.statusText}`)
+    const payload = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
+    throw new Error(`Google Agenda : ${payload?.error?.message ?? res.statusText}`)
   }
   return (res.status === 204 ? undefined : await res.json()) as T
 }

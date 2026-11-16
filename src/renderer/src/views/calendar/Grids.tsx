@@ -12,7 +12,7 @@ export type CreateEvent = (start: number, end: number, allDay: boolean) => void
 
 /** Assigns side-by-side columns to overlapping timed events of one day. */
 function layoutDay(events: CalendarEvent[]): { e: CalendarEvent; col: number; cols: number }[] {
-  const sorted = [...events].sort((a, b) => a.start - b.start || b.end - a.end)
+  const sorted = events.toSorted((a, b) => a.start - b.start || b.end - a.end)
   const out: { e: CalendarEvent; col: number; cols: number }[] = []
   let cluster: { e: CalendarEvent; col: number; cols: number }[] = []
   let clusterEnd = 0
@@ -34,7 +34,7 @@ function layoutDay(events: CalendarEvent[]): { e: CalendarEvent; col: number; co
 }
 
 function useNow(every = 30_000): number {
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), every)
     return () => clearInterval(t)
@@ -186,8 +186,10 @@ export function TimeGrid({
             ))}
           </div>
           {days.map((day) => (
+            // Click a slot to create an event there; from the keyboard, N creates one.
             <div
               key={day.getTime()}
+              role="presentation"
               className={`relative border-l border-line ${isToday(day) ? 'bg-accent-soft/40' : ''}`}
               style={{ backgroundImage: `repeating-linear-gradient(to bottom, transparent 0 ${HOUR - 1}px, var(--line) ${HOUR - 1}px ${HOUR}px)` }}
               onClick={(ev) => {

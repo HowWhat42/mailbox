@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Check, ChevronDown, Minus } from 'lucide-react'
 import { Menu } from './Menu'
 
@@ -59,29 +59,28 @@ export function Select<T extends string>({
   disabled?: boolean
   ariaLabel: string
 }) {
-  const btn = useRef<HTMLButtonElement>(null)
-  const [open, setOpen] = useState(false)
+  // The open menu's anchor lives in state: reading a ref during render is unreliable.
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null)
   const current = options.find((o) => o.value === value)
   return (
     <>
       <button
-        ref={btn}
         type="button"
         aria-label={ariaLabel}
         aria-haspopup="menu"
         disabled={disabled}
-        onClick={() => setOpen(!open)}
+        onClick={(e) => setAnchor(anchor ? null : e.currentTarget)}
         className={`flex h-9 items-center gap-2 rounded-md border border-line bg-panel px-3 text-left text-[13px] text-fg hover:border-line-strong disabled:opacity-60 ${className}`}
       >
         {current?.swatch && <span className="size-2.5 shrink-0 rounded-[3px]" style={{ background: current.swatch }} />}
         <span className="min-w-0 flex-1 truncate">{current?.label ?? '—'}</span>
         <ChevronDown size={14} className="text-muted" />
       </button>
-      {open && btn.current && (
+      {anchor && (
         <Menu
-          anchor={btn.current}
-          onClose={() => setOpen(false)}
-          minWidth={btn.current.offsetWidth}
+          anchor={anchor}
+          onClose={() => setAnchor(null)}
+          minWidth={anchor.offsetWidth}
           items={options.map((o) => ({ label: o.label, hint: o.hint, swatch: o.swatch, checked: o.value === value, onSelect: () => onChange(o.value) }))}
         />
       )}

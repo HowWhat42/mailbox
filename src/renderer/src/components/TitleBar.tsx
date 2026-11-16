@@ -10,11 +10,14 @@ function SearchBox() {
   const previous = useRef<MailView>(view)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
+  // Leaving search (sidebar click, shortcut…) clears the box; remember where to go back to.
+  const [seenView, setSeenView] = useState(view)
+  if (view !== seenView) {
+    setSeenView(view)
+    if (view.type !== 'search') setValue('')
+  }
   useEffect(() => {
-    if (view.type !== 'search') {
-      previous.current = view
-      setValue('')
-    }
+    if (view.type !== 'search') previous.current = view
   }, [view])
 
   const run = (q: string): void => {

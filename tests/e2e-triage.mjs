@@ -3,15 +3,15 @@
 import { mkdtempSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import nodemailer from 'nodemailer'
+import { createTestAccount, createTransport } from 'nodemailer'
 import { _electron as electron } from 'playwright'
 
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
-const account = await nodemailer.createTestAccount()
-const smtp = nodemailer.createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
+const account = await createTestAccount()
+const smtp = createTransport({ host: account.smtp.host, port: account.smtp.port, secure: account.smtp.secure, auth: { user: account.user, pass: account.pass } })
 const send = (opts) => smtp.sendMail({ to: account.user, ...opts })
 
 await send({ from: 'Léa Moreau <lea@example.com>', subject: 'On déjeune vendredi ?', text: 'Ça te dit, vers 12h30 ?' })
@@ -165,7 +165,7 @@ const loginToggle = page.locator('div:has(> div > p:has-text("Lancer Mailbox au 
 await loginToggle.click()
 await page.waitForSelector('text=Enregistré auprès de Windows.', { timeout: 10_000 })
 await page.screenshot({ path: join(shots, 't-06-general.png') })
-const registered = await app.evaluate(({ app }) => app.getLoginItemSettings({ path: process.execPath, args: [app.getAppPath(), '--hidden'] }).openAtLogin)
+const registered = await app.evaluate(({ app: electronApp }) => electronApp.getLoginItemSettings({ path: process.execPath, args: [electronApp.getAppPath(), '--hidden'] }).openAtLogin)
 if (!registered) throw new Error('login item not registered with the OS')
 await loginToggle.click()
 await page.waitForSelector('text=Pas lancé au démarrage.', { timeout: 10_000 })

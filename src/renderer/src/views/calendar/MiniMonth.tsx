@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { addDays, addMonths, format, isSameDay, isSameMonth, isToday, startOfMonth, startOfWeek } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
@@ -6,7 +6,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 /** Small month navigator: the selected range is highlighted, days with events get a dot. */
 export function MiniMonth({ value, rangeStart, rangeEnd, busyDays, onPick }: { value: Date; rangeStart: Date; rangeEnd: Date; busyDays: Set<number>; onPick: (d: Date) => void }) {
   const [month, setMonth] = useState(() => startOfMonth(value))
-  useEffect(() => setMonth(startOfMonth(value)), [value])
+  // When the selected date moves to another month, follow it (state adjusted during render).
+  const [shownFor, setShownFor] = useState(() => startOfMonth(value).getTime())
+  if (startOfMonth(value).getTime() !== shownFor) {
+    setShownFor(startOfMonth(value).getTime())
+    setMonth(startOfMonth(value))
+  }
   const first = startOfWeek(month, { weekStartsOn: 1 })
   const days = Array.from({ length: 42 }, (_, i) => addDays(first, i))
 

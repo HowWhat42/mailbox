@@ -68,7 +68,7 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
       })
     } catch (err) {
       void syncAccount(accountId).catch(() => {})
-      throw new Error(describeError(err))
+      throw new Error(describeError(err), { cause: err })
     }
     if (MOVE_ROLE[action] || action === 'move') void syncAccount(accountId).catch(() => {})
   }

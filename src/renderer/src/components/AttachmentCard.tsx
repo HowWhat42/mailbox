@@ -28,6 +28,7 @@ export function AttachmentCard({ name, size, onOpen, onSave, onRemove }: { name:
         onClick={onOpen}
         disabled={!onOpen}
         title={onOpen ? `Ouvrir ${name}` : name}
+        aria-label={onOpen ? `Ouvrir ${name}` : name}
         className="flex w-full flex-col overflow-hidden rounded-lg border border-line bg-panel text-left transition-colors hover:border-line-strong disabled:cursor-default"
       >
         <span className="relative grid h-16 place-items-center bg-hover/60">

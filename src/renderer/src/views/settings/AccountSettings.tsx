@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import type { Account } from '@shared/types'
 import { api, confirmDialog, useStore } from '../../store'
@@ -20,15 +20,6 @@ export function AccountSettings({ account }: { account: Account }) {
   const [label, setLabel] = useState(account.label)
   const [hex, setHex] = useState(account.color)
   const marker = useStore((s) => s.settings?.accountMarker ?? 'stripe')
-  useEffect(() => {
-    setLabel(account.label)
-    setHex(account.color)
-  }, [account.id, account.label, account.color])
-  useEffect(() => {
-    setName(account.name)
-    setSignature(account.signature)
-    setCaldavUrl(account.caldavUrl ?? '')
-  }, [account.id, account.name, account.signature, account.caldavUrl])
 
   const dirty = name !== account.name || signature !== account.signature || caldavUrl !== (account.caldavUrl ?? '')
   const patch = (p: Parameters<typeof api.accounts.update>[1]): void => void api.accounts.update(account.id, p)

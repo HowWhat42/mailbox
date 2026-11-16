@@ -281,7 +281,7 @@ export async function threadMessages(accountId: string, threadId: string): Promi
       const prev = byMsgId.get(key)
       if (!prev || (prev.role === 'trash' && r.role !== 'trash')) byMsgId.set(key, r)
     }
-    return [...byMsgId.values()].sort((a, b) => a.date - b.date)
+    return [...byMsgId.values()].toSorted((a, b) => a.date - b.date)
   }
 
   await ensureBodies(pick(select()).map((r) => r.id))

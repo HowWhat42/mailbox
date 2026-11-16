@@ -15,6 +15,7 @@ export function Modal({
 }) {
   return (
     <div
+      role="presentation"
       className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/45 p-6 backdrop-blur-[2px]"
       onMouseDown={(e) => closable && e.target === e.currentTarget && onClose()}
       onKeyDown={(e) => closable && e.key === 'Escape' && onClose()}

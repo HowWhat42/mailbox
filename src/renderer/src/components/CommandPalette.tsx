@@ -30,7 +30,7 @@ export function CommandPalette() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 pt-[14vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && s.setPalette(false)}>
+    <div role="presentation" className="fixed inset-0 z-50 bg-black/40 pt-[14vh] backdrop-blur-[2px]" onMouseDown={(e) => e.target === e.currentTarget && s.setPalette(false)}>
       <Command
         label="Commandes"
         loop

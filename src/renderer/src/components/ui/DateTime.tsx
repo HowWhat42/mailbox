@@ -9,14 +9,9 @@ const triggerCls =
 
 /** Day picker; `value` and the result are local-midnight-agnostic timestamps (time of day is kept). */
 export function DatePicker({ value, onChange, disabled }: { value: number; onChange: (ts: number) => void; disabled?: boolean }) {
-  const btn = useRef<HTMLButtonElement>(null)
-  const [open, setOpen] = useState(false)
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null)
   const [month, setMonth] = useState(() => startOfMonth(value))
   const selected = new Date(value)
-
-  useEffect(() => {
-    if (open) setMonth(startOfMonth(value))
-  }, [open, value])
 
   const first = startOfWeek(month, { weekStartsOn: 1 })
   const days = Array.from({ length: 42 }, (_, i) => addDays(first, i))
@@ -25,17 +20,26 @@ export function DatePicker({ value, onChange, disabled }: { value: number; onCha
     const next = new Date(d)
     next.setHours(selected.getHours(), selected.getMinutes(), 0, 0)
     onChange(next.getTime())
-    setOpen(false)
+    setAnchor(null)
   }
 
   return (
     <>
-      <button ref={btn} type="button" disabled={disabled} onClick={() => setOpen(!open)} className={triggerCls}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={(e) => {
+          // Opening shows the month of the current value.
+          setMonth(startOfMonth(value))
+          setAnchor(anchor ? null : e.currentTarget)
+        }}
+        className={triggerCls}
+      >
         <CalendarDays size={14} className="text-muted" />
         <span className="capitalize">{format(value, 'EEE d MMM yyyy', { locale: fr })}</span>
       </button>
-      {open && btn.current && (
-        <Popover anchor={btn.current} onClose={() => setOpen(false)}>
+      {anchor && (
+        <Popover anchor={anchor} onClose={() => setAnchor(null)}>
           <div className="w-[252px] p-2">
             <div className="mb-2 flex items-center">
               <span className="flex-1 pl-1 text-[13px] font-semibold capitalize">{format(month, 'MMMM yyyy', { locale: fr })}</span>
@@ -80,9 +84,9 @@ export function DatePicker({ value, onChange, disabled }: { value: number; onCha
 
 /** Time of day in 15-minute steps; keeps the date part of `value`. */
 export function TimePicker({ value, onChange, disabled }: { value: number; onChange: (ts: number) => void; disabled?: boolean }) {
-  const btn = useRef<HTMLButtonElement>(null)
   const list = useRef<HTMLDivElement>(null)
-  const [open, setOpen] = useState(false)
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null)
+  const open = !!anchor
   const current = new Date(value)
   const minutes = current.getHours() * 60 + current.getMinutes()
   const slots = Array.from({ length: 96 }, (_, i) => i * 15)
@@ -94,12 +98,12 @@ export function TimePicker({ value, onChange, disabled }: { value: number; onCha
 
   return (
     <>
-      <button ref={btn} type="button" disabled={disabled} onClick={() => setOpen(!open)} className={triggerCls}>
+      <button type="button" disabled={disabled} onClick={(e) => setAnchor(anchor ? null : e.currentTarget)} className={triggerCls}>
         <Clock size={14} className="text-muted" />
         <span className="tnum">{format(value, 'HH:mm')}</span>
       </button>
-      {open && btn.current && (
-        <Popover anchor={btn.current} onClose={() => setOpen(false)}>
+      {anchor && (
+        <Popover anchor={anchor} onClose={() => setAnchor(null)}>
           <div ref={list} className="max-h-60 w-28 overflow-y-auto">
             {slots.map((m) => {
               const isCurrent = m <= minutes && minutes < m + 15
@@ -112,7 +116,7 @@ export function TimePicker({ value, onChange, disabled }: { value: number; onCha
                     const next = new Date(value)
                     next.setHours(Math.floor(m / 60), m % 60, 0, 0)
                     onChange(next.getTime())
-                    setOpen(false)
+                    setAnchor(null)
                   }}
                   className={`tnum flex h-8 w-full items-center rounded-md px-3 text-[13px] ${isCurrent ? 'bg-accent-soft text-accent' : 'text-fg hover:bg-hover'}`}
                 >

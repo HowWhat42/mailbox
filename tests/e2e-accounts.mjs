@@ -3,7 +3,7 @@
 import { mkdtempSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import nodemailer from 'nodemailer'
+import { createTransport } from 'nodemailer'
 import { _electron as electron } from 'playwright'
 import { freshEtherealAccount } from './ethereal.mjs'
 
@@ -13,7 +13,7 @@ const step = (msg) => console.log(`• ${msg}`)
 
 const accounts = [await freshEtherealAccount(), await freshEtherealAccount()]
 for (const [i, acc] of accounts.entries()) {
-  const smtp = nodemailer.createTransport({ host: acc.smtp.host, port: acc.smtp.port, secure: acc.smtp.secure, auth: { user: acc.user, pass: acc.pass } })
+  const smtp = createTransport({ host: acc.smtp.host, port: acc.smtp.port, secure: acc.smtp.secure, auth: { user: acc.user, pass: acc.pass } })
   await smtp.sendMail({ from: 'Léa Moreau <lea@example.com>', to: acc.user, subject: i === 0 ? 'Message pour le compte pro' : 'Message pour le compte perso', text: 'Bonjour !' })
 }
 step('one message sent to each of two mailboxes')

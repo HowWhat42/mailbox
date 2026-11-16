@@ -14,7 +14,10 @@
     "test:e2e:responsive": "electron-vite build && node tests/e2e-responsive.mjs",
     "dist": "electron-vite build && electron-builder --win",
     "test:e2e:triage": "electron-vite build && node tests/e2e-triage.mjs",
-    "test:e2e:accounts": "electron-vite build && node tests/e2e-accounts.mjs"
+    "test:e2e:accounts": "electron-vite build && node tests/e2e-accounts.mjs",
+    "lint": "oxlint",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
   },
   "devDependencies": {
     "@fontsource-variable/geist": "^5.3.0",
@@ -33,6 +36,8 @@
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
     "lucide-react": "^1.73.0",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
     "playwright": "^1.65.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",

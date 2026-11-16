@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "rules": {
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/react-in-jsx-scope": "off",
+    // Flags zustand's `useStore.getState()` (a plain function on the hook) as "a hook used as a value".
+    "react/hooks": "off",
+    // Custom ARIA widgets on purpose: a virtualised listbox, option rows and event chips that
+    // contain their own buttons cannot be native <select>/<option>/<button> elements.
+    "jsx-a11y/prefer-tag-over-role": "off",
+    // Dialogs, the command palette and composer fields move focus into themselves when opened,
+    // as the WAI-ARIA dialog pattern requires.
+    "jsx-a11y/no-autofocus": "off",
+    // Small helpers stay next to their single use; hoisting them adds distance, not clarity.
+    "unicorn/consistent-function-scoping": "off",
+    // Stylesheets are imported for their side effect.
+    "import/no-unassigned-import": ["warn", { "allow": ["**/*.css", "@fontsource-variable/**"] }]
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": ["out/**", "dist/**", "node_modules/**"]
+}

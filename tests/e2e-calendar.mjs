@@ -94,9 +94,9 @@ const userData = mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))
 const app = await electron.launch({ args: ['.', `--user-data-dir=${userData}`] })
 // Never let the test open a real browser: record the URL instead.
 await app.evaluate(({ shell }) => {
-  globalThis.__opened = []
+  globalThis.openedUrls = []
   shell.openExternal = async (url) => {
-    globalThis.__opened.push(url)
+    globalThis.openedUrls.push(url)
   }
 })
 const page = await app.firstWindow()
@@ -127,7 +127,7 @@ step('.ics subscription added')
 // The floating reminder window.
 const notifyWin = await (async () => {
   for (let i = 0; i < 60; i++) {
-    const w = app.windows().find((w) => w.url().includes('notify.html'))
+    const w = app.windows().find((win) => win.url().includes('notify.html'))
     if (w && (await w.locator('text=Point projet avec Bob').count())) return w
     await new Promise((ok) => setTimeout(ok, 500))
   }
@@ -158,7 +158,7 @@ step('RSVP accepted and stored on the CalDAV server')
 await page.keyboard.press('Escape')
 
 await notifyWin.click('button:has-text("Rejoindre")')
-const opened = await app.evaluate(() => globalThis.__opened)
+const opened = await app.evaluate(() => globalThis.openedUrls)
 if (!opened.includes(TEAMS)) throw new Error(`Join did not open the Teams link: ${JSON.stringify(opened)}`)
 step('Join from the reminder opened the Teams link')
 

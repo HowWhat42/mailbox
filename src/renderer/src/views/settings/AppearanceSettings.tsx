@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Check, Monitor, Moon, Sun } from 'lucide-react'
 import type { ThemeMode } from '@shared/types'
 import { useStore } from '../../store'
@@ -39,7 +39,6 @@ export function AppearanceSettings() {
   const settings = useStore((s) => s.settings)!
   const update = useStore((s) => s.updateSettings)
   const [hex, setHex] = useState(settings.accent)
-  useEffect(() => setHex(settings.accent), [settings.accent])
 
   return (
     <>
@@ -65,7 +64,10 @@ export function AppearanceSettings() {
             {ACCENTS.map((a) => (
               <button
                 key={a.hex}
-                onClick={() => void update({ accent: a.hex })}
+                onClick={() => {
+                  setHex(a.hex)
+                  void update({ accent: a.hex })
+                }}
                 title={a.name}
                 aria-label={`Accent ${a.name}`}
                 className="group flex flex-col items-center gap-1.5"
