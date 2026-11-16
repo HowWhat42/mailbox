@@ -69,13 +69,13 @@ export function TemplateEditor({
         </Label>
         <div>
           <span className="mb-1.5 block text-[12.5px] text-fg-2">Destinataires par défaut (facultatif)</span>
-          <div className="flex min-h-9 items-center rounded-md border border-line bg-panel px-2">
+          <div className="flex min-h-9 items-center rounded-md border border-line bg-panel px-2 focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
             <RecipientInput ariaLabel="Destinataires du modèle" value={to} onChange={setTo} />
           </div>
         </div>
         <div>
           <span className="mb-1.5 block text-[12.5px] text-fg-2">Message</span>
-          <div className="max-h-[42vh] min-h-40 overflow-y-auto rounded-md border border-line bg-panel px-3 py-2.5 focus-within:border-accent">
+          <div className="max-h-[42vh] min-h-40 overflow-y-auto rounded-md border border-line bg-panel px-3 py-2.5 focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--accent-soft)]">
             <div
               ref={editor}
               contentEditable

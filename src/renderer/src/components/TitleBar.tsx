@@ -51,7 +51,7 @@ function SearchBox() {
           }
         }}
         placeholder="Rechercher"
-        className="h-full w-full rounded-lg border border-line bg-surface pl-9 backdrop-blur-md pr-9 text-[13px] text-fg placeholder:text-muted focus:border-line-strong focus:outline-none"
+        className="h-full w-full rounded-lg border border-line bg-surface pl-9 backdrop-blur-md pr-9 text-[13px] text-fg placeholder:text-muted focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
       />
       {value ? (
         <button onClick={() => run('')} aria-label="Effacer la recherche" className="absolute right-2.5 text-muted hover:text-fg">

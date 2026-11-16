@@ -95,7 +95,7 @@ export function AppearanceSettings() {
               aria-label="Code couleur"
               spellCheck={false}
               maxLength={7}
-              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:outline-none"
+              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
             />
             {!isHex(hex) && <span className="text-[12px] text-danger">Format #RRGGBB</span>}
           </div>

@@ -63,7 +63,7 @@ export function Modal({
 }
 
 export const fieldCls =
-  'h-9 w-full rounded-md border border-line bg-panel px-3 text-[13px] text-fg placeholder:text-faint focus:border-accent focus:outline-none'
+  'h-9 w-full rounded-md border border-line bg-panel px-3 text-[13px] text-fg placeholder:text-faint focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none'
 
 export function Label({ text, children, hint }: { text: string; children: React.ReactNode; hint?: string }) {
   return (

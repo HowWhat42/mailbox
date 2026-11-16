@@ -164,7 +164,14 @@ textarea,
 
 :focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+/* Typing areas show focus with their own border and a soft halo (fieldCls), never a second outline
+   floating around them; borderless ones (subject, recipients, search) rely on their row or box. */
+input:focus-visible,
+textarea:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
 }
 
 /* --- Nyx-style backdrop: nebula + 1px black grid = LED mosaic ----------- */

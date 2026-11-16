@@ -145,7 +145,7 @@ export function AccountSettings({ account }: { account: Account }) {
               maxLength={7}
               spellCheck={false}
               aria-label="Couleur personnalisée du compte"
-              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:outline-none"
+              className="tnum h-8 w-28 rounded-md border border-line bg-panel px-2.5 text-[13px] uppercase text-fg focus:border-accent focus:shadow-[0_0_0_3px_var(--accent-soft)] focus:outline-none"
             />
           </div>
         </Row>
