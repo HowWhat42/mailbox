@@ -28,6 +28,7 @@ import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
 import { ResizeHandle } from './ui/ResizeHandle'
 import { LIST_RANGE } from '../lib/panes'
+import { endThreadDrag, startThreadDrag } from '../lib/dnd'
 import type { Anchor } from './ui/Popover'
 
 const ROW = { comfortable: 92, compact: 60 }
@@ -93,6 +94,9 @@ function Row({
         onClick={(e) => (e.ctrlKey || e.metaKey ? toggleCheck(key) : select(key))}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && select(key)}
         onContextMenu={onContext}
+        draggable
+        onDragStart={(e) => startThreadDrag(e, t)}
+        onDragEnd={endThreadDrag}
         className={`group relative flex h-full cursor-default gap-3 rounded-lg px-3 transition-colors ${compact ? 'items-center py-1.5' : 'py-2.5'} ${
           selected ? 'lit' : checked ? 'bg-accent-soft' : 'hover:bg-hover'
         }`}

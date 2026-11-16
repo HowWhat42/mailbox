@@ -25,6 +25,7 @@ import { api, useStore } from '../store'
 import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { SIDEBAR_RANGE, useLayout } from '../lib/layout'
 import { ResizeHandle } from './ui/ResizeHandle'
+import { useFolderDrop } from '../lib/dnd'
 import { NextUp } from './NextUp'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
@@ -54,7 +55,8 @@ function Item({
   color,
   emphasize,
   collapsed,
-  onMenu
+  onMenu,
+  dropFolder
 }: {
   icon: LucideIcon
   label: string
@@ -66,10 +68,14 @@ function Item({
   collapsed?: boolean
   /** Right-click menu for this entry (folder actions). */
   onMenu?: (anchor: { x: number; y: number }) => void
+  /** Conversations dragged from the list can be dropped here. */
+  dropFolder?: Folder
 }) {
+  const drop = useFolderDrop(dropFolder)
   return (
     <button
       onClick={onClick}
+      {...drop.props}
       onContextMenu={
         onMenu &&
         ((e) => {
@@ -80,7 +86,7 @@ function Item({
       title={collapsed ? (count ? `${label} (${count})` : label) : undefined}
       aria-label={label}
       className={`group relative flex h-8 w-full items-center gap-2.5 rounded-lg text-left text-[13px] transition-colors ${collapsed ? 'justify-center' : 'px-2.5'} ${
-        active ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'
+        drop.over ? 'bg-accent-soft text-fg ring-1 ring-accent' : active ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'
       }`}
     >
       <Icon
@@ -104,6 +110,16 @@ function AccountName({ account, strong }: { account: Account; strong?: boolean }
       <span className={`block truncate ${strong ? 'font-semibold text-fg' : ''}`}>{name}</span>
       {name !== account.email && <span className="block truncate text-[11px] text-muted">{account.email}</span>}
     </span>
+  )
+}
+
+/** Per-account inbox row as a drop target (it is a custom button, not an Item). */
+function InboxDrop({ folder, children }: { folder: Folder; children: React.ReactElement }) {
+  const drop = useFolderDrop(folder)
+  return (
+    <div {...drop.props} className={`rounded-lg ${drop.over ? 'bg-accent-soft ring-1 ring-accent' : ''}`}>
+      {children}
+    </div>
   )
 }
 
@@ -200,23 +216,24 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                 if (!inbox) return null
                 const isActive = active({ type: 'folder', folderId: inbox.id })
                 return (
-                  <button
-                    key={a.id}
-                    onClick={() => setView({ type: 'folder', folderId: inbox.id })}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      menuFor({ type: 'folder', folderId: inbox.id }, inbox)({ x: e.clientX, y: e.clientY })
-                    }}
-                    title={a.email}
-                    aria-label={`Réception ${accountLabel(a)} (${a.email})`}
-                    className={`relative flex min-h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-1 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
-                  >
-                    <span className="grid size-4 place-items-center">
-                      <span className="size-2.5 rounded-full" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} />
-                    </span>
-                    <AccountName account={a} strong={inbox.unread > 0} />
-                    {!!inbox.unread && <span className="tnum text-[12px] text-fg-2">{inbox.unread}</span>}
-                  </button>
+                  <InboxDrop key={a.id} folder={inbox}>
+                    <button
+                      onClick={() => setView({ type: 'folder', folderId: inbox.id })}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        menuFor({ type: 'folder', folderId: inbox.id }, inbox)({ x: e.clientX, y: e.clientY })
+                      }}
+                      title={a.email}
+                      aria-label={`Réception ${accountLabel(a)} (${a.email})`}
+                      className={`relative flex min-h-8 w-full items-center gap-2.5 overflow-hidden rounded-lg px-2.5 py-1 text-left text-[13px] ${isActive ? 'lit text-fg' : 'text-fg-2 hover:bg-hover hover:text-fg'}`}
+                    >
+                      <span className="grid size-4 place-items-center">
+                        <span className="size-2.5 rounded-full" style={{ background: a.color, boxShadow: `0 0 6px ${a.color}` }} />
+                      </span>
+                      <AccountName account={a} strong={inbox.unread > 0} />
+                      {!!inbox.unread && <span className="tnum text-[12px] text-fg-2">{inbox.unread}</span>}
+                    </button>
+                  </InboxDrop>
                 )
               })}
             </div>
@@ -262,6 +279,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                     active={active({ type: 'folder', folderId: f.id })}
                     onClick={() => setView({ type: 'folder', folderId: f.id })}
                     onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
+                    dropFolder={f}
                   />
                 )
               })}
@@ -301,6 +319,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                           active={active({ type: 'folder', folderId: f.id })}
                           onClick={() => setView({ type: 'folder', folderId: f.id })}
                           onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
+                          dropFolder={f}
                         />
                       ))}
                       {accounts.length > 1 &&
@@ -317,6 +336,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
                               active={active({ type: 'folder', folderId: f.id })}
                               onClick={() => setView({ type: 'folder', folderId: f.id })}
                               onMenu={menuFor({ type: 'folder', folderId: f.id }, f)}
+                              dropFolder={f}
                             />
                           ))}
                     </div>

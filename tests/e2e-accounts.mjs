@@ -147,6 +147,23 @@ for (const style of ['Anneau', 'Point']) {
 if ((await rowCount()) !== 2) throw new Error('rows lost while switching marker style')
 step('ring and dot marker styles render')
 
+// Drag a conversation onto a folder of its account; a drop on another account's folder is refused.
+await page.click('nav button[aria-label="Toutes les boîtes"]')
+await page.waitForFunction(() => document.querySelectorAll('[role=option]').length === 2)
+const travail = page.locator(`nav button[aria-expanded]:has-text("${accounts[0].user}")`)
+if ((await travail.getAttribute('aria-expanded')) !== 'true') await travail.click()
+const projets = page.locator('nav button:has-text("Projets")')
+await page.locator('[role=option]:has-text("compte perso")').dragTo(projets)
+await page.waitForTimeout(500)
+if (!(await page.locator('[role=option]:has-text("compte perso")').count())) throw new Error('a conversation was moved to another account')
+await page.locator('[role=option]:has-text("compte pro")').dragTo(projets)
+await page.waitForSelector('text=Conversation déplacée')
+await page.waitForFunction(() => document.querySelectorAll('[role=option]').length === 1)
+await page.waitForTimeout(6_500) // undo window, then the move reaches the server
+await projets.click()
+await page.waitForSelector('[role=option]:has-text("compte pro")', { timeout: 30_000 })
+step('drag and drop: moved into "Projets" on its account, refused on the other account')
+
 await app.close()
 if (errors.length) {
   console.error(errors.join('\n'))
