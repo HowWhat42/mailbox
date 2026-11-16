@@ -2,21 +2,22 @@
 // finds it, downloads and verifies it, then offers a restart. (The installer itself isn't run.)
 // Usage: pnpm build && node tests/e2e-update.mjs [screenshot-dir]
 import { execFileSync } from 'node:child_process'
-import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron as electron } from 'playwright'
-import { upcomingNotes } from '../scripts/changelog.mjs'
+import { upcomingNotes, versionNotes } from '../scripts/changelog.mjs'
 
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
 
 const feedDir = mkdtempSync(join(tmpdir(), 'mailbox-feed-'))
-// The release notes are the real "À venir" section of CHANGELOG.md.
+// Real release notes: the "À venir" section of CHANGELOG.md, or the current version's right after a release.
+const changelog = readFileSync('CHANGELOG.md', 'utf8')
 const notesFile = join(mkdtempSync(join(tmpdir(), 'mailbox-notes-')), 'notes.md')
-writeFileSync(notesFile, upcomingNotes(readFileSync('CHANGELOG.md', 'utf8')))
+writeFileSync(notesFile, upcomingNotes(changelog) || versionNotes(changelog, JSON.parse(readFileSync('package.json', 'utf8')).version))
 execFileSync(
   process.execPath,
   [
@@ -40,6 +41,10 @@ const server = createServer((req, res) => {
 })
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
 const feed = `http://127.0.0.1:${server.address().port}/`
+
+// The Mailbox installed on this machine must come out untouched: the test build is never installed.
+const installed = join(process.env.LOCALAPPDATA ?? tmpdir(), 'Programs', 'mailbox', 'Mailbox.exe')
+const installedBefore = existsSync(installed) ? statSync(installed).mtimeMs : null
 
 const app = await electron.launch({
   args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`],
@@ -81,6 +86,10 @@ step('settings show the running version and offer the restart')
 
 await app.close()
 server.close()
+await new Promise((r) => setTimeout(r, 8000)) // time an installer would need to start replacing files
+const installedAfter = existsSync(installed) ? statSync(installed).mtimeMs : null
+if (installedAfter !== installedBefore) throw new Error('the test update was installed over the Mailbox on this machine')
+step('the installed Mailbox was left alone')
 rmSync(feedDir, { recursive: true, force: true })
 // electron-updater's download cache for this app name
 for (const dir of readdirSync(process.env.LOCALAPPDATA ?? tmpdir()).filter((d) => /^mailbox-updater-test$/i.test(d))) {

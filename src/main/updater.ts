@@ -36,7 +36,9 @@ export function startUpdater(): void {
   autoUpdater.logger = null
   // Downloaded by hand so a failed download lands in our status, not in an unhandled rejection.
   autoUpdater.autoDownload = false
-  autoUpdater.autoInstallOnAppQuit = true
+  // A test feed must never install anything: on quit, the downloaded test build would replace the
+  // Mailbox installed on the machine (it once did, leaving a 9.9.9 that no real release could update).
+  autoUpdater.autoInstallOnAppQuit = !feed
 
   autoUpdater.on('checking-for-update', () => set({ state: 'checking', error: undefined }))
   autoUpdater.on('update-not-available', () => set({ state: 'latest', checkedAt: Date.now() }))
@@ -88,6 +90,6 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
 
 /** Quits, runs the downloaded installer silently and relaunches Mailbox. */
 export function installUpdate(): void {
-  if (status.state !== 'ready') return
+  if (status.state !== 'ready' || !app.isPackaged) return
   setImmediate(() => autoUpdater.quitAndInstall(true, true))
 }
