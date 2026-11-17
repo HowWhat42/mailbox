@@ -3,7 +3,7 @@ import DOMPurify from 'dompurify'
 import { ImageOff } from 'lucide-react'
 import { textToHtml } from '../lib/format'
 import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
-import { useStore } from '../store'
+import { api, useStore } from '../store'
 
 const REMOTE = /(<img[^>]+src=["']?https?:|url\(\s*["']?https?:|<image[^>]+href=["']?https?:)/i
 
@@ -44,6 +44,20 @@ function buildDoc(html: string, allowRemote: boolean): string {
   return `<!doctype html>${parsed.documentElement.outerHTML}`
 }
 
+const ANSWERED: Record<string, string> = { accepted: 'Invitation acceptée', declined: 'Invitation refusée', tentative: 'Réponse envoyée : peut-être' }
+
+async function answerInvite(href: string): Promise<void> {
+  const { toast } = useStore.getState()
+  try {
+    const status = await api.calendar.respondToInvite(href)
+    // Not an agenda connected in Mailbox: Google's own page is the only way to answer.
+    if (!status) return void (await api.app.openExternal(href))
+    toast(ANSWERED[status] ?? 'Réponse envoyée')
+  } catch (err) {
+    toast((err as Error).message, 'error')
+  }
+}
+
 export function MessageBody({ html, text }: { html: string | null; text: string | null }) {
   // Settings › Lecture › Images distantes, live: switching it applies to messages already open.
   const always = useStore((s) => s.settings?.remoteImages === 'allow')
@@ -77,6 +91,13 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
           btn.title = open ? 'Masquer le message cité' : 'Afficher le message cité'
           measure()
         })
+      })
+      // Oui / Non / Peut-être of a Google invitation: answer from here instead of opening Google Agenda.
+      d?.addEventListener('click', (e) => {
+        const link = (e.target as Element | null)?.closest?.('a[href*="action=RESPOND"]') as HTMLAnchorElement | null
+        if (!link) return
+        e.preventDefault()
+        void answerInvite(link.href)
       })
       if (d?.body) {
         observer = new ResizeObserver(measure)

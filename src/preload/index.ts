@@ -51,7 +51,8 @@ const api = {
     'create',
     'update',
     'remove',
-    'respond'
+    'respond',
+    'respondToInvite'
   ]),
   settings: invoker('settings', ['get', 'set', 'loginItem']),
   templates: invoker('templates', ['list', 'save', 'remove']),

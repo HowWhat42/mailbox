@@ -494,6 +494,8 @@ export interface MailboxApi {
     update(id: string, input: EventInput): Promise<void>
     remove(id: string): Promise<void>
     respond(id: string, status: Exclude<ResponseStatus, 'needsAction'>): Promise<void>
+    /** Answers from an invitation e-mail's Oui / Non / Peut-être link; null when it can't be done here. */
+    respondToInvite(link: string): Promise<ResponseStatus | null>
   }
   settings: {
     get(): Promise<AppSettings>

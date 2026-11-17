@@ -6,6 +6,7 @@ import { getSource, listSources, setSourceResult, syncAccountSources } from './s
 import { googleCalendars, googleCreate, googleDelete, googleEvents, googleRespond, googleUpdate } from './google'
 import { caldavCalendars, caldavCreate, caldavDelete, caldavEvents, caldavRespond, caldavUpdate } from './caldav'
 import { icsCalendars, icsEvents } from './ics'
+import { parseGoogleRsvp } from './invite'
 import type { RemoteCalendar, RemoteEvent } from './types'
 import { checkReminders } from './reminders'
 
@@ -309,4 +310,25 @@ export async function respondToEvent(id: string, status: ResponseStatus): Promis
   else if (source.kind === 'caldav') await caldavRespond(source, ev.remote_id, ev.etag, ev.ical ?? '', status)
   else throw new Error('Impossible de répondre depuis un abonnement en lecture seule.')
   await afterWrite(source.id, ev.start)
+}
+
+/**
+ * Answers a Google invitation from the Oui / Non / Peut-être link of its e-mail, through the
+ * agenda connected in Mailbox. Returns null when the link isn't one, or when the invited agenda
+ * isn't connected here: the caller then opens the link in the browser, as before.
+ */
+export async function respondToInvite(link: string): Promise<ResponseStatus | null> {
+  const rsvp = parseGoogleRsvp(link)
+  if (!rsvp) return null
+  const cal = getDb()
+    .prepare(
+      `SELECT c.remote_id, c.source_id FROM calendars c JOIN cal_sources s ON s.id = c.source_id
+       WHERE s.kind = 'google' AND lower(c.remote_id) = lower(?) LIMIT 1`
+    )
+    .get(rsvp.calendarId) as { remote_id: string; source_id: string } | undefined
+  if (!cal) return null
+  const source = getSource(cal.source_id)
+  await googleRespond(source, cal.remote_id, rsvp.eventId, rsvp.status)
+  await afterWrite(source.id, Date.now())
+  return rsvp.status
 }

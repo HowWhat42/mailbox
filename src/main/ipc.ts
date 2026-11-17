@@ -23,6 +23,7 @@ import {
   refreshCalendars,
   refreshSource,
   respondToEvent,
+  respondToInvite,
   setCalendarColor,
   setCalendarEnabled,
   setCalendarPrefs,
@@ -216,7 +217,8 @@ const handlers: Handlers = {
     create: (input) => createEvent(input),
     update: (id, input) => updateEvent(id, input),
     remove: (id) => deleteEvent(id),
-    respond: (id, status) => respondToEvent(id, status)
+    respond: (id, status) => respondToEvent(id, status),
+    respondToInvite: (link) => respondToInvite(link)
   },
   settings: {
     get: async () => getSettings(),
