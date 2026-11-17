@@ -108,12 +108,26 @@ export interface FolderRow {
 }
 
 const running = new Map<string, Promise<void>>()
+/** Syncs asked for while one was already running: the running one may have read the folder too early. */
+const rerun = new Set<string>()
 
 export function syncAccount(accountId: string, opts: { inboxOnly?: boolean } = {}): Promise<void> {
   const key = `${accountId}:${opts.inboxOnly ? 'inbox' : 'all'}`
   const current = running.get(key)
-  if (current) return current
-  const job = runSync(accountId, opts.inboxOnly ?? false).finally(() => running.delete(key))
+  if (current) {
+    // Mail that lands mid-sync (IDLE fires while bodies prefetch) would otherwise wait for the next poll.
+    rerun.add(key)
+    return current
+  }
+  const job = (async () => {
+    do {
+      rerun.delete(key)
+      await runSync(accountId, opts.inboxOnly ?? false)
+    } while (rerun.has(key))
+  })().finally(() => {
+    running.delete(key)
+    rerun.delete(key)
+  })
   running.set(key, job)
   return job
 }
