@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.1.7 — 17 novembre 2026
+
 - Répondre Oui, Non ou Peut-être dans une invitation Google envoie la réponse depuis Mailbox, sans ouvrir Google Agenda, quand l'agenda invité est connecté.
 - Un rappel d'agenda qui sonne moins de 15 minutes avant propose « Au début » plutôt que « 15 min », et un rappel reporté revient pile à l'heure.
 - Un nouveau mail arrivé pendant une synchronisation est pris en compte tout de suite, avec sa notification, au lieu d'attendre plusieurs minutes.
