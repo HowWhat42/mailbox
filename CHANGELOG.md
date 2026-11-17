@@ -4,6 +4,12 @@
 
 ## À venir
 
+- Répondre Oui, Non ou Peut-être dans une invitation Google envoie la réponse depuis Mailbox, sans ouvrir Google Agenda, quand l'agenda invité est connecté.
+- Un rappel d'agenda qui sonne moins de 15 minutes avant propose « Au début » plutôt que « 15 min », et un rappel reporté revient pile à l'heure.
+- Un nouveau mail arrivé pendant une synchronisation est pris en compte tout de suite, avec sa notification, au lieu d'attendre plusieurs minutes.
+- Certains messages restaient tassés sur quelques lignes avec leur propre barre de défilement : ils s'affichent maintenant en entier.
+- Le sélecteur de libellés ouvert avec L ou depuis le menu s'affiche sous son bouton, plus dans le coin en haut à gauche.
+
 ## 0.1.6 — 16 novembre 2026
 
 - Les grands vides qui pouvaient apparaître dans la liste des messages, au-dessus de « Aujourd'hui » ou « Ce mois-ci », ont disparu.
