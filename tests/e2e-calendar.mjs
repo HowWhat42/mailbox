@@ -152,6 +152,11 @@ await notifyWin.waitForTimeout(400)
 await notifyWin.screenshot({ path: join(shots, 'c-01-reminder.png') })
 step('reminder popped up in its own always-on-top window')
 
+// Starts in 8 minutes: a 15-minute snooze would land after the start, so the card offers "Au début".
+if (await notifyWin.locator('button:has-text("15 min")').count()) throw new Error('reminder offers a 15 min snooze past the start')
+if (!(await notifyWin.locator('button:has-text("Au début")').count())) throw new Error('reminder does not offer to snooze until the start')
+step('snooze offers "Au début" when the meeting starts within 15 minutes')
+
 await page.waitForSelector('[data-event-id]')
 await page.screenshot({ path: join(shots, 'c-02-week.png') })
 const standups = await page.locator('[data-event-id]:has-text("Stand-up")').count()

@@ -39,7 +39,8 @@ function chime(): void {
 }
 
 function Card({ r, now }: { r: Reminder; now: number }) {
-  const startingSoon = r.start - now <= 60_000
+  const untilStart = r.start - now
+  const startingSoon = untilStart <= 60_000
   return (
     <article
       className="pop-in glass relative flex h-[132px] shrink-0 flex-col overflow-hidden rounded-2xl border border-line pl-5 pr-3 pt-3"
@@ -90,12 +91,24 @@ function Card({ r, now }: { r: Reminder; now: number }) {
         >
           <AlarmClock size={13} /> 5 min
         </button>
-        <button
-          onClick={() => void api.reminders.snooze(r.key, 15)}
-          className="h-8 rounded-lg border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
-        >
-          15 min
-        </button>
+        {untilStart > 15 * 60_000 ? (
+          <button
+            onClick={() => void api.reminders.snooze(r.key, 15)}
+            className="h-8 rounded-lg border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+          >
+            15 min
+          </button>
+        ) : (
+          untilStart > 60_000 && (
+            // Closer than 15 min, "15 min" would land after the start: remind right when it begins instead.
+            <button
+              onClick={() => void api.reminders.snooze(r.key, (r.start - Date.now()) / 60_000)}
+              className="h-8 rounded-lg border border-line px-2.5 text-[12.5px] text-fg-2 hover:bg-hover hover:text-fg"
+            >
+              Au début
+            </button>
+          )
+        )}
         <button
           onClick={() => void api.reminders.dismiss(r.key)}
           className="ml-auto h-8 rounded-lg px-2.5 text-[12.5px] text-muted hover:bg-hover hover:text-fg"

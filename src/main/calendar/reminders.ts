@@ -139,7 +139,13 @@ export function dismissReminder(key: string): void {
 
 export function snoozeReminder(key: string, minutes: number): void {
   const r = take(key)
-  if (r) snoozed.set(key, { until: Date.now() + minutes * 60_000, reminder: r })
+  if (!r) return
+  const delay = Math.max(0, minutes) * 60_000
+  snoozed.set(key, { until: Date.now() + delay, reminder: r })
+  // On time to the second ("Au début" lands on the start), not at the next 15 s tick.
+  setTimeout(() => {
+    if (timer) tick()
+  }, delay)
 }
 
 export async function joinReminder(key: string): Promise<void> {
