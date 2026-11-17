@@ -70,47 +70,40 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
   const hasRemote = useMemo(() => REMOTE.test(source), [source])
   const doc = useMemo(() => buildDoc(source, allowRemote), [source, allowRemote])
 
-  // A new document means a new iframe load to measure.
-  useEffect(() => {
-    const el = frame.current
-    if (!el) return
-    let observer: ResizeObserver | null = null
+  const observer = useRef<ResizeObserver | null>(null)
+  useEffect(() => () => observer.current?.disconnect(), [])
+
+  // Wired as the iframe's own onLoad, not from an effect: a document that loads before the effect
+  // runs (cached, no images to wait for) would never be measured and stay stuck at its first height.
+  const onLoad = (): void => {
+    const d = frame.current?.contentDocument
+    if (!d?.body) return
     const measure = (): void => {
-      const d = el.contentDocument
       // body, not <html>: the root element is never shorter than the iframe itself.
-      if (d?.body) setHeight(Math.max(48, Math.ceil(d.body.getBoundingClientRect().height)))
+      // scrollHeight too: content that overflows a body pinned to `height: 100%`.
+      setHeight(Math.max(48, Math.ceil(d.body.getBoundingClientRect().height), d.body.scrollHeight))
     }
-    const onLoad = (): void => {
-      measure()
-      const d = el.contentDocument
-      // The mail runs no script: the "•••" toggles are wired from here (same-origin, sandboxed).
-      d?.querySelectorAll<HTMLButtonElement>('.mb-quote-toggle').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          const open = btn.nextElementSibling?.classList.toggle('mb-open') ?? false
-          btn.setAttribute('aria-expanded', String(open))
-          btn.title = open ? 'Masquer le message cité' : 'Afficher le message cité'
-          measure()
-        })
+    measure()
+    // The mail runs no script: the "•••" toggles are wired from here (same-origin, sandboxed).
+    d.querySelectorAll<HTMLButtonElement>('.mb-quote-toggle').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const open = btn.nextElementSibling?.classList.toggle('mb-open') ?? false
+        btn.setAttribute('aria-expanded', String(open))
+        btn.title = open ? 'Masquer le message cité' : 'Afficher le message cité'
+        measure()
       })
-      // Oui / Non / Peut-être of a Google invitation: answer from here instead of opening Google Agenda.
-      d?.addEventListener('click', (e) => {
-        const link = (e.target as Element | null)?.closest?.('a[href*="action=RESPOND"]') as HTMLAnchorElement | null
-        if (!link) return
-        e.preventDefault()
-        void answerInvite(link.href)
-      })
-      if (d?.body) {
-        observer = new ResizeObserver(measure)
-        observer.observe(d.body)
-      }
-    }
-    el.addEventListener('load', onLoad)
-    return () => {
-      el.removeEventListener('load', onLoad)
-      observer?.disconnect()
-    }
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- re-running on this change is the point
-  }, [doc])
+    })
+    // Oui / Non / Peut-être of a Google invitation: answer from here instead of opening Google Agenda.
+    d.addEventListener('click', (e) => {
+      const link = (e.target as Element | null)?.closest?.('a[href*="action=RESPOND"]') as HTMLAnchorElement | null
+      if (!link) return
+      e.preventDefault()
+      void answerInvite(link.href)
+    })
+    observer.current?.disconnect()
+    observer.current = new ResizeObserver(measure)
+    observer.current.observe(d.body)
+  }
 
   return (
     <div>
@@ -140,6 +133,7 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
           // Same-origin lets us measure the height; with no allow-scripts nothing in the mail can run.
           sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
           srcDoc={doc}
+          onLoad={onLoad}
           style={{ height }}
           className="block w-full border-0"
         />
