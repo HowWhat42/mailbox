@@ -543,7 +543,10 @@ export const useStore = create<State>((set, get) => ({
   openLabels(thread, anchor) {
     if (!thread) return set({ labelPicker: null })
     // From a menu or the keyboard: anchor to the reader's Libellés button when it is on screen.
-    const at = anchor ?? document.querySelector<HTMLElement>('[data-labels-button]') ?? { x: window.innerWidth - 40, y: 96 }
+    // The button itself, not its `display: contents` wrapper: that one has no box (a 0,0 rect, top-left corner).
+    // Hidden when the reader is narrow: a zero-width rect too.
+    const button = document.querySelector<HTMLElement>('[data-labels-button] button')
+    const at = anchor ?? (button && button.getBoundingClientRect().width > 0 ? button : { x: window.innerWidth - 40, y: 96 })
     set({ labelPicker: { thread, anchor: at } })
   },
 

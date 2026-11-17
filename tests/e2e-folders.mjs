@@ -101,6 +101,10 @@ step('labels shown on the row and in the reader, updated by a sync')
 // Edit labels: L opens the picker on the open conversation; untick one, create another.
 await page.keyboard.press('l')
 const picker = page.locator('[role=dialog][aria-label="Libellés"]')
+// Anchored under the reader's Libellés button, not stuck in the top-left corner.
+await picker.waitFor()
+const [box, tag] = await Promise.all([picker.boundingBox(), page.locator('button[aria-label="Libellés (L)"]').boundingBox()])
+if (!box || !tag || box.y < tag.y + tag.height || box.x + box.width < tag.x) throw new Error(`label picker misplaced: ${JSON.stringify({ box, tag })}`)
 await picker.locator('[role=option]:has-text("Urgent")').click()
 await page.fill('input[aria-label="Rechercher ou créer un libellé"]', 'Client VIP')
 await page.keyboard.press('Enter')
