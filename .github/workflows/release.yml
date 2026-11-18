@@ -84,9 +84,42 @@ jobs:
         with:
           subject-path: ${{ matrix.files }}
 
-  # Not in the matrix: `--publish always` would send the snap to the Snap Store (electron-builder's
-  # default for snaps), so both files are built locally and uploaded to the draft with gh.
-  linux:
+  # Linux is not in the matrix: `--publish always` would send the snap to the Snap Store
+  # (electron-builder's default for snaps), so the files are built locally and uploaded with gh.
+  snap:
+    needs: draft
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      - name: Package and upload
+        run: |
+          pnpm exec electron-builder --linux snap --publish never
+          gh release upload "$GITHUB_REF_NAME" dist/*.snap --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*.snap
+
+  # The slowest build (~5 min: Flathub runtimes, then a single-threaded LZMA bundle), so the release
+  # does not wait for it: the flatpak lands in the draft or, more often, in the published release.
+  flatpak:
     needs: draft
     runs-on: ubuntu-24.04
     steps:
@@ -100,11 +133,10 @@ jobs:
       - name: Install flatpak tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder squashfs-tools
+          sudo apt-get install -y flatpak flatpak-builder
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
 
       - name: Build
         run: pnpm build
@@ -112,23 +144,20 @@ jobs:
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
-      - name: Package
-        run: pnpm exec electron-builder --linux --publish never
-
-      - name: Upload
-        run: gh release upload "$GITHUB_REF_NAME" dist/*.snap dist/*.flatpak --clobber
+      - name: Package and upload
+        run: |
+          pnpm exec electron-builder --linux flatpak --publish never
+          gh release upload "$GITHUB_REF_NAME" dist/*.flatpak --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: |
-            dist/*.snap
-            dist/*.flatpak
+          subject-path: dist/*.flatpak
 
   publish:
-    needs: [build, linux]
+    needs: [build, snap]
     runs-on: ubuntu-latest
     steps:
       - name: Check and publish the release
@@ -137,7 +166,7 @@ jobs:
           assets=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name] | join(" ")')
           for f in latest.yml "Mailbox-Setup-$v.exe" "Mailbox-Setup-$v.exe.blockmap" \
             latest-mac.yml "Mailbox-$v-arm64.dmg" "Mailbox-$v-x64.dmg" "Mailbox-$v-arm64.zip" "Mailbox-$v-x64.zip" \
-            "mailbox_${v}_amd64.snap" "Mailbox-$v-x86_64.flatpak"; do
+            "mailbox_${v}_amd64.snap"; do
             [[ " $assets " == *" $f "* ]] || { echo "missing $f in the release (got: $assets)" >&2; exit 1; }
           done
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

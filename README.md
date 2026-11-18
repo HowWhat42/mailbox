@@ -189,7 +189,7 @@ tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur Windo
 Intel), le snap et le flatpak Linux en parallèle, les publie dans une même GitHub Release (avec `latest.yml` / `latest-mac.yml` et
 les blockmaps) et attache une attestation de provenance
 (`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`). La Release n’est publiée que si
-tous les builds (Windows, macOS, Linux) ont réussi.
+Windows, macOS et le snap ont réussi ; le flatpak, plus lent (~5 min), arrive quelques minutes après.
 
 Les apps installées vérifient au démarrage puis toutes les 4 heures, téléchargent en arrière-plan et
 affichent « Mise à jour prête » dans la barre latérale : un redémarrage l’installe (sinon elle
@@ -223,7 +223,7 @@ Developer ID Application en secrets `CSC_LINK` / `CSC_KEY_PASSWORD`, `APPLE_ID` 
 `CSC_IDENTITY_AUTO_DISCOVERY: false` du workflow, et `MANUAL` dans `src/main/updater.ts`.
 
 **Linux (Ubuntu)** : la Release contient un snap (`mailbox_X.Y.Z_amd64.snap`) et un flatpak
-(`Mailbox-X.Y.Z-x86_64.flatpak`), construits par un job `ubuntu-24.04` (`pnpm dist:linux` en local, avec
+(`Mailbox-X.Y.Z-x86_64.flatpak`), construits par deux jobs `ubuntu-24.04` (`pnpm dist:linux` en local, avec
 `flatpak`, `flatpak-builder` et le remote `flathub` installés). Ils ne passent pas par le Snap Store ni
 Flathub : pas de mise à jour automatique, l’app interroge l’API GitHub et annonce la nouvelle version
 comme sur Mac.
