@@ -10,7 +10,21 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows, macOS et Linux</b></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><img src="https://img.shields.io/github/v/release/HowWhat42/mailbox?style=flat-square&label=version&color=7c3aed" alt="Dernière version"></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases"><img src="https://img.shields.io/github/downloads/HowWhat42/mailbox/total?style=flat-square&label=t%C3%A9l%C3%A9chargements&color=0ea5e9" alt="Téléchargements"></a>
+  <a href="https://github.com/HowWhat42/mailbox/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/HowWhat42/mailbox/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
+  <img src="https://img.shields.io/badge/plateformes-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-475569?style=flat-square" alt="Windows, macOS, Linux">
+  <img src="https://img.shields.io/badge/Electron-45-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron 45">
+</p>
+
+<p align="center">
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><img src="https://img.shields.io/badge/Windows-.exe-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg==" alt="Télécharger pour Windows"></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><img src="https://img.shields.io/badge/macOS-.dmg-111111?style=for-the-badge&logo=apple&logoColor=white" alt="Télécharger pour macOS"></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><img src="https://img.shields.io/badge/Linux-snap%20%C2%B7%20flatpak-E95420?style=for-the-badge&logo=linux&logoColor=white" alt="Télécharger pour Linux"></a>
+</p>
+
+<p align="center">
+  <a href="#télécharger">Quel fichier choisir ?</a>
   ·
   <a href="https://mailbox-app.pages.dev/privacy">Confidentialité</a>
 </p>
@@ -18,6 +32,22 @@
 <p align="center">
   <img src="docs/screenshots/inbox.png" alt="Boîte unifiée avec une conversation ouverte : chaque échange sur un fil, du plus récent au plus ancien">
 </p>
+
+## Télécharger
+
+Tout est dans la [dernière Release](https://github.com/HowWhat42/mailbox/releases/latest), section **Assets**. Un seul fichier à prendre, selon votre système :
+
+| Système                                | Fichier à télécharger          | Mises à jour         |
+| -------------------------------------- | ------------------------------ | -------------------- |
+| **Windows** 10 / 11                    | `Mailbox-Setup-X.Y.Z.exe`      | automatiques         |
+| **macOS** puce Apple (M1, M2, M3, M4…) | `Mailbox-X.Y.Z-arm64.dmg`      | annoncées dans l’app |
+| **macOS** processeur Intel             | `Mailbox-X.Y.Z-x64.dmg`        | annoncées dans l’app |
+| **Linux** Ubuntu et dérivés (snap)     | `mailbox_X.Y.Z_amd64.snap`     | annoncées dans l’app |
+| **Linux** toute distribution (flatpak) | `Mailbox-X.Y.Z-x86_64.flatpak` | annoncées dans l’app |
+
+- **Mac Apple ou Intel ?** Menu Apple › _À propos de ce Mac_ : « Puce Apple M… » → `arm64`, « Processeur Intel » → `x64`.
+- **À ignorer** : `.yml`, `.blockmap` et `.zip` servent aux mises à jour automatiques, pas à l’installation.
+- **Premier lancement** : l’app n’est pas signée. Windows : _Informations complémentaires_ → _Exécuter quand même_. macOS et Linux : voir [installation sur macOS et Linux](#installeurs-windows-macos-et-linux-mises-à-jour).
 
 ## En images
 
