@@ -63,11 +63,11 @@ await row(40).waitFor({ timeout: 60_000 })
 
 // Reads (and with a value, sets) the scroll position of the message list.
 const listScroll = (to) =>
-  page.evaluate((to) => {
+  page.evaluate((target) => {
     let el = document.querySelector('[role=option]')
     while (el && !(el.scrollHeight > el.clientHeight && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement
     if (!el) throw new Error('message list is not scrollable')
-    if (to != null) el.scrollTop = to
+    if (target != null) el.scrollTop = target
     return el.scrollTop
   }, to ?? null)
 
