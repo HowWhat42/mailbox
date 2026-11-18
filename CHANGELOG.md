@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.2.0 — 19 novembre 2026
+
 - **Mailbox 0.2** : cette version regroupe les nouveautés des 0.1.10 et 0.1.11, l’accès IA (serveur MCP local, dans Réglages › Accès IA), les comptes Outlook, Hotmail et Microsoft 365 connectés via le navigateur, et Mailbox sur Linux.
 
 ## 0.1.11 — 19 novembre 2026
