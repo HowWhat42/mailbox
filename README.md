@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows et macOS</b></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows, macOS et Linux</b></a>
   ·
   <a href="https://mailbox-app.pages.dev/privacy">Confidentialité</a>
 </p>
@@ -141,11 +141,12 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - CalDAV : modifier une occurrence d'un événement récurrent n'est pas pris en charge ; la suppression et la réponse à une invitation s'appliquent à toute la série.
 - Rappels : pas pour les événements « toute la journée ».
 
-## Installeurs Windows et macOS, mises à jour
+## Installeurs Windows, macOS et Linux, mises à jour
 
 ```bash
 pnpm dist              # installeur local : dist/Mailbox-Setup-<version>.exe (non signé)
 pnpm dist:mac          # sur un Mac : dist/Mailbox-<version>-arm64.dmg et -x64.dmg (signature ad hoc)
+pnpm dist:linux        # sur Linux : dist/mailbox_<version>_amd64.snap et Mailbox-<version>-x86_64.flatpak
 pnpm release           # publie une version : patch par défaut, ou `pnpm release minor|major`
 ```
 
@@ -155,10 +156,10 @@ notes à la Release GitHub, et s’affiche dans l’app (« Voir les nouveautés
 
 `pnpm release` vérifie que `main` est propre et à jour, lance `pnpm check`, monte la version, commit,
 tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur Windows et les images disque macOS (Apple Silicon et
-Intel) en parallèle, les publie dans une même GitHub Release (avec `latest.yml` / `latest-mac.yml` et
+Intel), le snap et le flatpak Linux en parallèle, les publie dans une même GitHub Release (avec `latest.yml` / `latest-mac.yml` et
 les blockmaps) et attache une attestation de provenance
 (`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`). La Release n’est publiée que si
-les deux builds ont réussi.
+tous les builds (Windows, macOS, Linux) ont réussi.
 
 Les apps installées vérifient au démarrage puis toutes les 4 heures, téléchargent en arrière-plan et
 affichent « Mise à jour prête » dans la barre latérale : un redémarrage l’installe (sinon elle
@@ -190,6 +191,19 @@ Pour signer et notariser plus tard (et retrouver les mises à jour automatiques)
 Developer ID Application en secrets `CSC_LINK` / `CSC_KEY_PASSWORD`, `APPLE_ID` /
 `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`, retirer `mac.identity: "-"` et le
 `CSC_IDENTITY_AUTO_DISCOVERY: false` du workflow, et `MANUAL` dans `src/main/updater.ts`.
+
+**Linux (Ubuntu)** : la Release contient un snap (`mailbox_X.Y.Z_amd64.snap`) et un flatpak
+(`Mailbox-X.Y.Z-x86_64.flatpak`), construits par un job `ubuntu-24.04` (`pnpm dist:linux` en local, avec
+`flatpak`, `flatpak-builder` et le remote `flathub` installés). Ils ne passent pas par le Snap Store ni
+Flathub : pas de mise à jour automatique, l’app interroge l’API GitHub et annonce la nouvelle version
+comme sur Mac.
+
+```bash
+sudo snap install --dangerous ./mailbox_X.Y.Z_amd64.snap
+sudo snap connect mailbox:password-manager-service   # identifiants dans le trousseau GNOME
+# ou
+flatpak install --user ./Mailbox-X.Y.Z-x86_64.flatpak   # runtime Freedesktop 25.08 tiré de Flathub
+```
 
 Le dev (`pnpm dev`) garde ses données dans `%APPDATA%\Mailbox Dev`, à part de l’app installée.
 

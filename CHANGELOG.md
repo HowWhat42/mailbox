@@ -4,6 +4,7 @@
 
 ## À venir
 
+- **Mailbox sur Linux** : une version pour Ubuntu et les autres distributions, en snap et en flatpak, est disponible au téléchargement. Les nouvelles versions y sont annoncées, à télécharger depuis la page de la version.
 - **Accès IA** : un assistant comme Claude peut lire vos mails et votre agenda, écrire des brouillons ou classer vos conversations, via un serveur MCP local à activer dans Réglages › Accès IA. Désactivé par défaut, protégé par un jeton secret, limité à cet ordinateur ; chaque envoi demandé par l'IA attend votre confirmation, et un journal montre tout ce qu'elle a fait.
 
 ## 0.1.9 — 18 novembre 2026

@@ -27,7 +27,8 @@
     "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs",
     "test:e2e:folders": "electron-vite build && node tests/e2e-folders.mjs",
     "dist:mac": "electron-vite build && electron-builder --mac",
-    "test:e2e:mcp": "electron-vite build && node tests/e2e-mcp.mjs"
+    "test:e2e:mcp": "electron-vite build && node tests/e2e-mcp.mjs",
+    "dist:linux": "electron-vite build && electron-builder --linux"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",
@@ -127,6 +128,54 @@
     },
     "dmg": {
       "title": "Mailbox ${version}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "snap",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "flatpak",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "executableName": "mailbox",
+      "category": "Office",
+      "synopsis": "Mail et calendrier",
+      "maintainer": "Mailbox"
+    },
+    "snap": {
+      "summary": "Mail et calendrier",
+      "grade": "stable",
+      "confinement": "strict",
+      "plugs": [
+        "default",
+        "password-manager-service"
+      ],
+      "artifactName": "${name}_${version}_${arch}.${ext}"
+    },
+    "flatpak": {
+      "runtimeVersion": "25.08",
+      "baseVersion": "25.08",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "finishArgs": [
+        "--socket=wayland",
+        "--socket=x11",
+        "--share=ipc",
+        "--device=dri",
+        "--socket=pulseaudio",
+        "--filesystem=home",
+        "--share=network",
+        "--talk-name=org.freedesktop.Notifications",
+        "--talk-name=org.freedesktop.secrets",
+        "--talk-name=org.kde.StatusNotifierWatcher"
+      ]
     },
     "publish": [
       {

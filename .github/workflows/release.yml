@@ -1,8 +1,9 @@
 name: Release
 
-# `pnpm release` bumps the version and pushes a vX.Y.Z tag; this builds the Windows installer and
-# the macOS disk images and publishes them as one GitHub Release. Installed Windows apps pick it up
-# through electron-updater; the Mac build is unsigned, so Mac apps only announce it (see updater.ts).
+# `pnpm release` bumps the version and pushes a vX.Y.Z tag; this builds the Windows installer, the
+# macOS disk images and the Linux snap and flatpak, and publishes them as one GitHub Release.
+# Installed Windows apps pick it up through electron-updater; the Mac build is unsigned and
+# snap/flatpak cannot self-update, so those apps only announce it (see updater.ts).
 on:
   push:
     tags: ['v*']
@@ -83,8 +84,51 @@ jobs:
         with:
           subject-path: ${{ matrix.files }}
 
+  # Not in the matrix: `--publish always` would send the snap to the Snap Store (electron-builder's
+  # default for snaps), so both files are built locally and uploaded to the draft with gh.
+  linux:
+    needs: draft
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install flatpak tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder squashfs-tools
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check
+
+      - name: Build
+        run: pnpm build
+        env:
+          MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+
+      - name: Package
+        run: pnpm exec electron-builder --linux --publish never
+
+      - name: Upload
+        run: gh release upload "$GITHUB_REF_NAME" dist/*.snap dist/*.flatpak --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.snap
+            dist/*.flatpak
+
   publish:
-    needs: build
+    needs: [build, linux]
     runs-on: ubuntu-latest
     steps:
       - name: Check and publish the release
@@ -92,7 +136,8 @@ jobs:
           v="${GITHUB_REF_NAME#v}"
           assets=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name] | join(" ")')
           for f in latest.yml "Mailbox-Setup-$v.exe" "Mailbox-Setup-$v.exe.blockmap" \
-            latest-mac.yml "Mailbox-$v-arm64.dmg" "Mailbox-$v-x64.dmg" "Mailbox-$v-arm64.zip" "Mailbox-$v-x64.zip"; do
+            latest-mac.yml "Mailbox-$v-arm64.dmg" "Mailbox-$v-x64.dmg" "Mailbox-$v-arm64.zip" "Mailbox-$v-x64.zip" \
+            "mailbox_${v}_amd64.snap" "Mailbox-$v-x86_64.flatpak"; do
             [[ " $assets " == *" $f "* ]] || { echo "missing $f in the release (got: $assets)" >&2; exit 1; }
           done
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

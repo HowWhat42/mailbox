@@ -425,7 +425,7 @@ export interface UpdateStatus {
   checkedAt?: number
   /** What's new in `available`: the release notes (HTML from GitHub, Markdown from a plain feed). */
   notes?: string | null
-  /** macOS (unsigned): no install from the app, `available` is downloaded by hand from the release page. */
+  /** macOS (unsigned), snap and flatpak: no install from the app, `available` is downloaded by hand from the release page. */
   manual?: boolean
 }
 

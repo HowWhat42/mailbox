@@ -10,10 +10,13 @@ import { isOffline } from './mail/queue'
 const CHECK_EVERY = 4 * 60 * 60_000
 const FIRST_CHECK_AFTER = 15_000
 
-// The Mac build is not signed, and macOS only installs updates of a signed app: there the new
-// version is announced and downloaded from its release page.
-const MANUAL = process.platform === 'darwin'
+// The Mac build is not signed, and macOS only installs updates of a signed app; electron-updater
+// cannot update a snap or a flatpak. There the new version is announced and downloaded from its
+// release page. On Linux it is found through the GitHub API: the release carries no Linux update feed.
+const LINUX = process.platform === 'linux'
+const MANUAL = process.platform === 'darwin' || LINUX
 const RELEASES = 'https://github.com/HowWhat42/mailbox/releases'
+const LATEST_RELEASE = 'https://api.github.com/repos/HowWhat42/mailbox/releases/latest'
 
 let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'unsupported', current: app.getVersion(), manual: MANUAL }
 
@@ -37,6 +40,10 @@ export function startUpdater(): void {
     autoUpdater.forceDevUpdateConfig = true
     autoUpdater.updateConfigPath = config
     set({ state: 'idle' })
+  } else if (LINUX) {
+    setTimeout(() => void checkForUpdates(), FIRST_CHECK_AFTER)
+    setInterval(() => void checkForUpdates(), CHECK_EVERY)
+    return
   }
   autoUpdater.logger = null
   // Downloaded by hand so a failed download lands in our status, not in an unhandled rejection.
@@ -86,12 +93,41 @@ export function updateStatus(): UpdateStatus {
 export async function checkForUpdates(): Promise<UpdateStatus> {
   // Nothing to do in dev, and no second download over one in progress or ready.
   if (status.state === 'unsupported' || status.state === 'downloading' || status.state === 'ready') return status
+  if (LINUX && app.isPackaged) return checkLatestRelease()
   try {
     await autoUpdater.checkForUpdates()
   } catch (err) {
     set({ state: 'error', error: describe(err) })
   }
   return status
+}
+
+/** Linux: compares the latest published GitHub Release with this version. */
+async function checkLatestRelease(): Promise<UpdateStatus> {
+  set({ state: 'checking', error: undefined })
+  try {
+    // The html variant adds `body_html`: the rendered notes, as electron-updater reads them elsewhere.
+    const res = await fetch(LATEST_RELEASE, {
+      headers: { Accept: 'application/vnd.github.html+json' },
+      signal: AbortSignal.timeout(15_000)
+    })
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`)
+    const release = (await res.json()) as { tag_name: string; body_html?: string | null }
+    const latest = release.tag_name.replace(/^v/, '')
+    if (isNewer(latest, app.getVersion())) set({ state: 'ready', available: latest, checkedAt: Date.now(), notes: release.body_html || null })
+    else set({ state: 'latest', checkedAt: Date.now() })
+  } catch (err) {
+    set({ state: 'error', error: describe(err) })
+  }
+  return status
+}
+
+/** True when version `a` (X.Y.Z) is later than `b`. */
+function isNewer(a: string, b: string): boolean {
+  const pa = a.split('.').map(Number)
+  const pb = b.split('.').map(Number)
+  for (let i = 0; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) > (pb[i] ?? 0)
+  return false
 }
 
 /** Quits, runs the downloaded installer silently and relaunches Mailbox. */
