@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.2.1 — 19 novembre 2026
+
 - **Toutes les nouveautés d’un coup** : si vous avez plusieurs versions de retard, « Voir les nouveautés » montre les notes de chacune, de la plus récente à la vôtre.
 - **Mises à jour plus visibles** : une notification système annonce la nouvelle version (un clic ouvre ses nouveautés), et la barre latérale suit déjà son téléchargement.
 
