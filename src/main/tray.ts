@@ -7,7 +7,9 @@ let tray: Tray | null = null
 /** Tray icon: the app stays reachable (and reminders keep firing) with the window closed. */
 export function createTray(): void {
   if (tray) return
-  const image = nativeImage.createFromPath(iconPath('tray'))
+  let image = nativeImage.createFromPath(iconPath('tray'))
+  // The macOS menu bar is about 22 pt tall: the 32 px Windows icon would overflow it.
+  if (process.platform === 'darwin' && !image.isEmpty()) image = image.resize({ width: 18, height: 18, quality: 'best' })
   tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
   tray.setToolTip('Mailbox')
   tray.setContextMenu(

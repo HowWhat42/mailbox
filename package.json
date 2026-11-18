@@ -25,7 +25,8 @@
     "test:e2e:update": "electron-vite build && node tests/e2e-update.mjs",
     "release": "node scripts/release.mjs",
     "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs",
-    "test:e2e:folders": "electron-vite build && node tests/e2e-folders.mjs"
+    "test:e2e:folders": "electron-vite build && node tests/e2e-folders.mjs",
+    "dist:mac": "electron-vite build && electron-builder --mac"
   },
   "dependencies": {
     "electron-updater": "^6.8.11",
@@ -97,6 +98,32 @@
       "shortcutName": "Mailbox",
       "runAfterFinish": true,
       "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "category": "public.app-category.productivity",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "title": "Mailbox ${version}"
     },
     "publish": [
       {

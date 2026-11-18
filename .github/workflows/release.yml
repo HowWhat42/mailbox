@@ -1,19 +1,58 @@
 name: Release
 
-# `pnpm release` bumps the version and pushes a vX.Y.Z tag; this builds the Windows installer
-# and publishes it as a GitHub Release. Installed apps pick it up through electron-updater.
+# `pnpm release` bumps the version and pushes a vX.Y.Z tag; this builds the Windows installer and
+# the macOS disk images and publishes them as one GitHub Release. Installed Windows apps pick it up
+# through electron-updater; the Mac build is unsigned, so Mac apps only announce it (see updater.ts).
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write # create the release and upload the installer
+  contents: write # create the release and upload the installers
   id-token: write # build provenance
   attestations: write
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  # One draft up front: both builds upload into it instead of racing to create the release
+  # (electron-builder once made two, with the files split between them). Installed apps ignore drafts.
+  # The notes are this version's section of CHANGELOG.md: the app shows them before updating.
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+
+      - name: Create draft release
+        run: |
+          node scripts/changelog.mjs notes "${GITHUB_REF_NAME#v}" > notes.md
+          if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Mailbox ${GITHUB_REF_NAME#v}" "${notes[@]}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: draft
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+            files: dist/Mailbox-Setup-*.exe
+          - os: macos-latest
+            target: --mac
+            files: dist/Mailbox-*.dmg
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -22,16 +61,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-
-      - name: Tag matches package.json
-        shell: bash
-        run: |
-          version=$(node -p "require('./package.json').version")
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
-            exit 1
-          fi
-
       - run: pnpm check
 
       - name: Build
@@ -41,35 +70,30 @@ jobs:
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
 
-      # One draft up front: electron-builder uploads into it instead of racing to create the
-      # release (it once made two, with the files split between them). Installed apps ignore drafts.
-      # The notes are this version's section of CHANGELOG.md: the app shows them before updating.
-      - name: Create draft release
-        shell: bash
-        run: |
-          node scripts/changelog.mjs notes "${GITHUB_REF_NAME#v}" > notes.md
-          if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
-          gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "Mailbox ${GITHUB_REF_NAME#v}" "${notes[@]}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Package and upload
-        run: pnpm exec electron-builder --win --publish always
+        run: pnpm exec electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No Apple Developer ID: the app is ad-hoc signed only (mac.identity "-").
+          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Attest build provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: dist/Mailbox-Setup-*.exe
+          subject-path: ${{ matrix.files }}
 
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Check and publish the release
-        shell: bash
         run: |
-          assets=$(gh release view "$GITHUB_REF_NAME" --json assets --jq '[.assets[].name] | join(" ")')
-          for f in latest.yml "Mailbox-Setup-${GITHUB_REF_NAME#v}.exe" "Mailbox-Setup-${GITHUB_REF_NAME#v}.exe.blockmap"; do
+          v="${GITHUB_REF_NAME#v}"
+          assets=$(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name] | join(" ")')
+          for f in latest.yml "Mailbox-Setup-$v.exe" "Mailbox-Setup-$v.exe.blockmap" \
+            latest-mac.yml "Mailbox-$v-arm64.dmg" "Mailbox-$v-x64.dmg" "Mailbox-$v-arm64.zip" "Mailbox-$v-x64.zip"; do
             [[ " $assets " == *" $f "* ]] || { echo "missing $f in the release (got: $assets)" >&2; exit 1; }
           done
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

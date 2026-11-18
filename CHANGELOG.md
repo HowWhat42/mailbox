@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Mailbox sur Mac** : une version pour macOS (Apple Silicon et Intel) est disponible au téléchargement. Elle n’est pas signée : au premier lancement, autorisez-la dans Réglages Système › Confidentialité et sécurité. Les nouvelles versions y sont annoncées, à télécharger depuis la page de la version.
+
 ## 0.1.8 — 18 novembre 2026
 
 - Clic droit dans un message : ouvrir ou copier un lien, écrire à une adresse e-mail, copier le texte sélectionné ou l’adresse d’une image.

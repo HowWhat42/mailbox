@@ -12,7 +12,7 @@ export function ReleaseNotes({ update, onClose }: { update: UpdateStatus; onClos
       <div className="px-5 pb-5">
         <div className="mb-4 flex items-center gap-2 text-[12.5px] text-muted">
           <Sparkles size={14} className="text-accent" />
-          Vous avez la version {update.current}.{ready ? ' La nouvelle est téléchargée et prête.' : ''}
+          Vous avez la version {update.current}.{ready && !update.manual ? ' La nouvelle est téléchargée et prête.' : ''}
         </div>
         {update.notes ? (
           <div
@@ -30,7 +30,7 @@ export function ReleaseNotes({ update, onClose }: { update: UpdateStatus; onClos
           </button>
           {ready && (
             <button onClick={() => void api.updates.install()} className="btn-primary h-9 rounded-lg px-4 text-[13px] font-medium">
-              Redémarrer pour installer
+              {update.manual ? 'Télécharger' : 'Redémarrer pour installer'}
             </button>
           )}
         </div>

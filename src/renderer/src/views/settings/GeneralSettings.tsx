@@ -20,7 +20,9 @@ function updateHint(u: UpdateStatus): string {
     case 'downloading':
       return `Téléchargement de la version ${u.available} · ${u.percent ?? 0} %`
     case 'ready':
-      return `La version ${u.available} est prête. Elle s’installera au prochain redémarrage de Mailbox.`
+      return u.manual
+        ? `La version ${u.available} est disponible : téléchargez-la, puis remplacez Mailbox dans Applications.`
+        : `La version ${u.available} est prête. Elle s’installera au prochain redémarrage de Mailbox.`
     case 'error':
       return u.error ?? 'La recherche de mise à jour a échoué.'
   }
@@ -48,7 +50,7 @@ function UpdatesSection() {
       >
         {update.state === 'ready' ? (
           <button onClick={() => void api.updates.install()} className="btn-primary h-8 rounded-lg px-3.5 text-[12.5px] font-medium">
-            Redémarrer maintenant
+            {update.manual ? 'Télécharger' : 'Redémarrer maintenant'}
           </button>
         ) : (
           <button

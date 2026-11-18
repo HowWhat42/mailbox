@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows</b></a>
+  <a href="https://github.com/HowWhat42/mailbox/releases/latest"><b>Télécharger pour Windows et macOS</b></a>
   ·
   <a href="https://mailbox-app.pages.dev/privacy">Confidentialité</a>
 </p>
@@ -130,10 +130,11 @@ Microsoft 365 en lecture-écriture (Graph) n'est pas encore pris en charge : il 
 - CalDAV : modifier une occurrence d'un événement récurrent n'est pas pris en charge ; la suppression et la réponse à une invitation s'appliquent à toute la série.
 - Rappels : pas pour les événements « toute la journée ».
 
-## Installeur Windows et mises à jour
+## Installeurs Windows et macOS, mises à jour
 
 ```bash
 pnpm dist              # installeur local : dist/Mailbox-Setup-<version>.exe (non signé)
+pnpm dist:mac          # sur un Mac : dist/Mailbox-<version>-arm64.dmg et -x64.dmg (signature ad hoc)
 pnpm release           # publie une version : patch par défaut, ou `pnpm release minor|major`
 ```
 
@@ -142,14 +143,18 @@ utilisent l’app. `pnpm release` refuse de publier si cette section est vide ; 
 notes à la Release GitHub, et s’affiche dans l’app (« Voir les nouveautés ») quand la mise à jour est prête.
 
 `pnpm release` vérifie que `main` est propre et à jour, lance `pnpm check`, monte la version, commit,
-tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur sur Windows, le publie en
-GitHub Release (avec `latest.yml` et le blockmap pour les mises à jour différentielles) et attache une
-attestation de provenance (`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`).
+tague `vX.Y.Z` et pousse. Le workflow **Release** construit l’installeur Windows et les images disque macOS (Apple Silicon et
+Intel) en parallèle, les publie dans une même GitHub Release (avec `latest.yml` / `latest-mac.yml` et
+les blockmaps) et attache une attestation de provenance
+(`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`). La Release n’est publiée que si
+les deux builds ont réussi.
 
 Les apps installées vérifient au démarrage puis toutes les 4 heures, téléchargent en arrière-plan et
 affichent « Mise à jour prête » dans la barre latérale : un redémarrage l’installe (sinon elle
 s’installe à la prochaine fermeture). Réglages › Général › Mises à jour montre la version et permet de
-chercher tout de suite.
+chercher tout de suite. Sur Mac, l’app n’étant pas signée, macOS refuse d’installer une mise à jour :
+elle est seulement annoncée (« Mise à jour disponible »), et « Télécharger » ouvre la page de la
+Release.
 
 Secrets du dépôt (optionnels) : `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`, injectés au build pour
 activer la connexion Google dans l’app installée.
@@ -160,6 +165,20 @@ mises à jour suivantes passent sans avertissement. Pour signer plus tard (Azure
 ajouter `build.win.sign` (`type: "azure"`, `publisherName`, `endpoint`, `codeSigningAccountName`,
 `certificateProfileName`) et les secrets `AZURE_TENANT_ID` / `AZURE_CLIENT_ID` / `AZURE_CLIENT_SECRET`
 au job de release ; electron-updater vérifiera alors l’éditeur des mises à jour.
+
+**macOS** : sans compte Apple Developer, l’app n’est signée qu’ad hoc et pas notarisée. Prendre le
+`.dmg` `arm64` (Apple Silicon) ou `x64` (Intel), glisser Mailbox dans Applications ; au premier
+lancement macOS la bloque. Soit Réglages Système › Confidentialité et sécurité › _Ouvrir quand même_,
+soit en Terminal :
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Mailbox.app
+```
+
+Pour signer et notariser plus tard (et retrouver les mises à jour automatiques) : certificat
+Developer ID Application en secrets `CSC_LINK` / `CSC_KEY_PASSWORD`, `APPLE_ID` /
+`APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID`, retirer `mac.identity: "-"` et le
+`CSC_IDENTITY_AUTO_DISCOVERY: false` du workflow, et `MANUAL` dans `src/main/updater.ts`.
 
 Le dev (`pnpm dev`) garde ses données dans `%APPDATA%\Mailbox Dev`, à part de l’app installée.
 

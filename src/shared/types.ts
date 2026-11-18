@@ -398,6 +398,8 @@ export interface UpdateStatus {
   checkedAt?: number
   /** What's new in `available`: the release notes (HTML from GitHub, Markdown from a plain feed). */
   notes?: string | null
+  /** macOS (unsigned): no install from the app, `available` is downloaded by hand from the release page. */
+  manual?: boolean
 }
 
 export interface AppEvents {
@@ -523,6 +525,7 @@ export interface MailboxApi {
   app: {
     openExternal(url: string): Promise<void>
     copyText(text: string): Promise<void>
+    platform: string
     setTheme(theme: 'dark' | 'light'): Promise<void>
     /** Absolute path of a dropped File (sync, via webUtils). */
     pathForFile(file: File): string

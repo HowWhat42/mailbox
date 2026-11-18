@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PanelLeft, Search, X } from 'lucide-react'
 import type { MailView } from '@shared/types'
-import { useStore } from '../store'
+import { api, useStore } from '../store'
 import logo from '../assets/logo.png'
 import { useLayout } from '../lib/layout'
 
@@ -67,11 +67,13 @@ function SearchBox() {
 export function TitleBar() {
   const toggleSidebar = useStore((s) => s.toggleSidebar)
   const layout = useLayout()
-  // The right column leaves room for the native window buttons.
-  const cols = layout.drawer ? '52px 1fr 140px' : `${layout.sidebarWidth}px 1fr 140px`
+  // Room for the native window buttons: on the right on Windows, the traffic lights on the left on macOS.
+  const mac = api.app.platform === 'darwin'
+  const left = mac ? Math.max(layout.drawer ? 0 : layout.sidebarWidth, 120) : layout.drawer ? 52 : layout.sidebarWidth
+  const cols = `${left}px 1fr ${mac ? 16 : 140}px`
   return (
     <header className="drag relative grid h-12 shrink-0 items-center" style={{ gridTemplateColumns: cols }}>
-      <div className={`flex items-center gap-2 ${layout.rail ? 'justify-center' : 'pl-3'}`}>
+      <div className={`flex items-center gap-2 ${mac ? 'pl-[78px]' : layout.rail ? 'justify-center' : 'pl-3'}`}>
         <button
           onClick={toggleSidebar}
           aria-label="Afficher ou masquer la barre latérale"

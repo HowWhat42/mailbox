@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import type { UpdateInfo } from 'electron-updater'
 import type { UpdateStatus } from '@shared/types'
@@ -10,7 +10,12 @@ import { isOffline } from './mail/queue'
 const CHECK_EVERY = 4 * 60 * 60_000
 const FIRST_CHECK_AFTER = 15_000
 
-let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'unsupported', current: app.getVersion() }
+// The Mac build is not signed, and macOS only installs updates of a signed app: there the new
+// version is announced and downloaded from its release page.
+const MANUAL = process.platform === 'darwin'
+const RELEASES = 'https://github.com/HowWhat42/mailbox/releases'
+
+let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'unsupported', current: app.getVersion(), manual: MANUAL }
 
 function set(next: Partial<UpdateStatus>): void {
   status = { ...status, ...next }
@@ -38,11 +43,12 @@ export function startUpdater(): void {
   autoUpdater.autoDownload = false
   // A test feed must never install anything: on quit, the downloaded test build would replace the
   // Mailbox installed on the machine (it once did, leaving a 9.9.9 that no real release could update).
-  autoUpdater.autoInstallOnAppQuit = !feed
+  autoUpdater.autoInstallOnAppQuit = !feed && !MANUAL
 
   autoUpdater.on('checking-for-update', () => set({ state: 'checking', error: undefined }))
   autoUpdater.on('update-not-available', () => set({ state: 'latest', checkedAt: Date.now() }))
   autoUpdater.on('update-available', (info) => {
+    if (MANUAL) return set({ state: 'ready', available: info.version, checkedAt: Date.now(), notes: notesOf(info) })
     set({ state: 'downloading', available: info.version, percent: 0, checkedAt: Date.now(), notes: notesOf(info) })
     autoUpdater.downloadUpdate().catch((err: unknown) => set({ state: 'error', error: describe(err) }))
   })
@@ -91,5 +97,6 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
 /** Quits, runs the downloaded installer silently and relaunches Mailbox. */
 export function installUpdate(): void {
   if (status.state !== 'ready' || !app.isPackaged) return
+  if (MANUAL) return void shell.openExternal(`${RELEASES}/tag/v${status.available}`)
   setImmediate(() => autoUpdater.quitAndInstall(true, true))
 }
