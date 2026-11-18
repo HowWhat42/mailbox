@@ -61,6 +61,7 @@ const api = {
   reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+    copyText: (text: string) => ipcRenderer.invoke('app:copyText', text),
     setTheme: (theme: 'dark' | 'light') => ipcRenderer.invoke('app:setTheme', theme),
     pathForFile: (file: File) => webUtils.getPathForFile(file),
     on: <K extends keyof AppEvents>(event: K, cb: (payload: AppEvents[K]) => void) => {

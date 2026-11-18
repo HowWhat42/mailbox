@@ -522,6 +522,7 @@ export interface MailboxApi {
   }
   app: {
     openExternal(url: string): Promise<void>
+    copyText(text: string): Promise<void>
     setTheme(theme: 'dark' | 'light'): Promise<void>
     /** Absolute path of a dropped File (sync, via webUtils). */
     pathForFile(file: File): string

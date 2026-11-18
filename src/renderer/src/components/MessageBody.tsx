@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { ImageOff } from 'lucide-react'
+import { Copy, ExternalLink, Image as ImageIcon, ImageOff, Link, Mail, TextSelect } from 'lucide-react'
 import { textToHtml } from '../lib/format'
 import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
 import { api, useStore } from '../store'
+import { Menu, type MenuEntry } from './ui/Menu'
 
 const REMOTE = /(<img[^>]+src=["']?https?:|url\(\s*["']?https?:|<image[^>]+href=["']?https?:)/i
 
@@ -58,6 +59,55 @@ async function answerInvite(href: string): Promise<void> {
   }
 }
 
+async function copy(text: string, done: string): Promise<void> {
+  await api.app.copyText(text)
+  useStore.getState().toast(done)
+}
+
+/** Right-click on a message: what applies to the link, address, image or selection under the pointer. */
+function contextItems(target: Element, d: Document): MenuEntry[] {
+  const items: MenuEntry[] = []
+  const selected = d.getSelection()?.toString() ?? ''
+  if (selected.trim()) items.push({ label: 'Copier', icon: Copy, hint: 'Ctrl C', onSelect: () => void copy(selected, 'Texte copié') })
+
+  const link = target.closest('a[href]') as HTMLAnchorElement | null
+  const href = link?.href ?? ''
+  if (/^mailto:/i.test(href)) {
+    const [path, query] = href.slice(7).split('?')
+    const address = decodeURIComponent(path)
+    const subject = new URLSearchParams(query ?? '').get('subject') ?? ''
+    if (items.length) items.push('separator')
+    items.push(
+      { label: `Écrire à ${address}`, icon: Mail, onSelect: () => useStore.getState().compose({ to: [{ name: '', address }], subject }) },
+      { label: 'Copier l’adresse e-mail', icon: Copy, onSelect: () => void copy(address, 'Adresse copiée') }
+    )
+  } else if (/^https?:/i.test(href)) {
+    if (items.length) items.push('separator')
+    items.push(
+      { label: 'Ouvrir le lien', icon: ExternalLink, onSelect: () => void api.app.openExternal(href) },
+      { label: 'Copier le lien', icon: Link, onSelect: () => void copy(href, 'Lien copié') }
+    )
+  }
+
+  const img = target.closest('img') as HTMLImageElement | null
+  if (img && /^https?:/i.test(img.src)) {
+    if (items.length) items.push('separator')
+    items.push(
+      { label: 'Ouvrir l’image', icon: ImageIcon, onSelect: () => void api.app.openExternal(img.src) },
+      { label: 'Copier l’adresse de l’image', icon: Copy, onSelect: () => void copy(img.src, 'Adresse de l’image copiée') }
+    )
+  }
+
+  if (items.length) items.push('separator')
+  items.push({
+    label: 'Tout sélectionner',
+    icon: TextSelect,
+    hint: 'Ctrl A',
+    onSelect: () => d.getSelection()?.selectAllChildren(d.body)
+  })
+  return items
+}
+
 export function MessageBody({ html, text }: { html: string | null; text: string | null }) {
   // Settings › Lecture › Images distantes, live: switching it applies to messages already open.
   const always = useStore((s) => s.settings?.remoteImages === 'allow')
@@ -70,6 +120,7 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
   const hasRemote = useMemo(() => REMOTE.test(source), [source])
   const doc = useMemo(() => buildDoc(source, allowRemote), [source, allowRemote])
 
+  const [menu, setMenu] = useState<{ x: number; y: number; items: MenuEntry[] } | null>(null)
   const observer = useRef<ResizeObserver | null>(null)
   useEffect(() => () => observer.current?.disconnect(), [])
 
@@ -100,6 +151,15 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
       e.preventDefault()
       void answerInvite(link.href)
     })
+    // Our own menu: the system one has nothing useful in a sandboxed frame (no copy link).
+    d.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      const box = frame.current?.getBoundingClientRect()
+      if (!box || !(e.target instanceof d.defaultView!.Element)) return
+      setMenu({ x: box.left + e.clientX, y: box.top + e.clientY, items: contextItems(e.target, d) })
+    })
+    // Clicks inside the frame never reach the menu's outside-click handler.
+    d.addEventListener('mousedown', (e) => e.button !== 2 && setMenu(null))
     observer.current?.disconnect()
     observer.current = new ResizeObserver(measure)
     observer.current.observe(d.body)
@@ -138,6 +198,7 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
           className="block w-full border-0"
         />
       </div>
+      {menu && <Menu anchor={{ x: menu.x, y: menu.y }} items={menu.items} onClose={() => setMenu(null)} minWidth={220} />}
     </div>
   )
 }

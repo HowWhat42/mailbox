@@ -21,15 +21,16 @@ const imap = new ImapFlow({
   logger: false
 })
 await imap.connect()
-const mail = (n, date) =>
+const mail = (n, date, html) =>
   [
     `From: Léa ${n} <lea${n}@example.com>`,
     `To: ${account.user}`,
     `Subject: Message ${n}`,
     `Date: ${date.toUTCString()}`,
     `Message-ID: <list-${n}-${date.getTime()}@example.com>`,
+    ...(html ? ['MIME-Version: 1.0', 'Content-Type: text/html; charset=utf-8'] : []),
     '',
-    `Contenu ${n}.`
+    html ?? `Contenu ${n}.`
   ].join('\r\n')
 const now = Date.now()
 for (let i = 1; i <= 40; i++) await imap.append('INBOX', mail(i, new Date(now - (41 - i) * 3_600_000)))
@@ -80,7 +81,14 @@ await listScroll(0)
 await page.waitForTimeout(300)
 
 // A new message arrives and is fetched with "Relever le courrier": the list changes under the user.
-await imap.append('INBOX', mail(41, new Date()))
+await imap.append(
+  'INBOX',
+  mail(
+    41,
+    new Date(),
+    '<p>Le dossier : <a href="https://example.com/dossier?id=7">voir le dossier</a>, ou <a href="mailto:paul@example.com?subject=Dossier">Paul</a>.</p>'
+  )
+)
 await imap.logout()
 await page.waitForFunction(() => !document.querySelector('button[aria-label="Relever le courrier (F5)"] .animate-spin'), null, { timeout: 60_000 })
 await page.click('button[aria-label="Relever le courrier (F5)"]')
@@ -99,6 +107,23 @@ await page.keyboard.press('k')
 await page.waitForTimeout(500)
 if ((await listScroll()) === 0) throw new Error('keyboard selection was not scrolled into view')
 step('moving the selection with the keyboard still scrolls to it')
+
+// Right-click in a message: link actions, with the link copied to the clipboard.
+await listScroll(0)
+await row(41).click()
+const body = page.frameLocator('iframe[title="Contenu du message"]').last()
+await body.locator('a:text("voir le dossier")').click({ button: 'right' })
+const menu = page.locator('[role=menu]')
+await menu.locator('[role=menuitem]:has-text("Ouvrir le lien")').waitFor()
+await page.screenshot({ path: join(shots, 'l-01-context-menu.png') })
+await menu.locator('[role=menuitem]:has-text("Copier le lien")').click()
+await page.waitForSelector('text=Lien copié')
+const copied = await app.evaluate(({ clipboard }) => clipboard.readText())
+if (copied !== 'https://example.com/dossier?id=7') throw new Error(`clipboard holds "${copied}"`)
+await body.locator('a:text("Paul")').click({ button: 'right' })
+await menu.locator('[role=menuitem]:has-text("Écrire à paul@example.com")').click()
+await page.locator('input[value="Dossier"]').waitFor()
+step('right-click menu on a message: link copied, mailto opens a new message')
 
 await app.close()
 if (errors.length) {

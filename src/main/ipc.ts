@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs'
 import { basename } from 'node:path'
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron'
 import type { ImapAccountInput, MailboxApi, OutgoingAttachment } from '@shared/types'
 import { emit } from './events'
 import { deleteAccount, insertAccount, listAccounts, updateAccount } from './accounts/store'
@@ -298,4 +298,5 @@ export function registerIpc(): void {
     // Only hand web and mail links to the OS; never file:// or custom schemes from message content.
     if (/^(https?|mailto):/i.test(url)) await shell.openExternal(url)
   })
+  ipcMain.handle('app:copyText', (_e, text: string) => clipboard.writeText(String(text)))
 }
