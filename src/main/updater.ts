@@ -1,11 +1,12 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { app, shell } from 'electron'
+import { Notification, app, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import type { UpdateInfo } from 'electron-updater'
-import type { UpdateStatus } from '@shared/types'
+import type { ReleaseNote, UpdateStatus } from '@shared/types'
 import { emit } from './events'
 import { isOffline } from './mail/queue'
+import { showMainWindow } from './windows'
 
 const CHECK_EVERY = 4 * 60 * 60_000
 const FIRST_CHECK_AFTER = 15_000
@@ -16,13 +17,31 @@ const FIRST_CHECK_AFTER = 15_000
 const LINUX = process.platform === 'linux'
 const MANUAL = process.platform === 'darwin' || LINUX
 const RELEASES = 'https://github.com/HowWhat42/mailbox/releases'
-const LATEST_RELEASE = 'https://api.github.com/repos/HowWhat42/mailbox/releases/latest'
+const RELEASES_API = 'https://api.github.com/repos/HowWhat42/mailbox/releases?per_page=30'
 
 let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'unsupported', current: app.getVersion(), manual: MANUAL }
 
 function set(next: Partial<UpdateStatus>): void {
+  const was = status.state
   status = { ...status, ...next }
   emit('update:status', status)
+  if (status.state === 'ready' && was !== 'ready') announce()
+}
+
+/** One system notification when a version is ready: the sidebar card is easy to miss. Clicking it shows what's new. */
+function announce(): void {
+  if (!app.isPackaged || !Notification.isSupported()) return
+  const n = new Notification({
+    title: `Mailbox ${status.available} est disponible`,
+    body: status.manual
+      ? 'Cliquez pour voir les nouveautés et la télécharger.'
+      : 'Cliquez pour voir les nouveautés. Elle s’installera au prochain redémarrage.'
+  })
+  n.on('click', () => {
+    showMainWindow()
+    emit('update:notes', {})
+  })
+  n.show()
 }
 
 /**
@@ -46,6 +65,8 @@ export function startUpdater(): void {
     return
   }
   autoUpdater.logger = null
+  // Every version between this one and the latest, not just the latest: a few releases behind, all their notes count.
+  autoUpdater.fullChangelog = true
   // Downloaded by hand so a failed download lands in our status, not in an unhandled rejection.
   autoUpdater.autoDownload = false
   // A test feed must never install anything: on quit, the downloaded test build would replace the
@@ -67,17 +88,13 @@ export function startUpdater(): void {
   setInterval(() => void checkForUpdates(), CHECK_EVERY)
 }
 
-/** Release notes as one text, whether the feed gives a string or one note per version. */
-function notesOf(info: UpdateInfo): string | null {
+/** Release notes per version, newest first: GitHub gives one per release since this one, a plain feed one text. */
+function notesOf(info: UpdateInfo): ReleaseNote[] | null {
   const n = info.releaseNotes
   if (!n) return null
-  if (typeof n === 'string') return n
-  return (
-    n
-      .map((v) => v.note ?? '')
-      .filter(Boolean)
-      .join('\n\n') || null
-  )
+  if (typeof n === 'string') return [{ version: info.version, note: n }]
+  const notes = n.filter((v) => v.note).map((v) => ({ version: v.version, note: v.note! }))
+  return notes.length ? notes : null
 }
 
 function describe(err: unknown): string {
@@ -102,20 +119,26 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
   return status
 }
 
-/** Linux: compares the latest published GitHub Release with this version. */
+/** Linux: compares the published GitHub Releases with this version, keeping the notes of every newer one. */
 async function checkLatestRelease(): Promise<UpdateStatus> {
   set({ state: 'checking', error: undefined })
   try {
     // The html variant adds `body_html`: the rendered notes, as electron-updater reads them elsewhere.
-    const res = await fetch(LATEST_RELEASE, {
+    const res = await fetch(RELEASES_API, {
       headers: { Accept: 'application/vnd.github.html+json' },
       signal: AbortSignal.timeout(15_000)
     })
     if (!res.ok) throw new Error(`GitHub answered ${res.status}`)
-    const release = (await res.json()) as { tag_name: string; body_html?: string | null }
-    const latest = release.tag_name.replace(/^v/, '')
-    if (isNewer(latest, app.getVersion())) set({ state: 'ready', available: latest, checkedAt: Date.now(), notes: release.body_html || null })
-    else set({ state: 'latest', checkedAt: Date.now() })
+    const releases = (await res.json()) as { tag_name: string; draft: boolean; prerelease: boolean; body_html?: string | null }[]
+    const newer = releases
+      .filter((r) => !r.draft && !r.prerelease)
+      .map((r) => ({ version: r.tag_name.replace(/^v/, ''), note: r.body_html ?? '' }))
+      .filter((r) => isNewer(r.version, app.getVersion()))
+      .toSorted((a, b) => (isNewer(a.version, b.version) ? -1 : 1))
+    if (newer.length) {
+      const notes = newer.filter((r) => r.note)
+      set({ state: 'ready', available: newer[0].version, checkedAt: Date.now(), notes: notes.length ? notes : null })
+    } else set({ state: 'latest', checkedAt: Date.now() })
   } catch (err) {
     set({ state: 'error', error: describe(err) })
   }

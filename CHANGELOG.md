@@ -4,6 +4,9 @@
 
 ## À venir
 
+- **Toutes les nouveautés d’un coup** : si vous avez plusieurs versions de retard, « Voir les nouveautés » montre les notes de chacune, de la plus récente à la vôtre.
+- **Mises à jour plus visibles** : une notification système annonce la nouvelle version (un clic ouvre ses nouveautés), et la barre latérale suit déjà son téléchargement.
+
 ## 0.2.0 — 19 novembre 2026
 
 - **Mailbox 0.2** : cette version regroupe les nouveautés des 0.1.10 et 0.1.11, l’accès IA (serveur MCP local, dans Réglages › Accès IA), les comptes Outlook, Hotmail et Microsoft 365 connectés via le navigateur, et Mailbox sur Linux.

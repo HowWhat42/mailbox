@@ -414,6 +414,11 @@ export interface QueuedSend {
 }
 
 /** In-app updates (installed app only; a dev build reads "unsupported"). */
+export interface ReleaseNote {
+  version: string
+  note: string
+}
+
 export interface UpdateStatus {
   state: 'unsupported' | 'idle' | 'checking' | 'latest' | 'downloading' | 'ready' | 'error'
   /** Running version. */
@@ -423,8 +428,8 @@ export interface UpdateStatus {
   percent?: number
   error?: string
   checkedAt?: number
-  /** What's new in `available`: the release notes (HTML from GitHub, Markdown from a plain feed). */
-  notes?: string | null
+  /** What's new since `current`, newest first: one entry per version (HTML from GitHub, Markdown from a plain feed). */
+  notes?: ReleaseNote[] | null
   /** macOS (unsigned), snap and flatpak: no install from the app, `available` is downloaded by hand from the release page. */
   manual?: boolean
 }
@@ -440,6 +445,8 @@ export interface AppEvents {
   'settings:changed': AppSettings
   'queue:changed': Record<string, never>
   'update:status': UpdateStatus
+  /** The update notification was clicked: show what's new. */
+  'update:notes': Record<string, never>
   'mcp:changed': Record<string, never>
 }
 

@@ -27,7 +27,6 @@ import { avatarColor, ROLE_LABEL } from '../lib/format'
 import { SIDEBAR_RANGE, useLayout } from '../lib/layout'
 import { ResizeHandle } from './ui/ResizeHandle'
 import { useFolderDrop } from '../lib/dnd'
-import { ReleaseNotes } from './ReleaseNotes'
 import { NextUp } from './NextUp'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { folderMenu } from '../lib/folderActions'
@@ -232,7 +231,8 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const anyOffline = Object.values(useStore((st) => st.offline)).some(Boolean)
   const queue = useStore((st) => st.queue)
   const update = useStore((st) => st.update)
-  const [notesOpen, setNotesOpen] = useState(false)
+  const setNotesOpen = useStore((st) => st.setNotesOpen)
+  const pending = update?.state === 'ready' || update?.state === 'downloading' ? update : null
   const errored = accounts.filter((a) => a.syncError)
 
   const active = (v: MailView): boolean => mode === 'mail' && sameView(view, v)
@@ -483,31 +483,50 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
         </div>
       )}
 
-      {update?.state === 'ready' &&
+      {pending &&
         (collapsed ? (
           <button
-            onClick={() => void api.updates.install()}
-            title={update.manual ? `Télécharger Mailbox ${update.available}` : `Redémarrer pour installer Mailbox ${update.available}`}
-            aria-label={update.manual ? 'Télécharger la mise à jour' : 'Redémarrer pour mettre à jour'}
+            onClick={() => (pending.state === 'ready' ? void api.updates.install() : setNotesOpen(true))}
+            title={
+              pending.state === 'downloading'
+                ? `Téléchargement de Mailbox ${pending.available} · ${pending.percent ?? 0} %`
+                : pending.manual
+                  ? `Télécharger Mailbox ${pending.available}`
+                  : `Redémarrer pour installer Mailbox ${pending.available}`
+            }
+            aria-label={pending.manual ? 'Télécharger la mise à jour' : 'Redémarrer pour mettre à jour'}
             className="btn-primary mx-auto mb-2 grid size-8 place-items-center rounded-lg"
           >
-            <CircleArrowUp size={15} />
+            <CircleArrowUp size={15} className={pending.state === 'downloading' ? 'animate-pulse' : ''} />
           </button>
         ) : (
-          <div role="status" className="mx-3 mb-2 rounded-lg border border-line bg-accent-soft/50 p-2.5">
+          <div role="status" className="mx-3 mb-2 rounded-lg border border-accent/40 bg-accent-soft p-2.5">
             <p className="flex items-center gap-2 text-[12.5px] font-medium">
               <CircleArrowUp size={14} className="shrink-0 text-accent" />
-              <span className="truncate">{update.manual ? 'Mise à jour disponible' : 'Mise à jour prête'}</span>
-              <span className="ml-auto shrink-0 text-[11.5px] font-normal text-muted">{update.available}</span>
+              <span className="truncate">
+                {pending.state === 'downloading'
+                  ? 'Téléchargement de la mise à jour'
+                  : pending.manual
+                    ? 'Mise à jour disponible'
+                    : 'Mise à jour prête'}
+              </span>
+              <span className="ml-auto shrink-0 text-[11.5px] font-normal text-muted">{pending.available}</span>
             </p>
-            {update.notes && (
+            {pending.state === 'downloading' && (
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-hover">
+                <div className="h-full rounded-full bg-accent transition-[width]" style={{ width: `${pending.percent ?? 0}%` }} />
+              </div>
+            )}
+            {pending.notes?.length ? (
               <button onClick={() => setNotesOpen(true)} className="mt-1.5 text-[12px] font-medium text-accent hover:underline">
-                Voir les nouveautés
+                {pending.notes.length > 1 ? `Voir les nouveautés (${pending.notes.length} versions)` : 'Voir les nouveautés'}
+              </button>
+            ) : null}
+            {pending.state === 'ready' && (
+              <button onClick={() => void api.updates.install()} className="btn-primary mt-2 h-7 w-full rounded-md text-[12px] font-medium">
+                {pending.manual ? 'Télécharger' : 'Redémarrer pour installer'}
               </button>
             )}
-            <button onClick={() => void api.updates.install()} className="btn-primary mt-2 h-7 w-full rounded-md text-[12px] font-medium">
-              {update.manual ? 'Télécharger' : 'Redémarrer pour installer'}
-            </button>
           </div>
         ))}
 
@@ -557,7 +576,6 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
         )}
       </div>
       {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={220} />}
-      {notesOpen && update && <ReleaseNotes update={update} onClose={() => setNotesOpen(false)} />}
       {creating && <NewFolderDialog accountId={creating.accountId} parent={creating.parent} onClose={() => setCreating(null)} />}
     </aside>
   )

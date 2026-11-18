@@ -70,8 +70,9 @@ step('update found, downloaded and verified: "Mise à jour prête · 9.9.9"')
 // What's new, before restarting.
 await page.click('[role=status] button:has-text("Voir les nouveautés")')
 const notes = page.locator('[role=dialog][aria-label="Nouveautés de Mailbox 9.9.9"]')
-await notes.locator(`h3:has-text("Les mails s'ouvrent tout de suite")`).waitFor()
-if ((await notes.locator('.release-notes li').count()) < 3) throw new Error('release notes lists not rendered')
+// One section per version since the running one: a plain feed has a single one, 9.9.9.
+await notes.getByRole('heading', { name: '9.9.9', exact: true }).waitFor()
+if (!(await notes.locator('.release-notes li').count())) throw new Error('release notes lists not rendered')
 if (await notes.locator('text=/^#{2,}/').count()) throw new Error('raw Markdown shown in the release notes')
 await page.screenshot({ path: join(shots, 'u-00-notes.png') })
 await notes.locator('button:has-text("Plus tard")').click()

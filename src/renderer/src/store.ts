@@ -94,6 +94,8 @@ interface State {
   queue: { actions: number; outbox: number }
   update: UpdateStatus | null
   outboxOpen: boolean
+  /** What's new in the available update, across every version since this one. */
+  notesOpen: boolean
   view: MailView
   filter: MailFilter
   /** 'smart' = inbox with bundles, a category = inside one bundle, 'all' = plain list. */
@@ -126,6 +128,7 @@ interface State {
   setListWidth(width: number | null): void
   setDrawer(open: boolean): void
   setOutbox(open: boolean): void
+  setNotesOpen(open: boolean): void
   focusEvent(focus: { eventId: string; start: number } | null): void
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
@@ -225,6 +228,7 @@ export const useStore = create<State>((set, get) => ({
   queue: { actions: 0, outbox: 0 },
   update: null,
   outboxOpen: false,
+  notesOpen: false,
   view: { type: 'unified', role: 'inbox' },
   filter: 'all',
   category: 'smart',
@@ -280,6 +284,7 @@ export const useStore = create<State>((set, get) => ({
     api.app.on('queue:changed', loadQueue)
     void api.updates.status().then((update) => set({ update }))
     api.app.on('update:status', (update) => set({ update }))
+    api.app.on('update:notes', () => set({ notesOpen: true }))
     // Back online: replay what was queued right away instead of waiting for the next sync.
     window.addEventListener('online', () => void api.mail.sync().catch(() => {}))
     api.app.on('sync:status', (s) => {
@@ -347,6 +352,10 @@ export const useStore = create<State>((set, get) => ({
 
   setOutbox(open) {
     set({ outboxOpen: open })
+  },
+
+  setNotesOpen(open) {
+    set({ notesOpen: open })
   },
 
   focusEvent(focus) {

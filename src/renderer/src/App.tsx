@@ -11,6 +11,7 @@ import { SettingsView } from './views/SettingsView'
 import { Toasts } from './components/Toasts'
 import { MovePicker } from './components/MovePicker'
 import { OutboxDialog } from './components/OutboxDialog'
+import { ReleaseNotes } from './components/ReleaseNotes'
 import { DialogHost } from './components/ui/DialogHost'
 import { CalendarView } from './views/CalendarView'
 import { useMailShortcuts } from './lib/shortcuts'
@@ -26,6 +27,8 @@ export function App() {
   const selected = useStore((s) => s.selected)
   const drawerOpen = useStore((s) => s.drawerOpen)
   const outboxOpen = useStore((s) => s.outboxOpen)
+  const notesOpen = useStore((s) => s.notesOpen)
+  const update = useStore((s) => s.update)
   const layout = useLayout()
 
   useEffect(() => {
@@ -83,6 +86,7 @@ export function App() {
       <MovePicker />
       <LabelPicker />
       {outboxOpen && <OutboxDialog onClose={() => useStore.getState().setOutbox(false)} />}
+      {notesOpen && update && <ReleaseNotes update={update} onClose={() => useStore.getState().setNotesOpen(false)} />}
       <DialogHost />
       <Toasts />
     </div>
