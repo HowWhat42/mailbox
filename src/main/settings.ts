@@ -30,7 +30,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reminderPosition: 'bottom-right',
 
   smartInbox: true,
-  categories: ['people', 'notifications', 'newsletters', 'invitations']
+  categories: ['people', 'notifications', 'newsletters', 'invitations'],
+
+  mcpEnabled: false,
+  // The installed app and a dev run can both serve at once.
+  mcpPort: app.isPackaged ? 47811 : 47812,
+  mcpAllowWrite: false,
+  mcpAllowSend: false
 }
 
 export function getSettings(): AppSettings {
@@ -48,6 +54,7 @@ export function setSettings(patch: Partial<AppSettings>): AppSettings {
   if ('launchAtLogin' in patch || 'startHidden' in patch) applyLoginItem()
   if ('uiScale' in patch) onScaleChange?.()
   if ('reminderPosition' in patch) onPositionChange?.()
+  if ('mcpEnabled' in patch || 'mcpPort' in patch) onMcpChange?.()
   emit('settings:changed', next)
   return next
 }
@@ -62,6 +69,12 @@ let onPositionChange: (() => void) | null = null
 /** Lets the reminder window move as soon as its position setting changes. */
 export function onReminderPositionChange(fn: () => void): void {
   onPositionChange = fn
+}
+
+let onMcpChange: (() => void) | null = null
+/** Restarts the MCP server when it is turned on or off or moves to another port. */
+export function onMcpSettingsChange(fn: () => void): void {
+  onMcpChange = fn
 }
 
 /** Is `now` inside the user's quiet hours (which may wrap past midnight)? */

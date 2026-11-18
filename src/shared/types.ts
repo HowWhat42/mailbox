@@ -345,6 +345,33 @@ export interface AppSettings {
   smartInbox: boolean
   /** Categories shown as tabs (People is always shown). */
   categories: MailCategory[]
+
+  // Accès IA (serveur MCP local)
+  /** Local MCP server on 127.0.0.1 for AI assistants; off unless the user turns it on. */
+  mcpEnabled: boolean
+  mcpPort: number
+  /** Assistants may write drafts, file conversations (read, flag, archive) and add events. */
+  mcpAllowWrite: boolean
+  /** Assistants may send mail; every message is shown to the user to confirm first. */
+  mcpAllowSend: boolean
+}
+
+/** State of the local MCP server. */
+export interface McpStatus {
+  state: 'off' | 'listening' | 'error'
+  /** Endpoint to give to the AI client, while listening. */
+  url: string | null
+  error: string | null
+}
+
+/** One entry of the MCP activity log. */
+export interface McpActivity {
+  id: number
+  at: number
+  /** Tool name, or "auth" for a refused connection. */
+  tool: string
+  outcome: 'ok' | 'error' | 'denied' | 'cancelled'
+  detail: string
 }
 
 export interface CalendarPrefs {
@@ -413,6 +440,7 @@ export interface AppEvents {
   'settings:changed': AppSettings
   'queue:changed': Record<string, never>
   'update:status': UpdateStatus
+  'mcp:changed': Record<string, never>
 }
 
 export interface MailboxApi {
@@ -521,6 +549,15 @@ export interface MailboxApi {
     check(): Promise<UpdateStatus>
     /** Restarts into the downloaded version. */
     install(): Promise<void>
+  }
+  mcp: {
+    status(): Promise<McpStatus>
+    /** The secret the AI client sends as a bearer token. */
+    token(): Promise<string>
+    /** Replaces the token: clients using the old one are cut off. */
+    regenerateToken(): Promise<string>
+    activity(limit: number): Promise<McpActivity[]>
+    clearActivity(): Promise<void>
   }
   app: {
     openExternal(url: string): Promise<void>

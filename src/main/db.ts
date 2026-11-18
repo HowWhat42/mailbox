@@ -254,7 +254,17 @@ const MIGRATIONS: string[] = [
   ALTER TABLE folders ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
   `,
   // Gmail labels / IMAP keywords of each message.
-  `ALTER TABLE messages ADD COLUMN labels TEXT NOT NULL DEFAULT '[]';`
+  `ALTER TABLE messages ADD COLUMN labels TEXT NOT NULL DEFAULT '[]';`,
+  // What AI assistants did through the local MCP server.
+  `
+  CREATE TABLE mcp_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at INTEGER NOT NULL,
+    tool TEXT NOT NULL,
+    outcome TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT ''
+  );
+  `
 ]
 
 function migrate(d: DatabaseSync): void {

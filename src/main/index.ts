@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
 import { getDb } from './db'
 import { registerIpc } from './ipc'
-import { applyLoginItem, getSettings, onReminderPositionChange, onUiScaleChange } from './settings'
+import { applyLoginItem, getSettings, onMcpSettingsChange, onReminderPositionChange, onUiScaleChange } from './settings'
 import { placeReminderWindow } from './notifyWindow'
 import { startWatching, stopWatching } from './mail/watch'
 import { startCalendarSync, stopCalendarSync } from './calendar'
@@ -13,6 +13,7 @@ import { applyZoom, createMainWindow, iconPath, showMainWindow, TITLEBAR } from 
 import { createTray } from './tray'
 import { APP_ID, isolateDevData } from './identity'
 import { startUpdater } from './updater'
+import { applyMcpSettings, stopMcp } from './mcp/server'
 
 isolateDevData()
 if (!app.requestSingleInstanceLock()) app.quit()
@@ -59,6 +60,8 @@ app.whenReady().then(() => {
   startWatching()
   startCalendarSync()
   startReminders()
+  onMcpSettingsChange(() => void applyMcpSettings())
+  void applyMcpSettings()
   app.on('activate', () => showMainWindow())
 })
 
@@ -71,4 +74,5 @@ app.on('before-quit', () => {
   stopWatching()
   stopCalendarSync()
   stopReminders()
+  void stopMcp()
 })

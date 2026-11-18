@@ -52,7 +52,7 @@ export interface DialogRequest {
 }
 
 type Mode = 'mail' | 'calendar' | 'settings'
-export type SettingsSection = 'general' | 'appearance' | 'notifications' | 'inbox' | 'calendars' | 'shortcuts' | `account:${string}`
+export type SettingsSection = 'general' | 'appearance' | 'notifications' | 'inbox' | 'calendars' | 'ai' | 'shortcuts' | `account:${string}`
 
 const PAGE = 150
 const MOVE_ACTIONS = new Set<MessageAction>(['archive', 'trash', 'junk', 'move'])

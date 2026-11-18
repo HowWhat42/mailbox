@@ -1,4 +1,4 @@
-import { Bell, CalendarDays, Inbox, Keyboard, Palette, Plus, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
+import { Bell, Bot, CalendarDays, Inbox, Keyboard, Palette, Plus, SlidersHorizontal, X, type LucideIcon } from 'lucide-react'
 import { useStore, type SettingsSection } from '../store'
 import { useLayout } from '../lib/layout'
 import { GeneralSettings } from './settings/GeneralSettings'
@@ -7,6 +7,7 @@ import { NotificationSettings } from './settings/NotificationSettings'
 import { InboxSettings } from './settings/InboxSettings'
 import { CalendarSettings } from './settings/CalendarSettings'
 import { AccountSettings } from './settings/AccountSettings'
+import { AiSettings } from './settings/AiSettings'
 
 const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'general', label: 'Général', icon: SlidersHorizontal },
@@ -14,6 +15,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: LucideIcon }[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'inbox', label: 'Tri & règles', icon: Inbox },
   { id: 'calendars', label: 'Agendas', icon: CalendarDays },
+  { id: 'ai', label: 'Accès IA', icon: Bot },
   { id: 'shortcuts', label: 'Raccourcis', icon: Keyboard }
 ]
 
@@ -44,6 +46,7 @@ const TITLES: Record<string, string> = {
   notifications: 'Notifications',
   inbox: 'Tri & règles',
   calendars: 'Agendas',
+  ai: 'Accès IA',
   shortcuts: 'Raccourcis'
 }
 
@@ -118,6 +121,7 @@ export function SettingsView() {
           {section === 'notifications' && <NotificationSettings />}
           {section === 'inbox' && <InboxSettings />}
           {section === 'calendars' && <CalendarSettings />}
+          {section === 'ai' && <AiSettings />}
           {section === 'shortcuts' && (
             <div className="divide-y divide-line rounded-xl border border-line">
               {SHORTCUTS.map(([keys, label]) => (

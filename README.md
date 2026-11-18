@@ -194,7 +194,25 @@ pnpm test:e2e:triage     # tri intelligent, regroupements, règles, désabonneme
 pnpm test:e2e:responsive # redimensionne la fenêtre de 1440 à 480 px, vérifie l'absence de débordement
 pnpm test:e2e:templates  # signature HTML + aperçu, modèle avec champs inséré, envoyé et relu
 pnpm test:e2e:update     # installeur 9.9.9 servi en local : détection, téléchargement, « Mise à jour prête »
+pnpm test:e2e:mcp        # serveur MCP : jeton, Origin/Host refusés, verrouillage, outils selon les permissions
 ```
+
+## Accès IA (MCP)
+
+Mailbox peut exposer un serveur [MCP](https://modelcontextprotocol.io) local pour qu'un assistant IA (Claude Code, Claude Desktop, Cursor…) lise vos mails et votre agenda. Désactivé par défaut : **Réglages › Accès IA**.
+
+```bash
+# commande copiée depuis Réglages › Accès IA › Copier la commande
+claude mcp add --transport http mailbox http://127.0.0.1:47811/mcp --header "Authorization: Bearer mbx_…"
+```
+
+| Niveau   | Outils                                                                                                              | Réglage                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Lecture  | `list_accounts`, `list_folders`, `search_threads`, `get_thread`, `search_contacts`, `list_calendars`, `list_events` | serveur actif                            |
+| Écriture | `create_draft`, `update_thread` (lu, suivi, archiver), `create_event` (sans invité)                                 | « Brouillons, classement et événements » |
+| Envoi    | `send_message`, confirmé par l'utilisateur dans une fenêtre de Mailbox (2 min, sinon rien ne part)                  | « Envoi de messages »                    |
+
+Protections : écoute sur `127.0.0.1` uniquement ; jeton de 256 bits chiffré par le système (DPAPI / Trousseau), comparé en temps constant ; toute requête avec un en-tête `Origin` (navigateur) ou un `Host` étranger (DNS rebinding) refusée ; verrouillage d'une minute après 5 jetons invalides ; 120 requêtes/min ; corps limité à 1 Mo ; aucune pièce jointe, suppression, vidage de dossier, compte ou réglage accessible ; contenu des mails signalé à l'IA comme données non fiables ; journal d'activité dans les réglages. Le port par défaut est 47811 (47812 pour une version de développement).
 
 ## Architecture
 

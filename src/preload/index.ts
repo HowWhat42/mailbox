@@ -58,6 +58,7 @@ const api = {
   templates: invoker('templates', ['list', 'save', 'remove']),
   rules: invoker('rules', ['list', 'save', 'remove', 'reorder', 'reapply', 'classifySender']),
   updates: invoker('updates', ['status', 'check', 'install']),
+  mcp: invoker('mcp', ['status', 'token', 'regenerateToken', 'activity', 'clearActivity']),
   reminders: invoker('reminders', ['list', 'join', 'snooze', 'dismiss', 'open']),
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),

@@ -38,6 +38,8 @@ import { checkForUpdates, installUpdate, updateStatus } from './updater'
 import { listTemplates, removeTemplate, saveTemplate } from './templates'
 import { knownLabels, setThreadLabels } from './mail/labels'
 import { unsubscribe } from './mail/unsubscribe'
+import { mcpStatus } from './mcp/server'
+import { clearActivity, getToken, listActivity, regenerateToken } from './mcp/guard'
 
 const DAY = 86_400_000
 
@@ -229,6 +231,17 @@ const handlers: Handlers = {
     status: async () => updateStatus(),
     check: () => checkForUpdates(),
     install: async () => installUpdate()
+  },
+  mcp: {
+    status: async () => mcpStatus(),
+    token: async () => getToken(),
+    regenerateToken: async () => {
+      const token = regenerateToken()
+      emit('mcp:changed', {})
+      return token
+    },
+    activity: async (limit) => listActivity(limit),
+    clearActivity: async () => clearActivity()
   },
   reminders: {
     list: async () => activeReminders(),
