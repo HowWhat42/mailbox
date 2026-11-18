@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { CalendarSource, CalendarSourceInput, CalendarSourceKind } from '@shared/types'
 import { getDb } from '../db'
 import { getSecret, listAccounts } from '../accounts/store'
-import { openSecret, sealSecret } from '../accounts/secrets'
+import { openSecret, sealSecret, type AccountSecret } from '../accounts/secrets'
 import { authorizeGoogle, googleAccessToken, googleTokenFor } from '../accounts/google'
 
 const PALETTE = ['#8f86f0', '#6f8cff', '#f472b6', '#fbbf24', '#2dd4bf', '#a3e635', '#fb923c', '#f87171']
@@ -44,14 +44,15 @@ export function getSource(id: string): CalendarSource {
   return toSource(row)
 }
 
-function insertSource(s: Omit<CalendarSource, 'id' | 'color' | 'syncError' | 'lastSyncAt'>, secret: object | null): CalendarSource {
+/** `sealed`: the source's own credentials, already encrypted (null when it rides on a mail account or needs none). */
+function insertSource(s: Omit<CalendarSource, 'id' | 'color' | 'syncError' | 'lastSyncAt'>, sealed: Buffer | null): CalendarSource {
   const db = getDb()
   const count = (db.prepare('SELECT count(*) AS n FROM cal_sources').get() as { n: number }).n
   const id = randomUUID()
   db.prepare(
     `INSERT INTO cal_sources (id, kind, name, color, account_id, url, username, secret, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, s.kind, s.name, PALETTE[count % PALETTE.length], s.accountId, s.url, s.username, secret ? sealSecret(secret) : null, Date.now())
+  ).run(id, s.kind, s.name, PALETTE[count % PALETTE.length], s.accountId, s.url, s.username, sealed, Date.now())
   return getSource(id)
 }
 
@@ -61,7 +62,7 @@ export async function addSource(input: CalendarSourceInput): Promise<CalendarSou
     const { email, refreshToken } = await authorizeGoogle('calendar')
     const dup = listSources().find((s) => s.kind === 'google' && s.username === email)
     if (dup) throw new Error(`Les agendas de ${email} sont déjà connectés.`)
-    return insertSource({ kind: 'google', name: email, accountId: null, url: null, username: email }, { refreshToken })
+    return insertSource({ kind: 'google', name: email, accountId: null, url: null, username: email }, await sealSecret({ refreshToken }))
   }
   const url = input.url.trim().replace(/^webcal:\/\//i, 'https://')
   if (!/^https?:\/\//i.test(url)) throw new Error('L’adresse doit commencer par https://')
@@ -70,7 +71,7 @@ export async function addSource(input: CalendarSourceInput): Promise<CalendarSou
   }
   return insertSource(
     { kind: 'caldav', name: input.name.trim() || input.username, accountId: null, url, username: input.username.trim() },
-    { password: input.password }
+    await sealSecret({ password: input.password })
   )
 }
 
@@ -112,17 +113,20 @@ export function syncAccountSources(): void {
 }
 
 /** Basic-auth credentials of a CalDAV source (its own, or its mail account's). */
-export function caldavCredentials(source: CalendarSource): { url: string; username: string; password: string } {
+export async function caldavCredentials(source: CalendarSource): Promise<{ url: string; username: string; password: string }> {
   if (!source.url) throw new Error('Aucune URL CalDAV pour cet agenda.')
-  if (source.accountId) return { url: source.url, username: source.username ?? '', password: getSecret(source.accountId).password ?? '' }
-  const row = getDb().prepare('SELECT secret FROM cal_sources WHERE id = ?').get(source.id) as { secret: Uint8Array | null }
-  return { url: source.url, username: source.username ?? '', password: row.secret ? (openSecret(row.secret).password ?? '') : '' }
+  const secret = source.accountId ? await getSecret(source.accountId) : await sourceSecret(source.id)
+  return { url: source.url, username: source.username ?? '', password: secret.password ?? '' }
+}
+
+/** Credentials stored on a standalone source. */
+async function sourceSecret(id: string): Promise<AccountSecret> {
+  const row = getDb().prepare('SELECT secret FROM cal_sources WHERE id = ?').get(id) as { secret: Uint8Array | null } | undefined
+  if (!row?.secret) return {}
+  return openSecret(row.secret, (fresh) => getDb().prepare('UPDATE cal_sources SET secret = ? WHERE id = ?').run(fresh, id))
 }
 
 export async function googleTokenForSource(source: CalendarSource): Promise<string> {
   if (source.accountId) return googleAccessToken(source.accountId)
-  return googleTokenFor(`cal:${source.id}`, () => {
-    const row = getDb().prepare('SELECT secret FROM cal_sources WHERE id = ?').get(source.id) as { secret: Uint8Array | null }
-    return row.secret ? openSecret(row.secret).refreshToken : undefined
-  })
+  return googleTokenFor(`cal:${source.id}`, async () => (await sourceSecret(source.id)).refreshToken)
 }

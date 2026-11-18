@@ -64,7 +64,7 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
     auth:
       account.kind === 'google'
         ? { type: 'OAuth2', user: account.email, accessToken: await googleAccessToken(account.id) }
-        : { user: account.username, pass: getSecret(account.id).password ?? '' }
+        : { user: account.username, pass: (await getSecret(account.id)).password ?? '' }
   })
   try {
     await transport.sendMail({ envelope, raw })

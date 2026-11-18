@@ -65,7 +65,7 @@ const handlers: Handlers = {
     addImap: async (input) => {
       // Validate credentials before storing anything.
       const draft = await testImap(input)
-      const account = insertAccount(draft, { password: input.password })
+      const account = await insertAccount(draft, { password: input.password })
       emit('accounts:changed', {})
       watch(account.id)
       accountsChanged()
@@ -73,7 +73,7 @@ const handlers: Handlers = {
     },
     addGoogle: async () => {
       const { email, name, refreshToken } = await authorizeGoogle()
-      const account = insertAccount(
+      const account = await insertAccount(
         {
           kind: 'google',
           name,
@@ -234,9 +234,9 @@ const handlers: Handlers = {
   },
   mcp: {
     status: async () => mcpStatus(),
-    token: async () => getToken(),
+    token: () => getToken(),
     regenerateToken: async () => {
-      const token = regenerateToken()
+      const token = await regenerateToken()
       emit('mcp:changed', {})
       return token
     },

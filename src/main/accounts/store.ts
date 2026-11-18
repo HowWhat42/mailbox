@@ -65,19 +65,16 @@ export function getAccount(id: string): Account {
   return toAccount(row)
 }
 
-export function getSecret(id: string): AccountSecret {
+export async function getSecret(id: string): Promise<AccountSecret> {
   const row = getDb().prepare('SELECT secret FROM accounts WHERE id = ?').get(id) as { secret: Uint8Array } | undefined
   if (!row) throw new Error(`Compte introuvable : ${id}`)
-  return openSecret(row.secret)
-}
-
-export function setSecret(id: string, secret: AccountSecret): void {
-  getDb().prepare('UPDATE accounts SET secret = ? WHERE id = ?').run(sealSecret(secret), id)
+  return openSecret(row.secret, (fresh) => getDb().prepare('UPDATE accounts SET secret = ? WHERE id = ?').run(fresh, id))
 }
 
 export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError' | 'label' | 'notify' | 'inUnified' | 'syncDepth'>
 
-export function insertAccount(input: NewAccount, secret: AccountSecret): Account {
+export async function insertAccount(input: NewAccount, secret: AccountSecret): Promise<Account> {
+  const sealed = await sealSecret(secret)
   const db = getDb()
   const existing = db.prepare('SELECT id FROM accounts WHERE email = ? AND kind = ?').get(input.email, input.kind) as { id: string } | undefined
   if (existing) throw new Error(`Le compte ${input.email} est déjà configuré.`)
@@ -100,7 +97,7 @@ export function insertAccount(input: NewAccount, secret: AccountSecret): Account
     input.smtpPort,
     input.smtpSecure ? 1 : 0,
     input.username,
-    sealSecret(secret),
+    sealed,
     input.caldavUrl,
     Date.now()
   )

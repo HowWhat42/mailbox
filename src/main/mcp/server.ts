@@ -60,7 +60,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, port: number): 
   if (isLocked()) return reply(res, 429, 'Too many failed attempts, try again later', { 'Retry-After': '60' })
   const auth = req.headers.authorization ?? ''
   const presented = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-  if (!presented || !tokenMatches(presented)) {
+  if (!presented || !(await tokenMatches(presented))) {
     recordFailure()
     logActivity('auth', 'denied', presented ? 'Jeton invalide' : 'Jeton absent')
     return reply(res, 401, 'Unauthorized', { 'WWW-Authenticate': 'Bearer' })

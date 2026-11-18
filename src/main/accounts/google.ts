@@ -109,14 +109,14 @@ export async function authorizeGoogle(scope: keyof typeof SCOPES = 'mail'): Prom
 }
 
 export async function googleAccessToken(accountId: string): Promise<string> {
-  return googleTokenFor(accountId, () => getSecret(accountId).refreshToken)
+  return googleTokenFor(accountId, async () => (await getSecret(accountId)).refreshToken)
 }
 
 /** Access token for any holder of a refresh token (mail account or standalone calendar), cached until expiry. */
-export async function googleTokenFor(cacheKey: string, refreshToken: () => string | undefined): Promise<string> {
+export async function googleTokenFor(cacheKey: string, refreshToken: () => Promise<string | undefined>): Promise<string> {
   const cached = tokenCache.get(cacheKey)
   if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token
-  const token = refreshToken()
+  const token = await refreshToken()
   if (!token) throw new Error('Refresh token manquant : reconnecter le compte Google.')
   const tokens = await tokenRequest({ refresh_token: token, grant_type: 'refresh_token' })
   tokenCache.set(cacheKey, { token: tokens.access_token, expiresAt: Date.now() + tokens.expires_in * 1000 })

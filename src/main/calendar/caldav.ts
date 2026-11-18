@@ -14,7 +14,7 @@ const clients = new Map<string, { client: DavClient; calendars: DAVCalendar[] }>
 async function connect(source: CalendarSource): Promise<{ client: DavClient; calendars: DAVCalendar[] }> {
   const cached = clients.get(source.id)
   if (cached) return cached
-  const { url, username, password } = caldavCredentials(source)
+  const { url, username, password } = await caldavCredentials(source)
   const client = await createDAVClient({ serverUrl: url, credentials: { username, password }, authMethod: 'Basic', defaultAccountType: 'caldav' })
   const calendars = (await client.fetchCalendars()).filter((c) => !c.components || c.components.includes('VEVENT'))
   const entry = { client, calendars }
