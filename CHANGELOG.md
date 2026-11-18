@@ -4,6 +4,8 @@
 
 ## À venir
 
+- Bouton **Relever le courrier** en haut de la liste (ou F5) pour vérifier tout de suite l'arrivée d'un message.
+- La liste ne vous ramène plus au message ouvert quand vous remontez et qu'elle se met à jour.
 - Choisissez où s'affichent les rappels d'agenda : en haut, au centre ou en bas de l'écran, à gauche, au milieu ou à droite (Réglages › Notifications).
 
 ## 0.1.7 — 17 novembre 2026

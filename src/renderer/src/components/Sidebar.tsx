@@ -204,7 +204,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const { mode, view, accounts, folders, counts, syncing, theme } = useStore()
   const layout = useLayout()
   const collapsed = !forceExpanded && layout.rail
-  const { compose, setSetup, openSettings, updateSettings, toast } = useStore.getState()
+  const { compose, setSetup, openSettings, updateSettings } = useStore.getState()
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const isSyncing = Object.values(syncing).some(Boolean)
   const [menu, setMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
@@ -244,14 +244,6 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
   const setMode = (m: 'mail' | 'calendar'): void => {
     useStore.getState().setMode(m)
     useStore.getState().setDrawer(false)
-  }
-
-  const sync = async (): Promise<void> => {
-    try {
-      await api.mail.sync()
-    } catch (err) {
-      toast((err as Error).message, 'error')
-    }
   }
 
   const systemFolders = (accountId: string): Folder[] => {
@@ -546,7 +538,7 @@ export function Sidebar({ forceExpanded = false }: { forceExpanded?: boolean }) 
           {theme === 'dark' ? <Sun size={15} strokeWidth={1.75} /> : <Moon size={15} strokeWidth={1.75} />}
         </button>
         <button
-          onClick={sync}
+          onClick={() => useStore.getState().syncNow()}
           title="Synchroniser"
           aria-label="Synchroniser"
           className="grid size-8 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"

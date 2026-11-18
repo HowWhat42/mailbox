@@ -10,6 +10,7 @@ import {
   OctagonAlert,
   Paperclip,
   PenSquare,
+  RefreshCw,
   Star,
   Trash2,
   type LucideIcon
@@ -167,12 +168,14 @@ function ToolButton({
   icon: Icon,
   label,
   onClick,
-  disabled
+  disabled,
+  spin
 }: {
   icon: LucideIcon
   label: string
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
   disabled?: boolean
+  spin?: boolean
 }) {
   return (
     <button
@@ -182,7 +185,7 @@ function ToolButton({
       onClick={onClick}
       className="grid size-8 place-items-center rounded-md text-muted transition-colors hover:bg-hover hover:text-fg disabled:pointer-events-none disabled:opacity-35"
     >
-      <Icon size={15} strokeWidth={1.75} />
+      <Icon size={15} strokeWidth={1.75} className={spin ? 'animate-spin' : ''} />
     </button>
   )
 }
@@ -256,9 +259,15 @@ export function ThreadList() {
   // Row height changes with the density setting: drop cached sizes.
   useEffect(() => virtual.measure(), [rowHeight, virtual])
 
+  // Bring a newly selected conversation into view (keyboard moves, opening from elsewhere) — once.
+  // Re-running on every list update would yank the user back to it while they scroll away.
+  const revealed = useRef<string | null>(null)
   useEffect(() => {
+    if (!selected || revealed.current === selected) return
     const idx = items.findIndex((it) => it.type === 'thread' && threadKey(it.t) === selected)
-    if (idx >= 0) virtual.scrollToIndex(idx, { align: 'auto' })
+    if (idx < 0) return
+    revealed.current = selected
+    virtual.scrollToIndex(idx, { align: 'auto' })
   }, [selected, items, virtual])
 
   const vItems = virtual.getVirtualItems()
@@ -333,6 +342,7 @@ export function ThreadList() {
                 : `${threads.length} conversation${threads.length > 1 ? 's' : ''}`}
           </p>
         </div>
+        <ToolButton icon={RefreshCw} label="Relever le courrier (F5)" spin={busy} onClick={() => s.syncNow()} />
         <ToolButton
           icon={MoreHorizontal}
           label="Actions sur cette vue"

@@ -22,7 +22,7 @@ import {
   Trash2,
   type LucideIcon
 } from 'lucide-react'
-import { api, threadKey, useStore } from '../store'
+import { threadKey, useStore } from '../store'
 import { ROLE_LABEL } from '../lib/format'
 import { startReply } from '../lib/threadActions'
 
@@ -92,11 +92,7 @@ export function CommandPalette() {
 
           <Command.Group heading="Actions" className={groupCls}>
             <Item icon={PenSquare} label="Nouveau message" hint="C" onSelect={run(() => s.compose())} />
-            <Item
-              icon={RefreshCw}
-              label="Synchroniser maintenant"
-              onSelect={run(() => void api.mail.sync().catch((e: Error) => s.toast(e.message, 'error')))}
-            />
+            <Item icon={RefreshCw} label="Relever le courrier" hint="F5" onSelect={run(() => s.syncNow())} />
             <Item
               icon={Moon}
               label={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}

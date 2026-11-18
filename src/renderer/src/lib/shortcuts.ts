@@ -53,6 +53,11 @@ export function useMailShortcuts(): void {
         pendingG = Date.now()
         return
       }
+      if (e.key === 'F5') {
+        e.preventDefault()
+        s.syncNow()
+        return
+      }
       if (e.key === 'z') {
         s.undoLast()
         return

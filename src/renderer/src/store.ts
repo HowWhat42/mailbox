@@ -151,6 +151,8 @@ interface State {
   openMovePicker(threads: ThreadSummary[] | null): void
   openLabels(thread: ThreadSummary | null, anchor?: HTMLElement | { x: number; y: number }): void
   toast(text: string, tone?: Toast['tone'], action?: Toast['action']): number
+  /** Check every account for new mail now. */
+  syncNow(): void
   dismiss(id: number): void
   undoLast(): void
 }
@@ -552,6 +554,10 @@ export const useStore = create<State>((set, get) => ({
 
   openMovePicker(threads) {
     set({ movePicker: threads && threads.length ? threads : null })
+  },
+
+  syncNow() {
+    api.mail.sync().catch((err: Error) => get().toast(err.message, 'error'))
   },
 
   toast(text, tone = 'info', action) {
