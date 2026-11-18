@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.1.11 — 19 novembre 2026
+
 - **Comptes Outlook, Hotmail et Microsoft 365** : Microsoft n’accepte plus le mot de passe pour lire ses mails depuis une autre application. Choisissez « Outlook, Hotmail ou Microsoft 365 » dans Ajouter un compte et connectez-vous dans le navigateur.
 
 ## 0.1.10 — 19 novembre 2026
