@@ -64,6 +64,17 @@ La connexion Google passe par OAuth (navigateur système, PKCE, redirection loop
 
 Sans validation Google, l’accès complet à Gmail est bloqué pour les adresses @gmail.com : ajoutez ces boîtes en **IMAP** avec un [mot de passe d’application](https://myaccount.google.com/apppasswords), et Google Agenda via Réglages › Agendas (accès agenda seul).
 
+### Comptes Outlook / Hotmail / Microsoft 365
+
+Microsoft refuse la connexion IMAP/SMTP par mot de passe : ces comptes passent par OAuth (même flux que Google, sans secret). Il faut un client à vous :
+
+1. [entra.microsoft.com](https://entra.microsoft.com) → **Inscriptions d’applications** → **Nouvelle inscription** ; types de comptes : « Comptes dans un annuaire organisationnel et comptes Microsoft personnels ».
+2. **Authentification** → **Ajouter une plateforme** → **Applications mobiles et de bureau**, URI de redirection `http://localhost` (le port est libre).
+3. **Autorisations d’API** → **Ajouter** → **API utilisées par mon organisation** → _Office 365 Exchange Online_ → autorisations déléguées `IMAP.AccessAsUser.All` et `SMTP.Send`.
+4. Renseigner l’ID d’application (client) dans `MAIN_VITE_MICROSOFT_CLIENT_ID` (secret `MICROSOFT_CLIENT_ID` du dépôt pour les versions publiées).
+
+Microsoft 365 : l’administrateur doit laisser IMAP et « SMTP authentifié » activés sur la boîte.
+
 ### Autres comptes (IMAP)
 
 Adresse + mot de passe suffisent dans la plupart des cas : les serveurs sont détectés comme dans Thunderbird (autoconfig du fournisseur puis base ISPDB de Mozilla).
@@ -156,8 +167,8 @@ chercher tout de suite. Sur Mac, l’app n’étant pas signée, macOS refuse d�
 elle est seulement annoncée (« Mise à jour disponible »), et « Télécharger » ouvre la page de la
 Release.
 
-Secrets du dépôt (optionnels) : `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`, injectés au build pour
-activer la connexion Google dans l’app installée.
+Secrets du dépôt (optionnels) : `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` et `MICROSOFT_CLIENT_ID`, injectés au build pour
+activer les connexions Google et Microsoft dans l’app installée.
 
 **Signature** : l’installeur n’est pas signé. Au premier install sur un PC, SmartScreen affiche
 « Windows a protégé votre ordinateur » → _Informations complémentaires_ → _Exécuter quand même_ ; les

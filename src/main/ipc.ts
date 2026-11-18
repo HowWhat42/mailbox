@@ -5,6 +5,7 @@ import type { ImapAccountInput, MailboxApi, OutgoingAttachment } from '@shared/t
 import { emit } from './events'
 import { deleteAccount, insertAccount, listAccounts, updateAccount } from './accounts/store'
 import { authorizeGoogle, googleConfigured } from './accounts/google'
+import { authorizeMicrosoft, microsoftConfigured } from './accounts/microsoft'
 import { discoverSettings } from './accounts/discover'
 import { createFolder, describeError, syncAccount } from './mail/sync'
 import { getDb } from './db'
@@ -62,6 +63,7 @@ const handlers: Handlers = {
     list: async () => listAccounts(),
     discover: (email) => discoverSettings(email),
     googleConfigured: async () => googleConfigured(),
+    microsoftConfigured: async () => microsoftConfigured(),
     addImap: async (input) => {
       // Validate credentials before storing anything.
       const draft = await testImap(input)
@@ -84,6 +86,29 @@ const handlers: Handlers = {
           smtpHost: 'smtp.gmail.com',
           smtpPort: 465,
           smtpSecure: true,
+          username: email,
+          caldavUrl: null
+        },
+        { refreshToken }
+      )
+      emit('accounts:changed', {})
+      watch(account.id)
+      accountsChanged()
+      return account
+    },
+    addMicrosoft: async () => {
+      const { email, name, refreshToken } = await authorizeMicrosoft()
+      const account = await insertAccount(
+        {
+          kind: 'microsoft',
+          name,
+          email,
+          imapHost: 'outlook.office365.com',
+          imapPort: 993,
+          imapSecure: true,
+          smtpHost: 'smtp.office365.com',
+          smtpPort: 587,
+          smtpSecure: false,
           username: email,
           caldavUrl: null
         },

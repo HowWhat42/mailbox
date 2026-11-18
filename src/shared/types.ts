@@ -1,4 +1,4 @@
-export type AccountKind = 'imap' | 'google'
+export type AccountKind = 'imap' | 'google' | 'microsoft'
 
 /** A reusable message of an account. `{{Field}}` in the subject or body is asked for when it's used. */
 export interface MailTemplate {
@@ -449,12 +449,14 @@ export interface MailboxApi {
     discover(email: string): Promise<ServerSettings | null>
     addImap(input: ImapAccountInput): Promise<Account>
     addGoogle(): Promise<Account>
+    addMicrosoft(): Promise<Account>
     update(
       id: string,
       patch: Partial<Pick<Account, 'name' | 'label' | 'color' | 'signature' | 'caldavUrl' | 'notify' | 'inUnified' | 'syncDepth'>>
     ): Promise<void>
     remove(id: string): Promise<void>
     googleConfigured(): Promise<boolean>
+    microsoftConfigured(): Promise<boolean>
   }
   mail: {
     folders(): Promise<Folder[]>

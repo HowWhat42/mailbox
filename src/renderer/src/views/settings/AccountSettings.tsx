@@ -52,7 +52,7 @@ export function AccountSettings({ account }: { account: Account }) {
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-[17px] font-semibold tracking-[-0.01em]">{account.email}</h2>
           <p className="text-[12px] text-muted">
-            {account.kind === 'google' ? 'Google' : `IMAP · ${account.imapHost}`}
+            {account.kind === 'google' ? 'Google' : account.kind === 'microsoft' ? 'Microsoft' : `IMAP · ${account.imapHost}`}
             {account.lastSyncAt &&
               ` · synchronisé à ${new Date(account.lastSyncAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
           </p>

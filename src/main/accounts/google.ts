@@ -1,8 +1,5 @@
-import { createServer } from 'node:http'
-import { createHash, randomBytes } from 'node:crypto'
-import type { AddressInfo } from 'node:net'
-import { shell } from 'electron'
 import { getSecret } from './store'
+import { authorizeInBrowser } from './oauth'
 
 const AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
@@ -40,58 +37,15 @@ async function tokenRequest(params: Record<string, string>): Promise<TokenRespon
   return body
 }
 
-/**
- * Runs the installed-app OAuth flow: opens the system browser and receives the
- * code on a one-shot loopback server (RFC 8252), protected by PKCE + state.
- */
+/** Opens the Google consent screen in the system browser and returns the account with its refresh token. */
 export async function authorizeGoogle(scope: keyof typeof SCOPES = 'mail'): Promise<{ email: string; name: string; refreshToken: string }> {
   if (!googleConfigured()) {
     throw new Error('Client OAuth Google non configuré : renseigner MAIN_VITE_GOOGLE_CLIENT_ID / SECRET dans .env.')
   }
-  const verifier = randomBytes(48).toString('base64url')
-  const challenge = createHash('sha256').update(verifier).digest('base64url')
-  const state = randomBytes(16).toString('base64url')
-
-  const { code, redirectUri } = await new Promise<{ code: string; redirectUri: string }>((resolve, reject) => {
-    const server = createServer((req, res) => {
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1')
-      if (url.pathname !== '/') {
-        res.writeHead(404).end()
-        return
-      }
-      const error = url.searchParams.get('error')
-      const ok = !error && url.searchParams.get('state') === state && url.searchParams.get('code')
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-      res.end(
-        `<!doctype html><meta charset="utf-8"><body style="font-family:system-ui;background:#0b0b0d;color:#e6e6ea;display:grid;place-items:center;height:100vh;margin:0">` +
-          `<p>${ok ? 'Compte connecté. Vous pouvez fermer cet onglet.' : 'Connexion annulée.'}</p></body>`
-      )
-      clearTimeout(timer)
-      server.close()
-      if (ok) resolve({ code: url.searchParams.get('code')!, redirectUri: loopbackUri })
-      else reject(new Error(error ? `Google : ${error}` : 'Réponse OAuth invalide.'))
-    })
-    let loopbackUri = ''
-    const timer = setTimeout(() => {
-      server.close()
-      reject(new Error('Délai de connexion Google dépassé.'))
-    }, 5 * 60_000)
-    server.listen(0, '127.0.0.1', () => {
-      loopbackUri = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
-      const url = new URL(AUTH_URL)
-      url.search = new URLSearchParams({
-        client_id: clientId,
-        redirect_uri: loopbackUri,
-        response_type: 'code',
-        scope: SCOPES[scope].join(' '),
-        code_challenge: challenge,
-        code_challenge_method: 'S256',
-        access_type: 'offline',
-        prompt: 'consent',
-        state
-      }).toString()
-      void shell.openExternal(url.toString())
-    })
+  const { code, verifier, redirectUri } = await authorizeInBrowser({
+    provider: 'Google',
+    authUrl: AUTH_URL,
+    params: { client_id: clientId, scope: SCOPES[scope].join(' '), access_type: 'offline', prompt: 'consent' }
   })
 
   const tokens = await tokenRequest({

@@ -6,7 +6,17 @@ function invoker<NS extends string>(ns: NS, methods: string[]): Record<string, (
 }
 
 const api = {
-  accounts: invoker('accounts', ['list', 'discover', 'addImap', 'addGoogle', 'update', 'remove', 'googleConfigured']),
+  accounts: invoker('accounts', [
+    'list',
+    'discover',
+    'addImap',
+    'addGoogle',
+    'addMicrosoft',
+    'update',
+    'remove',
+    'googleConfigured',
+    'microsoftConfigured'
+  ]),
   mail: invoker('mail', [
     'folders',
     'list',

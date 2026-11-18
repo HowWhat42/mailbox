@@ -69,6 +69,7 @@ jobs:
           # Optional: without them the installed app hides "Sign in with Google".
           MAIN_VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          MAIN_VITE_MICROSOFT_CLIENT_ID: ${{ secrets.MICROSOFT_CLIENT_ID }}
 
       - name: Package and upload
         run: pnpm exec electron-builder ${{ matrix.target }} --publish always

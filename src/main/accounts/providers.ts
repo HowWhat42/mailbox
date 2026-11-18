@@ -27,7 +27,7 @@ export const PROVIDERS: Provider[] = [
     name: 'Outlook / Microsoft 365',
     imap: ['outlook.office365.com', 993, true],
     smtp: ['smtp.office365.com', 587, false],
-    note: 'Microsoft a désactivé la connexion par mot de passe pour la plupart des comptes : la connexion Microsoft n’est pas encore disponible dans Mailbox.',
+    note: 'Microsoft refuse la connexion par mot de passe : revenez en arrière et choisissez « Outlook, Hotmail ou Microsoft 365 ».',
     domains: /^(outlook\.[a-z.]+|hotmail\.[a-z.]+|live\.[a-z.]+|msn\.com)$/,
     mx: /\.(protection\.outlook\.com|outlook\.com)$/
   },

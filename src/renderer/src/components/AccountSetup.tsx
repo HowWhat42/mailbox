@@ -19,6 +19,17 @@ function GoogleMark() {
   )
 }
 
+function MicrosoftMark() {
+  return (
+    <svg viewBox="0 0 21 21" className="size-[16px]" aria-hidden>
+      <path fill="#F25022" d="M0 0h10v10H0z" />
+      <path fill="#7FBA00" d="M11 0h10v10H11z" />
+      <path fill="#00A4EF" d="M0 11h10v10H0z" />
+      <path fill="#FFB900" d="M11 11h10v10H11z" />
+    </svg>
+  )
+}
+
 const EMPTY: ImapAccountInput = {
   name: '',
   email: '',
@@ -41,10 +52,13 @@ export function AccountSetup() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [googleReady, setGoogleReady] = useState(true)
+  const [microsoftReady, setMicrosoftReady] = useState(true)
+  const [waiting, setWaiting] = useState<'google' | 'microsoft' | null>(null)
   const [detected, setDetected] = useState<ServerSettings | null>(null)
 
   useEffect(() => {
     void api.accounts.googleConfigured().then(setGoogleReady)
+    void api.accounts.microsoftConfigured().then(setMicrosoftReady)
   }, [])
 
   const set = <K extends keyof ImapAccountInput>(k: K, v: ImapAccountInput[K]): void => setForm((f) => ({ ...f, [k]: v }))
@@ -56,16 +70,18 @@ export function AccountSetup() {
     useStore.getState().setView({ type: 'unified', role: 'inbox' })
   }
 
-  const google = async (): Promise<void> => {
+  const signIn = async (provider: 'google' | 'microsoft'): Promise<void> => {
     setBusy(true)
+    setWaiting(provider)
     setError(null)
     try {
-      const account = await api.accounts.addGoogle()
+      const account = provider === 'google' ? await api.accounts.addGoogle() : await api.accounts.addMicrosoft()
       done(account.email)
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setBusy(false)
+      setWaiting(null)
     }
   }
 
@@ -126,18 +142,34 @@ export function AccountSetup() {
             </p>
           )}
           <button
-            onClick={google}
+            onClick={() => void signIn('google')}
             disabled={busy || !googleReady}
             className="flex h-12 w-full items-center gap-3 rounded-lg border border-line bg-panel px-4 text-left text-[13.5px] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             <GoogleMark />
-            <span className="flex-1">{busy ? 'En attente du navigateur…' : 'Gmail ou Google Workspace'}</span>
+            <span className="flex-1">{waiting === 'google' ? 'En attente du navigateur…' : 'Gmail ou Google Workspace'}</span>
             <ChevronRight size={15} className="text-muted" />
           </button>
           {!googleReady && (
             <p className="px-1 text-[11.5px] text-muted">
               Connexion Google indisponible : renseignez MAIN_VITE_GOOGLE_CLIENT_ID et MAIN_VITE_GOOGLE_CLIENT_SECRET dans le fichier .env (voir
               README).
+            </p>
+          )}
+          <button
+            onClick={() => void signIn('microsoft')}
+            disabled={busy || !microsoftReady}
+            className="flex h-12 w-full items-center gap-3 rounded-lg border border-line bg-panel px-4 text-left text-[13.5px] hover:border-line-strong hover:bg-hover disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="grid size-[18px] place-items-center">
+              <MicrosoftMark />
+            </span>
+            <span className="flex-1">{waiting === 'microsoft' ? 'En attente du navigateur…' : 'Outlook, Hotmail ou Microsoft 365'}</span>
+            <ChevronRight size={15} className="text-muted" />
+          </button>
+          {!microsoftReady && (
+            <p className="px-1 text-[11.5px] text-muted">
+              Connexion Microsoft indisponible : renseignez MAIN_VITE_MICROSOFT_CLIENT_ID dans le fichier .env (voir README).
             </p>
           )}
           <button

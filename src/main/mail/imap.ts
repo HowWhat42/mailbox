@@ -2,9 +2,11 @@ import { ImapFlow } from 'imapflow'
 import type { Account } from '@shared/types'
 import { getSecret } from '../accounts/store'
 import { googleAccessToken } from '../accounts/google'
+import { microsoftAccessToken } from '../accounts/microsoft'
 
 export async function imapAuth(account: Account): Promise<{ user: string; pass?: string; accessToken?: string }> {
   if (account.kind === 'google') return { user: account.email, accessToken: await googleAccessToken(account.id) }
+  if (account.kind === 'microsoft') return { user: account.email, accessToken: await microsoftAccessToken(account.id) }
   return { user: account.username, pass: (await getSecret(account.id)).password ?? '' }
 }
 

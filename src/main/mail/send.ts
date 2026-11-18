@@ -6,6 +6,7 @@ import { getDb } from '../db'
 import { emit } from '../events'
 import { getAccount, getSecret } from '../accounts/store'
 import { googleAccessToken } from '../accounts/google'
+import { microsoftAccessToken } from '../accounts/microsoft'
 import { inMailbox, withImap } from './imap'
 import { loadAttachment } from './attachments'
 import { describeError, foldersOf, syncFolder } from './sync'
@@ -64,7 +65,9 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
     auth:
       account.kind === 'google'
         ? { type: 'OAuth2', user: account.email, accessToken: await googleAccessToken(account.id) }
-        : { user: account.username, pass: (await getSecret(account.id)).password ?? '' }
+        : account.kind === 'microsoft'
+          ? { type: 'OAuth2', user: account.email, accessToken: await microsoftAccessToken(account.id) }
+          : { user: account.username, pass: (await getSecret(account.id)).password ?? '' }
   })
   try {
     await transport.sendMail({ envelope, raw })

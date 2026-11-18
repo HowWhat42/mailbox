@@ -1,5 +1,5 @@
 import type { ImapFlow } from 'imapflow'
-import type { FolderRole, MessageAction } from '@shared/types'
+import type { AccountKind, FolderRole, MessageAction } from '@shared/types'
 import { getDb, tx } from '../db'
 import { emit } from '../events'
 import { getAccount } from '../accounts/store'
@@ -113,7 +113,7 @@ export async function runOnServer(accountId: string, ops: QueuedAction[]): Promi
 
 async function serverAction(
   client: ImapFlow,
-  kind: 'imap' | 'google',
+  kind: AccountKind,
   folders: FolderRow[],
   folder: FolderRow,
   uids: number[],

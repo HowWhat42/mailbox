@@ -71,6 +71,12 @@ export async function getSecret(id: string): Promise<AccountSecret> {
   return openSecret(row.secret, (fresh) => getDb().prepare('UPDATE accounts SET secret = ? WHERE id = ?').run(fresh, id))
 }
 
+export async function setSecret(id: string, secret: AccountSecret): Promise<void> {
+  getDb()
+    .prepare('UPDATE accounts SET secret = ? WHERE id = ?')
+    .run(await sealSecret(secret), id)
+}
+
 export type NewAccount = Omit<Account, 'id' | 'color' | 'signature' | 'lastSyncAt' | 'syncError' | 'label' | 'notify' | 'inUnified' | 'syncDepth'>
 
 export async function insertAccount(input: NewAccount, secret: AccountSecret): Promise<Account> {
