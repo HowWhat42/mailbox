@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Comptes Outlook, Hotmail et Microsoft 365** : Microsoft n’accepte plus le mot de passe pour lire ses mails depuis une autre application. Choisissez « Outlook, Hotmail ou Microsoft 365 » dans Ajouter un compte et connectez-vous dans le navigateur.
+
 ## 0.1.10 — 19 novembre 2026
 
 - **Mailbox sur Linux** : une version pour Ubuntu et les autres distributions, en snap et en flatpak, est disponible au téléchargement. Les nouvelles versions y sont annoncées, à télécharger depuis la page de la version.
