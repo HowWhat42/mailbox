@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { app, BrowserWindow, ipcMain, nativeTheme, shell } from 'electron'
 import { getDb } from './db'
 import { registerIpc } from './ipc'
-import { applyLoginItem, getSettings, onUiScaleChange } from './settings'
+import { applyLoginItem, getSettings, onReminderPositionChange, onUiScaleChange } from './settings'
+import { placeReminderWindow } from './notifyWindow'
 import { startWatching, stopWatching } from './mail/watch'
 import { startCalendarSync, stopCalendarSync } from './calendar'
 import { syncAccountSources } from './calendar/sources'
@@ -52,6 +53,7 @@ app.whenReady().then(() => {
   startUpdater()
 
   onUiScaleChange(() => applyZoom())
+  onReminderPositionChange(placeReminderWindow)
   createMainWindow({ hidden: process.argv.includes('--hidden') })
   createTray()
   startWatching()

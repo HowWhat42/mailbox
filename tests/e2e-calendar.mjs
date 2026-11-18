@@ -157,6 +157,25 @@ if (await notifyWin.locator('button:has-text("15 min")').count()) throw new Erro
 if (!(await notifyWin.locator('button:has-text("Au début")').count())) throw new Error('reminder does not offer to snooze until the start')
 step('snooze offers "Au début" when the meeting starts within 15 minutes')
 
+// The position setting moves the open reminder window at once.
+const reminderBox = () =>
+  app.evaluate(({ BrowserWindow, screen }) => {
+    const w = BrowserWindow.getAllWindows().find((win) => win.webContents.getURL().includes('notify.html'))
+    return { bounds: w.getBounds(), area: screen.getDisplayMatching(w.getBounds()).workArea }
+  })
+const corner = (b, a) =>
+  `${b.y === a.y ? 'top' : b.y + b.height === a.y + a.height ? 'bottom' : 'middle'}-${b.x === a.x ? 'left' : b.x + b.width === a.x + a.width ? 'right' : 'middle'}`
+for (const [setting, expected] of [
+  ['top-left', 'top-left'],
+  ['center', 'middle-middle'],
+  ['bottom-right', 'bottom-right']
+]) {
+  await page.evaluate((p) => window.mailbox.settings.set({ reminderPosition: p }), setting)
+  const { bounds, area } = await reminderBox()
+  if (corner(bounds, area) !== expected) throw new Error(`reminder at ${corner(bounds, area)} for "${setting}": ${JSON.stringify({ bounds, area })}`)
+}
+step('reminder window follows the position setting (top-left, center, bottom-right)')
+
 await page.waitForSelector('[data-event-id]')
 await page.screenshot({ path: join(shots, 'c-02-week.png') })
 const standups = await page.locator('[data-event-id]:has-text("Stand-up")').count()

@@ -1,6 +1,17 @@
 import { api, useStore } from '../../store'
 import { Select, Toggle } from '../../components/ui/Controls'
+import type { ReminderPosition } from '@shared/types'
 import { minutesLabel, Row, Section, timeOfDay } from './parts'
+
+const POSITIONS: { value: ReminderPosition; label: string }[] = [
+  { value: 'top-left', label: 'En haut à gauche' },
+  { value: 'top-center', label: 'En haut au centre' },
+  { value: 'top-right', label: 'En haut à droite' },
+  { value: 'center', label: 'Au centre' },
+  { value: 'bottom-left', label: 'En bas à gauche' },
+  { value: 'bottom-center', label: 'En bas au centre' },
+  { value: 'bottom-right', label: 'En bas à droite' }
+]
 
 const HALF_HOURS = Array.from({ length: 48 }, (_, i) => i * 30)
 
@@ -80,6 +91,15 @@ export function NotificationSettings() {
         </Row>
         <Row label="Rappeler aussi au début des réunions en ligne" hint="Le moment où l’on a besoin du bouton Rejoindre.">
           <Toggle label="" checked={settings.reminderAtStart} onChange={(v) => void update({ reminderAtStart: v })} />
+        </Row>
+        <Row label="Position à l’écran">
+          <Select
+            ariaLabel="Position des rappels"
+            className="w-44"
+            value={settings.reminderPosition}
+            onChange={(v) => void update({ reminderPosition: v })}
+            options={POSITIONS}
+          />
         </Row>
         <Row label="Son des rappels">
           <Toggle label="" checked={settings.reminderSound} onChange={(v) => void update({ reminderSound: v })} />

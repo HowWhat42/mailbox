@@ -124,12 +124,15 @@ function Stack() {
   const [items, setItems] = useState<Reminder[]>([])
   const [now, setNow] = useState(() => Date.now())
   const seen = useRef(new Set<string>())
+  // Cards hug the screen edge the window is pinned to.
+  const [atTop, setAtTop] = useState(false)
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       const [list, settings] = await Promise.all([api.reminders.list(), api.settings.get()])
       // The floating card always uses the night look, in the user's accent.
       applyAppearance({ ...settings, theme: 'dark', backdrop: 'plain' })
+      setAtTop(settings.reminderPosition.startsWith('top'))
       const fresh = list.some((r) => !seen.current.has(r.key))
       for (const r of list) seen.current.add(r.key)
       setItems(list)
@@ -137,7 +140,10 @@ function Stack() {
     }
     void load()
     const off = api.app.on('reminders:changed', () => void load())
-    const offSettings = api.app.on('settings:changed', (s) => applyAppearance({ ...s, theme: 'dark', backdrop: 'plain' }))
+    const offSettings = api.app.on('settings:changed', (s) => {
+      applyAppearance({ ...s, theme: 'dark', backdrop: 'plain' })
+      setAtTop(s.reminderPosition.startsWith('top'))
+    })
     const t = setInterval(() => setNow(Date.now()), 15_000)
     return () => {
       off()
@@ -147,7 +153,7 @@ function Stack() {
   }, [])
 
   return (
-    <div className="flex h-screen flex-col justify-end gap-[10px] overflow-hidden p-4">
+    <div className={`flex h-screen flex-col gap-[10px] overflow-hidden p-4 ${atTop ? 'justify-start' : 'justify-end'}`}>
       {items.slice(0, 4).map((r) => (
         <Card key={r.key} r={r} now={now} />
       ))}

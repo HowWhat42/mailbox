@@ -1,4 +1,5 @@
 import { BrowserWindow, screen } from 'electron'
+import { getSettings } from './settings'
 import { loadPage, PRELOAD } from './windows'
 
 const WIDTH = 392
@@ -8,6 +9,7 @@ const MARGIN = 16
 const MAX_CARDS = 4
 
 let win: BrowserWindow | null = null
+let shown = 0
 
 function ensure(): BrowserWindow {
   if (win && !win.isDestroyed()) return win
@@ -39,10 +41,11 @@ function ensure(): BrowserWindow {
 }
 
 /**
- * Shows (without stealing focus) or hides the floating reminder stack in the
- * bottom-right corner of the screen the user is working on.
+ * Shows (without stealing focus) or hides the floating reminder stack, at the
+ * spot chosen in the settings of the screen the user is working on.
  */
 export function showReminderWindow(count: number): void {
+  shown = count
   if (count === 0) {
     win?.hide()
     return
@@ -51,11 +54,21 @@ export function showReminderWindow(count: number): void {
   const cards = Math.min(count, MAX_CARDS)
   const height = cards * CARD + (cards - 1) * GAP + MARGIN * 2
   const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea
-  w.setBounds({ width: WIDTH, height, x: area.x + area.width - WIDTH, y: area.y + area.height - height })
+  const [v, h] = getSettings().reminderPosition.split('-')
+  // "center" alone is the middle of both axes.
+  const across = h ?? v
+  const x = across === 'left' ? area.x : across === 'right' ? area.x + area.width - WIDTH : area.x + Math.round((area.width - WIDTH) / 2)
+  const y = v === 'top' ? area.y : v === 'bottom' ? area.y + area.height - height : area.y + Math.round((area.height - height) / 2)
+  w.setBounds({ width: WIDTH, height, x, y })
   const reveal = (): void => {
     if (!w.isVisible()) w.showInactive()
     w.setAlwaysOnTop(true, 'screen-saver')
   }
   if (w.webContents.isLoading()) w.webContents.once('did-finish-load', reveal)
   else reveal()
+}
+
+/** Moves an open reminder stack to the newly chosen position. */
+export function placeReminderWindow(): void {
+  if (shown && win && !win.isDestroyed() && win.isVisible()) showReminderWindow(shown)
 }

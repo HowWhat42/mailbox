@@ -299,6 +299,7 @@ export interface EventInput {
 
 export type ThemeMode = 'dark' | 'light' | 'system'
 export type AccountMarker = 'stripe' | 'tag' | 'ring' | 'dot' | 'none'
+export type ReminderPosition = 'top-left' | 'top-center' | 'top-right' | 'center' | 'bottom-left' | 'bottom-center' | 'bottom-right'
 
 export interface AppSettings {
   // Général
@@ -337,6 +338,8 @@ export interface AppSettings {
   reminderSound: boolean
   /** Online meetings also ping at start time. */
   reminderAtStart: boolean
+  /** Where the floating reminder window sits on the screen. */
+  reminderPosition: ReminderPosition
 
   // Boîte de réception
   smartInbox: boolean

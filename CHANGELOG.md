@@ -4,6 +4,8 @@
 
 ## À venir
 
+- Choisissez où s'affichent les rappels d'agenda : en haut, au centre ou en bas de l'écran, à gauche, au milieu ou à droite (Réglages › Notifications).
+
 ## 0.1.7 — 17 novembre 2026
 
 - Répondre Oui, Non ou Peut-être dans une invitation Google envoie la réponse depuis Mailbox, sans ouvrir Google Agenda, quand l'agenda invité est connecté.
