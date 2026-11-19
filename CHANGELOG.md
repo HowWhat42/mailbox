@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.2.2 — 19 novembre 2026
+
 - **Envoi plus rapide** : la fenêtre se ferme dès que le message est parti ; le rangement dans « Envoyés » et la suppression du brouillon se font ensuite, en arrière-plan.
 - **Signatures avec images** : les images collées dans une signature (ou citées dans une réponse) sont jointes au message au lieu d’être recopiées dans le texte. Le message est plus léger et les images s’affichent aussi dans Gmail et Outlook.
 - **Brouillons plus discrets** : l’enregistrement automatique ne renvoie plus le brouillon quand rien n’a changé.
