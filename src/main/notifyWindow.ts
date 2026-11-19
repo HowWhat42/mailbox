@@ -1,8 +1,8 @@
-import { BrowserWindow, screen } from 'electron'
+import { BrowserWindow, screen, type Rectangle } from 'electron'
 import { getSettings } from './settings'
 import { loadPage, PRELOAD } from './windows'
 
-const WIDTH = 392
+const WIDTH = 412
 const CARD = 132
 const GAP = 10
 const MARGIN = 16
@@ -10,6 +10,9 @@ const MAX_CARDS = 4
 
 let win: BrowserWindow | null = null
 let shown = 0
+/** Where the user dragged the stack, kept until it closes; `bottom` anchors growth upward. */
+let dragged: { x: number; top: number; bottom: number } | null = null
+let placed: Rectangle | null = null
 
 function ensure(): BrowserWindow {
   if (win && !win.isDestroyed()) return win
@@ -20,7 +23,7 @@ function ensure(): BrowserWindow {
     frame: false,
     transparent: true,
     resizable: false,
-    movable: false,
+    movable: true,
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
@@ -34,6 +37,13 @@ function ensure(): BrowserWindow {
   win.setAlwaysOnTop(true, 'screen-saver')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   loadPage(win, 'notify')
+  win.on('moved', () => {
+    if (!win) return
+    const b = win.getBounds()
+    // Our own setBounds can also fire "moved": only a real drag changes the spot.
+    if (placed && b.x === placed.x && b.y === placed.y) return
+    dragged = { x: b.x, top: b.y, bottom: b.y + b.height }
+  })
   win.on('closed', () => {
     win = null
   })
@@ -47,6 +57,7 @@ function ensure(): BrowserWindow {
 export function showReminderWindow(count: number): void {
   shown = count
   if (count === 0) {
+    dragged = null
     win?.hide()
     return
   }
@@ -59,7 +70,12 @@ export function showReminderWindow(count: number): void {
   const across = h ?? v
   const x = across === 'left' ? area.x : across === 'right' ? area.x + area.width - WIDTH : area.x + Math.round((area.width - WIDTH) / 2)
   const y = v === 'top' ? area.y : v === 'bottom' ? area.y + area.height - height : area.y + Math.round((area.height - height) / 2)
-  w.setBounds({ width: WIDTH, height, x, y })
+  // Once dragged, stay there: grow from the edge the cards hug.
+  const bounds = dragged
+    ? { width: WIDTH, height, x: dragged.x, y: v === 'top' ? dragged.top : dragged.bottom - height }
+    : { width: WIDTH, height, x, y }
+  placed = bounds
+  w.setBounds(bounds)
   const reveal = (): void => {
     if (!w.isVisible()) w.showInactive()
     w.setAlwaysOnTop(true, 'screen-saver')

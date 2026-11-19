@@ -43,7 +43,7 @@ function Card({ r, now }: { r: Reminder; now: number }) {
   const startingSoon = untilStart <= 60_000
   return (
     <article
-      className="pop-in glass relative flex h-[132px] shrink-0 flex-col overflow-hidden rounded-2xl border border-line pl-5 pr-3 pt-3"
+      className="pop-in glass drag relative flex h-[132px] shrink-0 flex-col overflow-hidden rounded-2xl border border-line pl-5 pr-3 pt-3"
       style={{
         boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -18px rgb(0 0 0 / 0.9), inset 0 -18px 28px -22px rgb(120 100 255 / 0.55)'
       }}
@@ -56,12 +56,12 @@ function Card({ r, now }: { r: Reminder; now: number }) {
           onClick={() => void api.reminders.dismiss(r.key)}
           aria-label="Ignorer"
           title="Ignorer"
-          className="ml-auto grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
+          className="no-drag ml-auto grid size-6 place-items-center rounded-md text-muted hover:bg-hover hover:text-fg"
         >
           <X size={14} />
         </button>
       </div>
-      <button onClick={() => void api.reminders.open(r.key)} className="min-w-0 text-left" title="Ouvrir dans le calendrier">
+      <button onClick={() => void api.reminders.open(r.key)} className="no-drag min-w-0 text-left" title="Ouvrir dans le calendrier">
         <h1 className="truncate text-[15px] font-semibold tracking-[-0.01em] text-fg">{r.title}</h1>
         <p className="flex items-center gap-1.5 truncate text-[12px] text-muted">
           <span className="tnum">
@@ -76,7 +76,7 @@ function Card({ r, now }: { r: Reminder; now: number }) {
           )}
         </p>
       </button>
-      <div className="mt-auto flex items-center gap-1.5 pb-3">
+      <div className="no-drag mt-auto flex items-center gap-1.5 whitespace-nowrap pb-3 [&>button]:shrink-0">
         {r.meetingUrl && (
           <button
             onClick={() => void api.reminders.join(r.key)}
@@ -111,7 +111,7 @@ function Card({ r, now }: { r: Reminder; now: number }) {
         )}
         <button
           onClick={() => void api.reminders.dismiss(r.key)}
-          className="ml-auto h-8 rounded-lg px-2.5 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
+          className="ml-auto h-8 rounded-lg px-2 text-[12.5px] text-muted hover:bg-hover hover:text-fg"
         >
           Ignorer
         </button>
