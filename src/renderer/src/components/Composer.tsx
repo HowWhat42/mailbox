@@ -16,7 +16,12 @@ import { Select } from './ui/Controls'
 import { useLayout } from '../lib/layout'
 import { accountLabel } from '../lib/accounts'
 
-const AUTOSAVE_MS = 2500
+const AUTOSAVE_MS = 5000
+
+/** What a save would store: an unchanged fingerprint means the server copy is already current. */
+function fingerprint(m: OutgoingMessage): string {
+  return JSON.stringify([m.accountId, m.to, m.cc, m.bcc, m.subject, m.html, m.attachments.map((a) => [a.name, a.size])])
+}
 const TITLES: Record<ComposeDraft['kind'], string> = {
   new: 'Nouveau message',
   reply: 'Répondre',
@@ -122,6 +127,7 @@ export function Composer() {
   const dirty = useRef(false)
   const done = useRef(false)
   const inflight = useRef<Promise<void> | null>(null)
+  const savedPrint = useRef<string | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const message = useCallback((d: ComposeDraft): OutgoingMessage => {
@@ -148,11 +154,15 @@ export function Composer() {
     const html = editor.current?.innerHTML ?? d.html
     if (!dirty.current || isEmpty(d, html)) return
     dirty.current = false
+    const msg = message(d)
+    const print = fingerprint(msg)
+    if (print === savedPrint.current) return
     setSaving(true)
     const job = api.mail
-      .saveDraft(message(d))
+      .saveDraft(msg)
       .then((res) => {
         if (!res) return
+        savedPrint.current = print
         // Keep the composer's view of attachments in step with what the server now holds.
         if (useStore.getState().composer?.key === d.key) updateComposer({ draftId: res.id, attachments: res.attachments })
         latest.current = { ...latest.current, draftId: res.id, attachments: res.attachments }
@@ -325,10 +335,17 @@ export function Composer() {
       return
     setSending(true)
     clearTimeout(timer.current)
-    if (inflight.current) await inflight.current
+    // No waiting for an autosave in flight: the draft it writes is dropped once the message is sent.
     try {
-      const result = await api.mail.send(message(latest.current))
+      const msg = message(latest.current)
+      const result = await api.mail.send(msg)
       done.current = true
+      const dropLateDraft = (): void => {
+        const id = latest.current.draftId
+        if (id && id !== msg.draftId) void api.mail.deleteDraft(id).catch(() => {})
+      }
+      if (inflight.current) void inflight.current.then(dropLateDraft)
+      else dropLateDraft()
       closeComposer()
       toast(result === 'queued' ? 'Hors ligne : le message partira dès le retour de la connexion' : 'Message envoyé')
     } catch (err) {

@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto'
+import type { ImapFlow } from 'imapflow'
 import { createTransport } from 'nodemailer'
 import MailComposer from 'nodemailer/lib/mail-composer'
 import type Mail from 'nodemailer/lib/mailer'
@@ -22,18 +24,37 @@ async function attachmentsOf(list: OutgoingAttachment[]): Promise<Mail.Attachmen
   )
 }
 
+const DATA_IMAGE = /(<img\b[^<>]{0,1024}?\ssrc\s*=\s*["']?)data:([\w.+-]+\/[\w.+-]+);base64,([A-Za-z0-9+/=\s]+)/gi
+
+/**
+ * Turns `data:` images (pasted signatures, quoted inline images) into cid: parts. Base64 inside
+ * the HTML part is bloated further by quoted-printable, and Gmail/Outlook often refuse to show it.
+ */
+export function embedDataImages(html: string): { html: string; attachments: Mail.Attachment[] } {
+  const attachments: Mail.Attachment[] = []
+  const out = html.replace(DATA_IMAGE, (_match, prefix: string, contentType: string, data: string) => {
+    const cid = `${randomBytes(10).toString('hex')}@mailbox`
+    const ext = contentType.split('/')[1]?.replace(/\+.*$/, '') || 'bin'
+    attachments.push({ cid, contentType, content: Buffer.from(data, 'base64'), filename: `image-${attachments.length + 1}.${ext}` })
+    return `${prefix}cid:${cid}`
+  })
+  return { html: out, attachments }
+}
+
 async function buildMime(account: Account, msg: OutgoingMessage, { requireRecipients }: { requireRecipients: boolean }) {
+  // Drafts keep their data: images: their attachment indexes must match the user's own files.
+  const inline = requireRecipients ? embedDataImages(msg.html) : { html: msg.html, attachments: [] }
   const mail = new MailComposer({
     from: { name: account.name, address: account.email },
     to: msg.to || undefined,
     cc: msg.cc || undefined,
     bcc: msg.bcc || undefined,
     subject: msg.subject,
-    html: msg.html,
+    html: inline.html,
     text: msg.text,
     inReplyTo: msg.inReplyTo ? `<${msg.inReplyTo}>` : undefined,
     references: msg.references.length ? msg.references.map((r) => `<${r}>`).join(' ') : undefined,
-    attachments: await attachmentsOf(msg.attachments)
+    attachments: [...(await attachmentsOf(msg.attachments)), ...inline.attachments]
   }).compile()
   // Drafts keep Bcc so it survives reopening; sent mail must not leak it.
   mail.keepBcc = !requireRecipients
@@ -78,17 +99,22 @@ export async function sendMessage(msg: OutgoingMessage): Promise<void> {
     transport.close()
   }
 
-  if (msg.draftId) await deleteDraft(msg.draftId).catch(() => {})
+  // The message is gone: the rest is bookkeeping, done in the background so the composer closes now.
+  void fileSent(account, raw, msg.draftId)
+}
 
-  // Gmail files sent mail itself; other servers need an explicit copy in Sent.
+/** Drops the draft and files a copy in Sent over one connection. Failures here are not send failures. */
+async function fileSent(account: Account, raw: Buffer, draftId: string | null | undefined): Promise<void> {
+  const draft = draftId ? forgetDraft(draftId) : null
   const sent = foldersOf(account.id).find((f) => f.role === 'sent')
-  if (!sent) return
+  if (!draft && !sent) return
   await withImap(account, async (client) => {
+    if (draft) await removeOnServer(client, draft).catch(() => {})
+    if (!sent) return
+    // Gmail files sent mail itself; other servers need an explicit copy in Sent.
     if (account.kind !== 'google') await client.append(sent.path, raw, ['\\Seen'])
     await syncFolder(client, account, sent)
-  }).catch(() => {
-    // The message is sent; failing to file a copy must not report a send failure.
-  })
+  }).catch(() => {})
   emit('mail:changed', { accountId: account.id })
 }
 
@@ -102,11 +128,14 @@ export async function saveDraft(msg: OutgoingMessage): Promise<{ id: string; att
   if (!drafts) return null
   const { raw, messageId } = await buildMime(account, msg, { requireRecipients: false })
 
+  // One connection stores the new version and removes the previous one.
   await withImap(account, async (client) => {
     await client.append(drafts.path, raw, ['\\Draft', '\\Seen'])
+    // Only once the new version is stored: a failed save must still know the previous one.
+    const previous = msg.draftId ? forgetDraft(msg.draftId) : null
+    if (previous) await removeOnServer(client, previous).catch(() => {})
     await syncFolder(client, account, drafts)
   })
-  if (msg.draftId) await deleteDraft(msg.draftId).catch(() => {})
 
   const row = getDb()
     .prepare('SELECT id FROM messages WHERE folder_id = ? AND message_id_header = ? ORDER BY uid DESC LIMIT 1')
@@ -119,16 +148,31 @@ export async function saveDraft(msg: OutgoingMessage): Promise<{ id: string; att
   }
 }
 
-export async function deleteDraft(messageId: string): Promise<void> {
+interface DraftLocation {
+  uid: number
+  accountId: string
+  path: string
+}
+
+/** Removes the draft from the local database right away and says where it lives on the server. */
+function forgetDraft(messageId: string): DraftLocation | null {
   const row = getDb()
     .prepare('SELECT m.uid, m.account_id, f.path FROM messages m JOIN folders f ON f.id = m.folder_id WHERE m.id = ?')
     .get(messageId) as { uid: number; account_id: string; path: string } | undefined
-  if (!row) return
+  if (!row) return null
   getDb().prepare('DELETE FROM messages WHERE id = ?').run(messageId)
   emit('mail:changed', { accountId: row.account_id })
-  await withImap(getAccount(row.account_id), (client) =>
-    inMailbox(client, row.path, async () => {
-      await client.messageDelete([row.uid], { uid: true })
-    })
-  )
+  return { uid: row.uid, accountId: row.account_id, path: row.path }
+}
+
+function removeOnServer(client: ImapFlow, draft: DraftLocation): Promise<void> {
+  return inMailbox(client, draft.path, async () => {
+    await client.messageDelete([draft.uid], { uid: true })
+  })
+}
+
+export async function deleteDraft(messageId: string): Promise<void> {
+  const draft = forgetDraft(messageId)
+  if (!draft) return
+  await withImap(getAccount(draft.accountId), (client) => removeOnServer(client, draft))
 }
