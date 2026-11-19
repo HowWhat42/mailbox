@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.2.4 — 19 novembre 2026
+
 - **Notifications cliquables** : cliquer sur la notification d’un nouveau message ouvre ce message ; quand elle en annonce plusieurs, elle ouvre la boîte de réception.
 
 ## 0.2.3 — 19 novembre 2026
