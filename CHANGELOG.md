@@ -4,6 +4,11 @@
 
 ## À venir
 
+- **Envoi plus rapide** : la fenêtre se ferme dès que le message est parti ; le rangement dans « Envoyés » et la suppression du brouillon se font ensuite, en arrière-plan.
+- **Signatures avec images** : les images collées dans une signature (ou citées dans une réponse) sont jointes au message au lieu d’être recopiées dans le texte. Le message est plus léger et les images s’affichent aussi dans Gmail et Outlook.
+- **Brouillons plus discrets** : l’enregistrement automatique ne renvoie plus le brouillon quand rien n’a changé.
+- **Rappels d’événements** : les boutons de la carte restent sur une seule ligne, et la pile de rappels peut être déplacée à la souris ; elle reste là où vous l’avez posée jusqu’à sa fermeture.
+
 ## 0.2.1 — 19 novembre 2026
 
 - **Toutes les nouveautés d’un coup** : si vous avez plusieurs versions de retard, « Voir les nouveautés » montre les notes de chacune, de la plus récente à la vôtre.
