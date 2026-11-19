@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Mises à jour plus rapides** : Mailbox cherche une nouvelle version toutes les 15 minutes au lieu de toutes les 4 heures.
+
 ## 0.2.2 — 19 novembre 2026
 
 - **Envoi plus rapide** : la fenêtre se ferme dès que le message est parti ; le rangement dans « Envoyés » et la suppression du brouillon se font ensuite, en arrière-plan.
