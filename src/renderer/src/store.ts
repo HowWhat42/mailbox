@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   Account,
   Address,
+  AppEvents,
   AppSettings,
   Bundle,
   Folder,
@@ -130,6 +131,8 @@ interface State {
   setOutbox(open: boolean): void
   setNotesOpen(open: boolean): void
   focusEvent(focus: { eventId: string; start: number } | null): void
+  /** From a notification: the account's inbox, with the conversation open when one is given. */
+  openMail(target: AppEvents['mail:open']): Promise<void>
   setView(view: MailView): void
   setFilter(filter: MailFilter): void
   setCategory(category: MailCategory | 'all' | 'smart'): void
@@ -277,6 +280,7 @@ export const useStore = create<State>((set, get) => ({
     })
     api.app.on('accounts:changed', () => void get().refreshAccounts())
     api.app.on('calendar:open', (focus) => get().focusEvent(focus.eventId ? focus : { eventId: '', start: focus.start }))
+    api.app.on('mail:open', (target) => void get().openMail(target))
     const loadQueue = (): void => {
       void api.mail.queue().then((q) => set({ queue: { actions: q.actions, outbox: q.outbox.length } }))
     }
@@ -360,6 +364,18 @@ export const useStore = create<State>((set, get) => ({
 
   focusEvent(focus) {
     set(focus ? { calendarFocus: focus, mode: 'calendar', composer: null } : { calendarFocus: null })
+  },
+
+  async openMail({ accountId, folderId, threadId, category }) {
+    // The unified inbox, unless this account is kept out of it.
+    const inUnified = get().accounts.find((a) => a.id === accountId)?.inUnified ?? true
+    get().setView(inUnified ? { type: 'unified', role: 'inbox' } : { type: 'folder', folderId })
+    // A conversation filed in a bundle is only listed inside that bundle.
+    if (threadId && category && get().smartView() && get().bundled().includes(category)) set({ category })
+    await get().refreshMail()
+    if (!threadId) return
+    const key = threadKey({ accountId, threadId })
+    if (get().threads.some((t) => threadKey(t) === key)) get().select(key)
   },
 
   toggleSidebar() {

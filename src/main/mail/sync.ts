@@ -16,6 +16,7 @@ import { getSettings, inQuietHours } from '../settings'
 import { flushQueue, isOffline } from './queue'
 import { runOnServer } from './actions'
 import { sendMessage } from './send'
+import { showMainWindow } from '../windows'
 
 /** Newest messages pulled per folder on first sync. Older mail stays on the server. */
 const INITIAL_WINDOW = 400
@@ -375,7 +376,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
           headers['list-unsubscribe'] ?? null,
           JSON.stringify(labelsOf(msg.flags, msg.labels))
         ])
-        if (notifyNew && !seen && !actions.mute) newUnread.push({ from: from?.name || from?.address || '', subject, category })
+        if (notifyNew && !seen && !actions.mute) newUnread.push({ from: from?.name || from?.address || '', subject, category, threadId })
       }
       tx(() => {
         const insert = db.prepare(
@@ -399,7 +400,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
 
     const unseen = mailbox.exists ? ((await client.search({ seen: false }, { uid: true })) || []).length : 0
     db.prepare('UPDATE folders SET unread = ?, total = ? WHERE id = ?').run(unseen, mailbox.exists, folder.id)
-    notify(account, newUnread)
+    notify(account, folder.id, newUnread)
   })
 }
 
@@ -407,17 +408,35 @@ interface Incoming {
   from: string
   subject: string
   category: MailCategory
+  threadId: string
 }
 
-/** System notification for new mail, filtered by the user's notification preferences. */
-function notify(account: Account, items: Incoming[]): void {
+/** Shown notifications, kept alive until dismissed: a collected one loses its click handler. */
+const shown = new Set<Notification>()
+
+/**
+ * System notification for new mail, filtered by the user's notification preferences.
+ * Clicking it opens the conversation, or the inbox when it announces several messages.
+ */
+function notify(account: Account, inbox: string, items: Incoming[]): void {
   const settings = getSettings()
   if (!account.notify || !settings.mailNotifications || inQuietHours() || !Notification.isSupported()) return
   const wanted = settings.smartNotifications ? items.filter((i) => i.category === 'people' || i.category === 'invitations') : items
   if (!wanted.length) return
-  const body = wanted.length === 1 ? wanted[0].subject || '(sans objet)' : `${wanted.length} nouveaux messages`
-  const title = wanted.length === 1 ? wanted[0].from : account.name
-  new Notification({ title, body, silent: !settings.mailSound }).show()
+  const one = wanted.length === 1 ? wanted[0] : null
+  const n = new Notification({
+    title: one ? one.from : account.name,
+    body: one ? one.subject || '(sans objet)' : `${wanted.length} nouveaux messages`,
+    silent: !settings.mailSound
+  })
+  shown.add(n)
+  n.on('close', () => shown.delete(n))
+  n.on('click', () => {
+    shown.delete(n)
+    showMainWindow()
+    emit('mail:open', { accountId: account.id, folderId: inbox, ...(one && { threadId: one.threadId, category: one.category }) })
+  })
+  n.show()
 }
 
 /**

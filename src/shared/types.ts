@@ -442,6 +442,8 @@ export interface AppEvents {
   'reminders:changed': Record<string, never>
   /** Ask the main window to show an event (from a reminder). */
   'calendar:open': { eventId: string; start: number }
+  /** A new-mail notification was clicked: open the conversation, or the inbox when there is no `threadId`. */
+  'mail:open': { accountId: string; folderId: string; threadId?: string; category?: MailCategory }
   'settings:changed': AppSettings
   'queue:changed': Record<string, never>
   'update:status': UpdateStatus

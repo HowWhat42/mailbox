@@ -3,6 +3,7 @@
 Écrites pour les personnes qui utilisent Mailbox. La section « À venir » devient la prochaine version au moment de `pnpm release`, et c'est elle qui s'affiche dans l'app quand la mise à jour est prête.
 
 ## À venir
+- **Notifications cliquables** : cliquer sur la notification d’un nouveau message ouvre ce message ; quand elle en annonce plusieurs, elle ouvre la boîte de réception.
 
 ## 0.2.3 — 19 novembre 2026
 
