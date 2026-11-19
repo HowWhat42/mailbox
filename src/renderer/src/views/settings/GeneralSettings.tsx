@@ -11,7 +11,7 @@ function updateHint(u: UpdateStatus): string {
     case 'unsupported':
       return 'Version de développement : pas de mise à jour automatique.'
     case 'idle':
-      return 'Recherche automatique au démarrage, puis toutes les 4 heures.'
+      return 'Recherche automatique au démarrage, puis toutes les 15 minutes.'
     case 'checking':
       return 'Recherche en cours…'
     case 'latest':

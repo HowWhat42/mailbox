@@ -8,7 +8,7 @@ import { emit } from './events'
 import { isOffline } from './mail/queue'
 import { showMainWindow } from './windows'
 
-const CHECK_EVERY = 4 * 60 * 60_000
+const CHECK_EVERY = 15 * 60_000
 const FIRST_CHECK_AFTER = 15_000
 
 // The Mac build is not signed, and macOS only installs updates of a signed app; electron-updater
@@ -45,7 +45,7 @@ function announce(): void {
 }
 
 /**
- * Releases come from GitHub (see `build.publish`): checked at start-up and every few hours,
+ * Releases come from GitHub (see `build.publish`): checked at start-up and every 15 minutes,
  * downloaded in the background, installed on restart or on the next quit.
  * A dev build only updates when pointed at a feed with MAILBOX_UPDATE_FEED (e2e tests).
  */

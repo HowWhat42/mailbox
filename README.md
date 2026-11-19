@@ -191,7 +191,7 @@ les blockmaps) et attache une attestation de provenance
 (`gh attestation verify Mailbox-Setup-X.Y.Z.exe -R HowWhat42/mailbox`). La Release n’est publiée que si
 Windows, macOS et le snap ont réussi ; le flatpak, plus lent (~5 min), arrive quelques minutes après.
 
-Les apps installées vérifient au démarrage puis toutes les 4 heures, téléchargent en arrière-plan et
+Les apps installées vérifient au démarrage puis toutes les 15 minutes, téléchargent en arrière-plan et
 affichent « Mise à jour prête » dans la barre latérale : un redémarrage l’installe (sinon elle
 s’installe à la prochaine fermeture). Réglages › Général › Mises à jour montre la version et permet de
 chercher tout de suite. Sur Mac, l’app n’étant pas signée, macOS refuse d’installer une mise à jour :
