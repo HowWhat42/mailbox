@@ -5,6 +5,7 @@
 ## À venir
 
 - **Comptes Microsoft sur Linux** : la connexion Outlook, Hotmail ou Microsoft 365 fonctionne dans le snap et le flatpak.
+- **Suppressions en rafale** : supprimer ou archiver plusieurs messages à la suite ne les fait plus réapparaître dans la boîte de réception.
 
 ## 0.2.4 — 19 novembre 2026
 
