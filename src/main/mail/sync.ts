@@ -14,7 +14,7 @@ import { classify, parseHeaders, signalsFrom, TRIAGE_HEADERS } from './triage'
 import { knownContacts, listRules, reapplyRules } from './rules'
 import { getSettings, inQuietHours } from '../settings'
 import { flushQueue, isOffline } from './queue'
-import { runOnServer } from './actions'
+import { isInFlight, runOnServer } from './actions'
 import { sendMessage } from './send'
 import { showMainWindow } from '../windows'
 
@@ -275,7 +275,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
       const update = db.prepare('UPDATE messages SET unread = ?, flagged = ?, labels = ? WHERE folder_id = ? AND uid = ?')
       const changes: [number, number, string, number][] = []
       for await (const msg of client.fetch(`${minUid}:*`, { uid: true, flags: true, labels: gmail }, { uid: true })) {
-        if (!localSet.has(msg.uid) || !msg.flags) continue
+        // A read/star the user just did may not have reached the server yet: don't flip it back.
+        if (!localSet.has(msg.uid) || !msg.flags || isInFlight(`${folder.id}:${msg.uid}`)) continue
         changes.push([msg.flags.has('\\Seen') ? 0 : 1, msg.flags.has('\\Flagged') ? 1 : 0, JSON.stringify(labelsOf(msg.flags, msg.labels)), msg.uid])
       }
       tx(() => {
@@ -317,6 +318,8 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
         },
         { uid: true }
       )) {
+        // Deleted or moved here a moment ago, the server just hasn't done it yet: don't bring it back.
+        if (isInFlight(`${folder.id}:${msg.uid}`)) continue
         const env = msg.envelope
         const headers = parseHeaders(msg.headers?.toString('utf8'))
         const refs = idList(headers['references'])
@@ -385,7 +388,7 @@ export async function syncFolder(client: ImapFlow, account: Account, folder: Fol
              category, signals, list_unsubscribe, labels)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
-        for (const row of rows) insert.run(...(row as (string | number | null)[]))
+        for (const row of rows) if (!isInFlight(row[0] as string)) insert.run(...(row as (string | number | null)[]))
       })
       for (const [id, source] of complete) await storeBody(id, account.id, source).catch(() => undefined)
       // Replay rule actions on the server while the folder is still selected.

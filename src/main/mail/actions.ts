@@ -18,6 +18,73 @@ interface Target {
 
 const MOVE_ROLE: Partial<Record<MessageAction, FolderRole>> = { archive: 'archive', trash: 'trash', junk: 'junk' }
 
+/**
+ * Messages changed locally whose server action hasn't finished yet (id -> number of actions on it).
+ * A sync reading the folder meanwhile still sees the old server state: it must not bring them back.
+ */
+const inFlight = new Map<string, number>()
+
+export function isInFlight(messageId: string): boolean {
+  return inFlight.has(messageId)
+}
+
+function markInFlight(ids: string[], delta: 1 | -1): void {
+  for (const id of ids) {
+    const n = (inFlight.get(id) ?? 0) + delta
+    if (n > 0) inFlight.set(id, n)
+    else inFlight.delete(id)
+  }
+}
+
+interface ServerJob {
+  ops: QueuedAction[]
+  resolve: () => void
+  reject: (err: unknown) => void
+}
+
+/** Live actions waiting for the account's connection, so a burst of deletes doesn't open one connection each. */
+const serverJobs = new Map<string, ServerJob[]>()
+const draining = new Set<string>()
+
+/** Runs `ops` on the server after the account's earlier actions, batched with any that pile up meanwhile. */
+function runLive(accountId: string, ops: QueuedAction[]): Promise<void> {
+  return new Promise((resolve, reject) => {
+    serverJobs.set(accountId, [...(serverJobs.get(accountId) ?? []), { ops, resolve, reject }])
+    if (!draining.has(accountId)) void drain(accountId)
+  })
+}
+
+async function drain(accountId: string): Promise<void> {
+  draining.add(accountId)
+  try {
+    for (;;) {
+      const batch = serverJobs.get(accountId) ?? []
+      serverJobs.delete(accountId)
+      if (!batch.length) return
+      try {
+        await runOnServer(accountId, mergeOps(batch.flatMap((j) => j.ops)))
+        for (const j of batch) j.resolve()
+      } catch (err) {
+        for (const j of batch) j.reject(err)
+      }
+    }
+  } finally {
+    draining.delete(accountId)
+  }
+}
+
+/** Same action on the same folder: one IMAP command for all the uids. Order of first appearance is kept. */
+function mergeOps(ops: QueuedAction[]): QueuedAction[] {
+  const merged = new Map<string, QueuedAction>()
+  for (const op of ops) {
+    const key = `${op.folderId}\0${op.action}\0${op.destFolderId ?? ''}`
+    const prev = merged.get(key)
+    if (prev) prev.uids = [...prev.uids, ...op.uids]
+    else merged.set(key, { ...op, uids: [...op.uids] })
+  }
+  return [...merged.values()]
+}
+
 /** Applies `action` locally first (instant UI), then on the server; resyncs on failure. */
 export async function applyAction(messageIds: string[], action: MessageAction, destFolderId?: string): Promise<void> {
   if (!messageIds.length) return
@@ -37,6 +104,19 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
   })
   if (!relevant.length) return
 
+  const ids = relevant.map((t) => t.id)
+  // Released once the server is done and the sync after it has read the folder again.
+  const followUps: Promise<void>[] = []
+  markInFlight(ids, 1)
+  try {
+    await applyRelevant(relevant, action, followUps, destFolderId)
+  } finally {
+    void Promise.allSettled(followUps).then(() => markInFlight(ids, -1))
+  }
+}
+
+async function applyRelevant(relevant: Target[], action: MessageAction, followUps: Promise<void>[], destFolderId?: string): Promise<void> {
+  const db = getDb()
   tx(() => {
     for (const t of relevant) {
       if (action === 'read') db.prepare('UPDATE messages SET unread = 0 WHERE id = ?').run(t.id)
@@ -61,7 +141,7 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
       )
     ].map(([folderId, msgs]): QueuedAction => ({ kind: 'action', folderId, uids: msgs.map((m) => m.uid), action, destFolderId }))
     try {
-      await runOnServer(accountId, groups)
+      await runLive(accountId, groups)
     } catch (err) {
       if (isOffline(err)) {
         // Offline: keep the local change and replay it when the server is back.
@@ -71,7 +151,7 @@ export async function applyAction(messageIds: string[], action: MessageAction, d
       void syncAccount(accountId).catch(() => {})
       throw new Error(describeError(err), { cause: err })
     }
-    if (MOVE_ROLE[action] || action === 'move') void syncAccount(accountId).catch(() => {})
+    if (MOVE_ROLE[action] || action === 'move') followUps.push(syncAccount(accountId).catch(() => {}))
   }
 }
 

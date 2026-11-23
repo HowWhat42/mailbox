@@ -26,6 +26,7 @@
     "release": "node scripts/release.mjs",
     "test:e2e:templates": "electron-vite build && node tests/e2e-templates.mjs",
     "test:e2e:folders": "electron-vite build && node tests/e2e-folders.mjs",
+    "test:e2e:burst": "electron-vite build && node tests/e2e-burst.mjs",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "test:e2e:mcp": "electron-vite build && node tests/e2e-mcp.mjs",
     "dist:linux": "electron-vite build && electron-builder --linux"
