@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Comptes Microsoft sur Linux** : la connexion Outlook, Hotmail ou Microsoft 365 fonctionne dans le snap et le flatpak.
+
 ## 0.2.4 — 19 novembre 2026
 
 - **Notifications cliquables** : cliquer sur la notification d’un nouveau message ouvre ce message ; quand elle en annonce plusieurs, elle ouvre la boîte de réception.
