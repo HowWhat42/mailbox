@@ -1,3 +1,8 @@
 allowBuilds:
   # Squirrel installer helper pulled in by electron-builder; we ship NSIS, its build step is not needed.
   electron-winstaller: false
+
+overrides:
+  # GHSA: minimatch >=7 <11.0.1 can be slowed to a crawl by crafted patterns (electron-builder deps).
+  '@electron/universal>minimatch': ^11.0.1
+  'app-builder-lib>minimatch': ^11.0.1
