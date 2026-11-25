@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Copier une adresse en un clic droit** : sur l’expéditeur, les destinataires, les participants ou une adresse écrite dans le texte d’un message. Le nom et l’adresse de l’en-tête d’un message se sélectionnent aussi à la souris.
+
 ## 0.2.5 — 23 novembre 2026
 
 - **Comptes Microsoft sur Linux** : la connexion Outlook, Hotmail ou Microsoft 365 fonctionne dans le snap et le flatpak.
