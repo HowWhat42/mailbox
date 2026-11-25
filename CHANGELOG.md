@@ -4,6 +4,8 @@
 
 ## À venir
 
+## 0.2.6 — 25 novembre 2026
+
 - **Images dans vos messages et vos modèles** : collez une image, glissez-la dans le texte ou utilisez le bouton « Image ». Elle s’affiche dans le message chez le destinataire, pas en pièce jointe. Les photos très grandes sont réduites.
 - **Copier une image** d’un message par un clic droit, pour la coller ailleurs.
 - **Enregistrer un message en PDF** : bouton dans l’en-tête de chaque message, avec l’expéditeur, les destinataires, la date et l’historique cité.
