@@ -294,6 +294,10 @@ textarea:focus-visible,
   font-size: 14px;
   line-height: 1.6;
 }
+.prose-compose img {
+  max-width: 100%;
+  height: auto;
+}
 .prose-compose a {
   color: var(--accent);
 }

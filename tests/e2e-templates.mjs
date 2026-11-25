@@ -10,8 +10,21 @@ import { freshEtherealAccount } from './ethereal.mjs'
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
+// 2×2 PNG, pasted into editors as if from the clipboard.
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mP8z8DAwMDAxAAGAA4UAQFq4Ry+AAAAAElFTkSuQmCC'
 
 const account = await freshEtherealAccount()
+/** Pastes the PNG into an editor the way a clipboard paste does. */
+const pasteImage = (selector) =>
+  page.evaluate(
+    ([sel, b64]) => {
+      const data = new DataTransfer()
+      data.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'image.png', { type: 'image/png' }))
+      document.querySelector(sel).dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+    },
+    [selector, PNG]
+  )
+
 const app = await electron.launch({ args: ['.', `--user-data-dir=${mkdtempSync(join(tmpdir(), 'mailbox-e2e-'))}`] })
 const page = await app.firstWindow()
 const errors = []
@@ -59,10 +72,12 @@ await page.fill('input[aria-label="Objet du modèle"]', 'Devis {{Numéro}}')
 await page.click('[aria-label="Corps du modèle"]')
 await page.keyboard.type('Bonjour {{Prénom}}, avez-vous pu regarder le devis {{Numéro}} ?')
 await page.waitForSelector('[role=dialog] >> text=Champs :')
+await pasteImage('[aria-label="Corps du modèle"]')
+await page.locator('[aria-label="Corps du modèle"] img[src^="data:image/png"]').waitFor()
 await page.screenshot({ path: join(shots, 'tp-02-editor.png') })
 await page.click('[role=dialog] button:has-text("Enregistrer")')
 await page.waitForSelector('text=2 champs : Numéro, Prénom')
-step('template created; its fields listed in settings')
+step('template created with a pasted image; its fields listed in settings')
 
 // --- Insert it from the composer --------------------------------------------------------------
 await page.keyboard.press('Escape')
@@ -87,6 +102,10 @@ await page.click('[role=dialog] button:has-text("Insérer")')
 await editor.locator('text=Bonjour Léa, avez-vous pu regarder le devis D-042 ?').waitFor()
 if ((await page.inputValue('input[aria-label=Objet]')) !== 'Devis D-042') throw new Error('subject not filled from the template')
 await editor.locator('b:text-is("Camille Martin")').waitFor()
+if ((await editor.locator('img').count()) !== 1) throw new Error('the template image did not come into the message')
+await editor.locator('text=Bonjour Léa').click()
+await pasteImage('.prose-compose')
+await page.waitForFunction(() => document.querySelectorAll('.prose-compose img').length === 2)
 await page.screenshot({ path: join(shots, 'tp-03-composer.png') })
 step('template inserted with its fields filled; signature kept; Escape stays in the dialog')
 
@@ -100,7 +119,9 @@ await body.locator('text=Bonjour Léa').waitFor({ timeout: 30_000 })
 await body.locator('b:text-is("Camille Martin")').waitFor()
 await body.locator('text=Studio Nord').waitFor()
 if (await body.locator('text=/\\{\\{/').count()) throw new Error('unfilled {{field}} in the sent message')
-step('sent and received: filled text and HTML signature as designed')
+const shown = await body.locator('img').evaluateAll((imgs) => imgs.map((i) => i.naturalWidth))
+if (shown.length !== 2 || shown.some((w) => !w)) throw new Error(`inline images not shown in the received message: ${shown}`)
+step('sent and received: filled text, HTML signature and both inline images')
 
 // --- Save a message as a template -------------------------------------------------------------
 await page.keyboard.press('c')

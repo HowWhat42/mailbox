@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { ArrowLeft, FileText, Paperclip, Send, Trash2, Upload, X } from 'lucide-react'
+import { ArrowLeft, FileText, ImagePlus, Paperclip, Send, Trash2, Upload, X } from 'lucide-react'
 import type { MailTemplate, OutgoingAttachment, OutgoingMessage } from '@shared/types'
 import { api, confirmDialog, useStore, type ComposeDraft } from '../store'
 import { formatAddresses, htmlToText } from '../lib/format'
 import { SIGNATURE_ATTR, signatureBlock } from '../lib/signature'
 import { fillTemplate, templateFields } from '../lib/templates'
+import { caretAt, imageFiles, insertImages, pickImages } from '../lib/inlineImages'
 import { Menu, type MenuEntry } from './ui/Menu'
 import { Modal, Label, fieldCls } from './Modal'
 import { TemplateFill } from './TemplateEditor'
@@ -408,7 +409,15 @@ export function Composer() {
       onDrop={(e) => {
         e.preventDefault()
         setDragging(false)
-        const paths = [...e.dataTransfer.files].map((f) => api.app.pathForFile(f)).filter(Boolean)
+        // Pictures dropped on the text go in the message; anything else, or dropped elsewhere, is attached.
+        const files = [...e.dataTransfer.files]
+        const images = imageFiles(files)
+        if (editor.current && editor.current.contains(e.target as Node) && images.length === files.length) {
+          caretAt(e.clientX, e.clientY)
+          void insertImages(editor.current, images)
+          return
+        }
+        const paths = files.map((f) => api.app.pathForFile(f)).filter(Boolean)
         void api.mail.fileInfo(paths).then(addFiles)
       }}
     >
@@ -490,7 +499,20 @@ export function Composer() {
         </Row>
 
         <div className="px-4 py-5 @[600px]:px-6">
-          <div ref={editor} contentEditable className="prose-compose" data-placeholder="Écrivez votre message…" spellCheck onInput={touch} />
+          <div
+            ref={editor}
+            contentEditable
+            className="prose-compose"
+            data-placeholder="Écrivez votre message…"
+            spellCheck
+            onInput={touch}
+            onPaste={(e) => {
+              const images = imageFiles(e.clipboardData.files)
+              if (!images.length) return
+              e.preventDefault()
+              void insertImages(e.currentTarget, images)
+            }}
+          />
         </div>
 
         {draft.attachments.length > 0 && (
@@ -532,6 +554,14 @@ export function Composer() {
         </button>
         <button
           type="button"
+          onClick={() => void pickImages().then((files) => editor.current && insertImages(editor.current, files))}
+          title="Insérer une image dans le message (ou collez-la, ou glissez-la dans le texte)"
+          className="flex h-9 items-center gap-2 rounded-lg px-3 text-[13px] text-fg-2 hover:bg-hover hover:text-fg"
+        >
+          <ImagePlus size={15} /> <span className="hidden @[480px]:inline">Image</span>
+        </button>
+        <button
+          type="button"
           onClick={(e) => void openTemplates(e.currentTarget)}
           title="Insérer un modèle, ou enregistrer ce message comme modèle"
           aria-haspopup="menu"
@@ -539,12 +569,12 @@ export function Composer() {
         >
           <FileText size={15} /> <span className="hidden @[480px]:inline">Modèles</span>
         </button>
-        <span className="ml-auto hidden text-[12px] text-faint @[720px]:inline">Sélectionnez du texte pour le mettre en forme</span>
+        <span className="ml-auto hidden text-[12px] text-faint @[860px]:inline">Sélectionnez du texte pour le mettre en forme</span>
         <button
           onClick={() => void discard()}
           title="Supprimer le brouillon"
           aria-label="Supprimer le brouillon"
-          className="ml-auto grid @[720px]:ml-3 size-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-danger"
+          className="ml-auto grid @[860px]:ml-3 size-9 place-items-center rounded-lg text-muted hover:bg-hover hover:text-danger"
         >
           <Trash2 size={15} />
         </button>

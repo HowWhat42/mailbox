@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
+import { ImagePlus } from 'lucide-react'
 import type { MailTemplate, MailTemplateInput } from '@shared/types'
 import { api, useStore } from '../store'
 import { Modal, Label, fieldCls } from './Modal'
 import { RecipientInput } from './RecipientInput'
 import { SelectionToolbar } from './SelectionToolbar'
 import { templateFields } from '../lib/templates'
+import { caretAt, imageFiles, insertImages, pickImages } from '../lib/inlineImages'
 
 /** Creates or edits a template: name, subject, default recipients and a rich-text body with {{fields}}. */
 export function TemplateEditor({
@@ -84,11 +86,32 @@ export function TemplateEditor({
               spellCheck
               aria-label="Corps du modèle"
               onInput={(e) => setHtml(e.currentTarget.innerHTML)}
+              onPaste={(e) => {
+                const images = imageFiles(e.clipboardData.files)
+                if (!images.length) return
+                e.preventDefault()
+                void insertImages(e.currentTarget, images)
+              }}
+              onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+              onDrop={(e) => {
+                const images = imageFiles(e.dataTransfer.files)
+                if (!images.length) return
+                e.preventDefault()
+                caretAt(e.clientX, e.clientY)
+                void insertImages(e.currentTarget, images)
+              }}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => void pickImages().then((files) => editor.current && insertImages(editor.current, files))}
+            className="mt-1.5 flex h-7 items-center gap-1.5 rounded-md px-2 text-[12px] text-fg-2 hover:bg-hover hover:text-fg"
+          >
+            <ImagePlus size={14} /> Insérer une image
+          </button>
           <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted">
             Écrivez <code className="rounded bg-hover px-1">{'{{Prénom}}'}</code> pour un champ à remplir à chaque envoi. Sélectionnez du texte pour
-            le mettre en forme. La signature du compte s’ajoute toute seule.
+            le mettre en forme, collez ou glissez une image pour l’insérer. La signature du compte s’ajoute toute seule.
           </p>
           {fields.length > 0 && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[12px] text-fg-2">
