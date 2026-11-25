@@ -1,6 +1,6 @@
 // Reader features: folded quotes (and, as they land, images, sender security, codes…).
 // Usage: pnpm build && node tests/e2e-reader.mjs [screenshot-dir]
-import { mkdtempSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createTransport } from 'nodemailer'
@@ -10,6 +10,8 @@ import { freshEtherealAccount } from './ethereal.mjs'
 const shots = process.argv[2] ?? join(tmpdir(), 'mailbox-e2e-shots')
 mkdirSync(shots, { recursive: true })
 const step = (msg) => console.log(`• ${msg}`)
+// 1×1 PNG, shown at 48×48: an inline (cid:) image to copy.
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=='
 
 const account = await freshEtherealAccount()
 const smtp = createTransport({
@@ -24,9 +26,10 @@ await send({
   from: 'Léa Moreau <lea@example.com>',
   subject: 'Re: Budget 2027',
   html:
-    '<div dir="ltr">Parfait, on valide comme ça.</div><br>' +
+    '<div dir="ltr">Parfait, on valide comme ça.</div><img src="cid:tampon@example.com" alt="Tampon" width="48" height="48"><br>' +
     '<div class="gmail_quote gmail_quote_container"><div class="gmail_attr">Le lun. 16 nov. 2026 à 09:00, Bob a écrit :</div>' +
-    '<blockquote class="gmail_quote">Voici la proposition de budget détaillée.<br>Ligne 1<br>Ligne 2<br>Ligne 3<br>Ligne 4</blockquote></div>'
+    '<blockquote class="gmail_quote">Voici la proposition de budget détaillée.<br>Ligne 1<br>Ligne 2<br>Ligne 3<br>Ligne 4</blockquote></div>',
+  attachments: [{ filename: 'tampon.png', cid: 'tampon@example.com', content: Buffer.from(PNG, 'base64') }]
 })
 await send({
   from: 'Paul Durand <paul@example.com>',
@@ -177,6 +180,24 @@ await page.mouse.click(box.x + spot.x, box.y + spot.y, { button: 'right' })
 await page.click('[role=menuitem]:has-text("Copier l’adresse e-mail")')
 if ((await clipboard()) !== 'julie@example.com') throw new Error(`plain-text address not copied: ${await clipboard()}`)
 step('plain-text address in the body copied from the right-click menu')
+
+// Inline image: copied as a picture. Then the whole message saved as PDF (save dialog stubbed).
+await page.click('[role=option]:has-text("Budget 2027")')
+await body().locator('img[alt=Tampon]').click({ button: 'right' })
+await page.click('[role=menuitem]:has-text("Copier l’image")')
+await page.waitForSelector('text=Image copiée', { timeout: 10_000 })
+if (!(await app.evaluate((main) => main.clipboard.has('image/png')))) throw new Error('inline image not on the clipboard')
+step('inline image copied from the right-click menu')
+
+const pdfPath = join(mkdtempSync(join(tmpdir(), 'mailbox-pdf-test-')), 'budget.pdf')
+await app.evaluate((main, filePath) => {
+  main.dialog.showSaveDialog = async () => ({ canceled: false, filePath })
+}, pdfPath)
+await page.locator('article').first().locator('button[aria-label="Enregistrer en PDF"]').click()
+await page.waitForSelector('text=PDF enregistré', { timeout: 30_000 })
+const pdf = readFileSync(pdfPath)
+if (pdf.subarray(0, 5).toString() !== '%PDF-' || pdf.length < 2_000) throw new Error(`not a PDF (${pdf.length} bytes)`)
+step(`message saved as PDF (${Math.round(pdf.length / 1024)} kB)`)
 await page.screenshot({ path: join(shots, 'r-01-quotes.png') })
 
 // Folder actions: mark the whole inbox read from the list's ⋯ menu, then empty the trash.

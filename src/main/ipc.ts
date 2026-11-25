@@ -14,6 +14,7 @@ import { applyAction, emptyFolder, threadTargets } from './mail/actions'
 import { deleteDraft, saveDraft, sendOrQueue } from './mail/send'
 import { isOffline, outbox, pendingActionCount, takeFromOutbox } from './mail/queue'
 import { openAttachment, saveAttachment } from './mail/attachments'
+import { copyImage, savePdf } from './mail/export'
 import { unwatch, watch } from './mail/watch'
 import { forgetCaldav } from './calendar/caldav'
 import {
@@ -337,4 +338,6 @@ export function registerIpc(): void {
     if (/^(https?|mailto):/i.test(url)) await shell.openExternal(url)
   })
   ipcMain.handle('app:copyText', (_e, text: string) => clipboard.writeText(String(text)))
+  ipcMain.handle('app:copyImage', (_e, src: string) => copyImage(String(src)))
+  ipcMain.handle('app:savePdf', (_e, html: string, name: string) => savePdf(String(html), String(name)))
 }

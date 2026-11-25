@@ -73,6 +73,8 @@ const api = {
   app: {
     openExternal: (url: string) => ipcRenderer.invoke('app:openExternal', url),
     copyText: (text: string) => ipcRenderer.invoke('app:copyText', text),
+    copyImage: (src: string) => ipcRenderer.invoke('app:copyImage', src),
+    savePdf: (html: string, name: string) => ipcRenderer.invoke('app:savePdf', html, name),
     platform: process.platform,
     setTheme: (theme: 'dark' | 'light') => ipcRenderer.invoke('app:setTheme', theme),
     pathForFile: (file: File) => webUtils.getPathForFile(file),

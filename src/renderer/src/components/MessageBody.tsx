@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { Copy, ExternalLink, Image as ImageIcon, ImageOff, Link, TextSelect } from 'lucide-react'
-import { textToHtml } from '../lib/format'
+import type { MessageDetail } from '@shared/types'
+import { escapeHtml, formatAddresses, fullDate, textToHtml } from '../lib/format'
 import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
 import { api, useStore } from '../store'
 import { Menu, type MenuEntry } from './ui/Menu'
@@ -44,6 +45,58 @@ function buildDoc(html: string, allowRemote: boolean): string {
   foldQuotes(parsed)
   parsed.head.insertAdjacentHTML('afterbegin', base)
   return `<!doctype html>${parsed.documentElement.outerHTML}`
+}
+
+function messageSource(html: string | null, text: string | null): string {
+  return html ?? (text ? `<pre style="font:inherit;margin:0">${quoteTextMail(textToHtml(text))}</pre>` : '<p style="color:#888">(message vide)</p>')
+}
+
+/** The message as a standalone page for the PDF export: its headers on top, quoted history unfolded. */
+export function buildPrintDoc(m: MessageDetail, allowRemote: boolean): string {
+  const parsed = new DOMParser().parseFromString(buildDoc(messageSource(m.html, m.text), allowRemote), 'text/html')
+  const row = (label: string, value: string): string =>
+    value
+      ? `<tr><td style="padding:1px 12px 1px 0;color:#6b6b75;vertical-align:top;white-space:nowrap">${label}</td><td style="padding:1px 0">${escapeHtml(value)}</td></tr>`
+      : ''
+  const files = m.attachments.map((a) => a.filename).join(', ')
+  parsed.head.insertAdjacentHTML(
+    'beforeend',
+    '<style>.mb-quoted { display: block !important; } .mb-quote-toggle { display: none !important; } html { background: #fff; }</style>'
+  )
+  parsed.body.insertAdjacentHTML(
+    'afterbegin',
+    `<div style="all:initial;display:block;margin:0 0 18px;padding-bottom:14px;border-bottom:1px solid #d4d4db;font:13px/1.5 'Inter Variable',system-ui,sans-serif;color:#1d1d22">` +
+      `<div style="font-size:19px;font-weight:600;line-height:1.3;margin-bottom:10px">${escapeHtml(m.subject || '(sans objet)')}</div>` +
+      `<table style="border-collapse:collapse;font:inherit;color:inherit">` +
+      row('De', formatAddresses([m.from])) +
+      row('À', formatAddresses(m.to)) +
+      row('Cc', formatAddresses(m.cc)) +
+      row('Date', fullDate(m.date)) +
+      row('Pièces jointes', files) +
+      `</table></div>`
+  )
+  return `<!doctype html>${parsed.documentElement.outerHTML}`
+}
+
+/** Copies the picture itself. Drawn through a canvas when possible (any format, no network);
+ * a remote image taints the canvas, so the main process fetches it instead. */
+async function copyImage(img: HTMLImageElement): Promise<void> {
+  let src = img.src
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    canvas.getContext('2d')?.drawImage(img, 0, 0)
+    src = canvas.toDataURL('image/png')
+  } catch {
+    // Tainted: keep the URL.
+  }
+  try {
+    await api.app.copyImage(src)
+    useStore.getState().toast('Image copiée')
+  } catch (err) {
+    useStore.getState().toast((err as Error).message, 'error')
+  }
 }
 
 const ANSWERED: Record<string, string> = { accepted: 'Invitation acceptée', declined: 'Invitation refusée', tentative: 'Réponse envoyée : peut-être' }
@@ -93,12 +146,15 @@ function contextItems(target: Element, d: Document, x: number, y: number): MenuE
   }
 
   const img = target.closest('img') as HTMLImageElement | null
-  if (img && /^https?:/i.test(img.src)) {
+  // naturalWidth is 0 for a remote image the CSP blocked: nothing to copy.
+  if (img && img.naturalWidth > 0) {
     if (items.length) items.push('separator')
-    items.push(
-      { label: 'Ouvrir l’image', icon: ImageIcon, onSelect: () => void api.app.openExternal(img.src) },
-      { label: 'Copier l’adresse de l’image', icon: Copy, onSelect: () => void copy(img.src, 'Adresse de l’image copiée') }
-    )
+    items.push({ label: 'Copier l’image', icon: ImageIcon, onSelect: () => void copyImage(img) })
+    if (/^https?:/i.test(img.src))
+      items.push(
+        { label: 'Ouvrir l’image', icon: ExternalLink, onSelect: () => void api.app.openExternal(img.src) },
+        { label: 'Copier l’adresse de l’image', icon: Copy, onSelect: () => void copy(img.src, 'Adresse de l’image copiée') }
+      )
   }
 
   if (items.length) items.push('separator')
@@ -118,8 +174,7 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
   const allowRemote = always || allowedHere
   const frame = useRef<HTMLIFrameElement>(null)
   const [height, setHeight] = useState(80)
-  const source =
-    html ?? (text ? `<pre style="font:inherit;margin:0">${quoteTextMail(textToHtml(text))}</pre>` : '<p style="color:#888">(message vide)</p>')
+  const source = messageSource(html, text)
   const hasRemote = useMemo(() => REMOTE.test(source), [source])
   const doc = useMemo(() => buildDoc(source, allowRemote), [source, allowRemote])
 

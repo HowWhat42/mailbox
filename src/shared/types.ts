@@ -573,6 +573,10 @@ export interface MailboxApi {
   app: {
     openExternal(url: string): Promise<void>
     copyText(text: string): Promise<void>
+    /** A data: or http(s) image onto the clipboard. */
+    copyImage(src: string): Promise<void>
+    /** Prints a sanitized message document to a PDF; false when the save dialog is cancelled. */
+    savePdf(html: string, name: string): Promise<boolean>
     platform: string
     setTheme(theme: 'dark' | 'light'): Promise<void>
     /** Absolute path of a dropped File (sync, via webUtils). */

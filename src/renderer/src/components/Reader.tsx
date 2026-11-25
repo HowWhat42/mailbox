@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import {
   Archive,
+  FileDown,
   ArrowLeft,
   ChevronDown,
   FolderInput,
@@ -27,7 +28,7 @@ import { threadMenu } from '../lib/threadActions'
 import { useLayout } from '../lib/layout'
 import { Avatar } from './Avatar'
 import { AttachmentCard } from './AttachmentCard'
-import { MessageBody } from './MessageBody'
+import { buildPrintDoc, MessageBody } from './MessageBody'
 import { AccountTag } from '../lib/accounts'
 import { TriageBanner } from './TriageBanner'
 import { LabelChips } from './LabelChips'
@@ -55,6 +56,16 @@ function ToolButton({
       <Icon size={15} strokeWidth={1.75} className={active ? 'fill-amber-400 text-amber-400' : ''} />
     </button>
   )
+}
+
+/** Remote images go in only when they're allowed for every message (Réglages › Général). */
+async function savePdf(m: MessageDetail): Promise<void> {
+  const { settings, toast } = useStore.getState()
+  try {
+    if (await api.app.savePdf(buildPrintDoc(m, settings?.remoteImages === 'allow'), m.subject || 'message')) toast('PDF enregistré')
+  } catch (err) {
+    toast((err as Error).message, 'error')
+  }
 }
 
 /** "à Paul Durand, vous +2": who a message went to, short. */
@@ -211,6 +222,7 @@ function Message({
               <time className="tnum shrink-0 pt-0.5 text-[12px] text-muted @[640px]:hidden" title={fullDate(m.date)}>
                 {listDate(m.date)}
               </time>
+              {!m.unavailable && <ToolButton icon={FileDown} label="Enregistrer en PDF" onClick={() => void savePdf(m)} />}
               <ToolButton icon={Reply} label="Répondre à ce message" onClick={() => onReply(m)} />
             </header>
             {m.unavailable ? (
