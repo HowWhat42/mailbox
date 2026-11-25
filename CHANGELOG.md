@@ -4,6 +4,8 @@
 
 ## À venir
 
+- **Copier une image** d’un message par un clic droit, pour la coller ailleurs.
+- **Enregistrer un message en PDF** : bouton dans l’en-tête de chaque message, avec l’expéditeur, les destinataires, la date et l’historique cité.
 - **Copier une adresse en un clic droit** : sur l’expéditeur, les destinataires, les participants ou une adresse écrite dans le texte d’un message. Le nom et l’adresse de l’en-tête d’un message se sélectionnent aussi à la souris.
 
 ## 0.2.5 — 23 novembre 2026
