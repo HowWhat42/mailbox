@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { Copy, ExternalLink, Image as ImageIcon, ImageOff, Link, Mail, TextSelect } from 'lucide-react'
+import { Copy, ExternalLink, Image as ImageIcon, ImageOff, Link, TextSelect } from 'lucide-react'
 import { textToHtml } from '../lib/format'
 import { foldQuotes, QUOTE_CSS, quoteTextMail } from '../lib/quotes'
 import { api, useStore } from '../store'
 import { Menu, type MenuEntry } from './ui/Menu'
+import { addressAt, addressItems, copy, EMAIL } from '../lib/contactMenu'
 
 const REMOTE = /(<img[^>]+src=["']?https?:|url\(\s*["']?https?:|<image[^>]+href=["']?https?:)/i
 
@@ -59,13 +60,8 @@ async function answerInvite(href: string): Promise<void> {
   }
 }
 
-async function copy(text: string, done: string): Promise<void> {
-  await api.app.copyText(text)
-  useStore.getState().toast(done)
-}
-
 /** Right-click on a message: what applies to the link, address, image or selection under the pointer. */
-function contextItems(target: Element, d: Document): MenuEntry[] {
+function contextItems(target: Element, d: Document, x: number, y: number): MenuEntry[] {
   const items: MenuEntry[] = []
   const selected = d.getSelection()?.toString() ?? ''
   if (selected.trim()) items.push({ label: 'Copier', icon: Copy, hint: 'Ctrl C', onSelect: () => void copy(selected, 'Texte copié') })
@@ -77,16 +73,23 @@ function contextItems(target: Element, d: Document): MenuEntry[] {
     const address = decodeURIComponent(path)
     const subject = new URLSearchParams(query ?? '').get('subject') ?? ''
     if (items.length) items.push('separator')
-    items.push(
-      { label: `Écrire à ${address}`, icon: Mail, onSelect: () => useStore.getState().compose({ to: [{ name: '', address }], subject }) },
-      { label: 'Copier l’adresse e-mail', icon: Copy, onSelect: () => void copy(address, 'Adresse copiée') }
-    )
+    items.push(...addressItems({ name: '', address }, { subject }))
   } else if (/^https?:/i.test(href)) {
     if (items.length) items.push('separator')
     items.push(
       { label: 'Ouvrir le lien', icon: ExternalLink, onSelect: () => void api.app.openExternal(href) },
       { label: 'Copier le lien', icon: Link, onSelect: () => void copy(href, 'Lien copié') }
     )
+  }
+
+  // An address written as plain text: the one under the pointer, else the one in the selection.
+  if (!/^mailto:/i.test(href)) {
+    const inSelection = selected.match(EMAIL)
+    const address = addressAt(d, x, y) ?? (inSelection?.length === 1 ? inSelection[0] : null)
+    if (address) {
+      if (items.length) items.push('separator')
+      items.push(...addressItems({ name: '', address }))
+    }
   }
 
   const img = target.closest('img') as HTMLImageElement | null
@@ -156,7 +159,7 @@ export function MessageBody({ html, text }: { html: string | null; text: string 
       e.preventDefault()
       const box = frame.current?.getBoundingClientRect()
       if (!box || !(e.target instanceof d.defaultView!.Element)) return
-      setMenu({ x: box.left + e.clientX, y: box.top + e.clientY, items: contextItems(e.target, d) })
+      setMenu({ x: box.left + e.clientX, y: box.top + e.clientY, items: contextItems(e.target, d, e.clientX, e.clientY) })
     })
     // Clicks inside the frame never reach the menu's outside-click handler.
     d.addEventListener('mousedown', (e) => e.button !== 2 && setMenu(null))

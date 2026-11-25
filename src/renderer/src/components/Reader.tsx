@@ -31,7 +31,8 @@ import { MessageBody } from './MessageBody'
 import { AccountTag } from '../lib/accounts'
 import { TriageBanner } from './TriageBanner'
 import { LabelChips } from './LabelChips'
-import { Menu } from './ui/Menu'
+import { Menu, type MenuEntry } from './ui/Menu'
+import { addressItems, recipientItems, selectionItems } from '../lib/contactMenu'
 
 function ToolButton({
   icon: Icon,
@@ -127,6 +128,12 @@ function Message({
   const mine = m.from.address.toLowerCase() === me
   const name = mine ? 'Vous' : displayName(m.from)
   const to = recipientsShort(m, me)
+  const [menu, setMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
+  const openMenu = (e: React.MouseEvent, items: MenuEntry[]): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    setMenu({ anchor: { x: e.clientX, y: e.clientY }, items: [...selectionItems(), ...items] })
+  }
 
   return (
     <li data-mine={mine || undefined} className="grid grid-cols-[32px_minmax(0,1fr)] gap-x-3">
@@ -156,11 +163,33 @@ function Message({
             className={`rounded-xl px-3 py-4 shadow-card @[600px]:px-5 ${mine ? 'bg-[color-mix(in_oklch,var(--accent)_7%,var(--surface))]' : 'bg-surface'}`}
           >
             <header className="mb-4 flex items-start gap-3">
-              <button type="button" onClick={onToggle} className="min-w-0 flex-1 text-left" aria-label={`Replier le message de ${name}`}>
+              {/* Not a <button>: its text could not be selected. A drag that selects text doesn't fold the message. */}
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => !window.getSelection()?.toString() && onToggle()}
+                onKeyDown={(e) => {
+                  if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return
+                  e.preventDefault()
+                  onToggle()
+                }}
+                className="min-w-0 flex-1 cursor-default select-text text-left"
+                aria-label={`Replier le message de ${name}`}
+              >
                 <span className="flex items-baseline gap-2">
-                  <span className="truncate text-[13.5px] font-semibold">{name}</span>
+                  <span
+                    className="truncate text-[13.5px] font-semibold"
+                    onContextMenu={(e) => openMenu(e, addressItems(m.from, { accountId: m.accountId }))}
+                  >
+                    {name}
+                  </span>
                   {!mine && m.from.name && (
-                    <span className="hidden truncate text-[12px] text-muted select-text @[520px]:inline">{m.from.address}</span>
+                    <span
+                      className="hidden truncate text-[12px] text-muted @[520px]:inline"
+                      onContextMenu={(e) => openMenu(e, addressItems(m.from, { accountId: m.accountId }))}
+                    >
+                      {m.from.address}
+                    </span>
                   )}
                   {m.unread && (
                     <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-[10.5px] font-medium text-accent">Nouveau</span>
@@ -168,13 +197,14 @@ function Message({
                 </span>
                 {to && (
                   <span
-                    className="block truncate text-[12px] text-muted select-text"
+                    className="block truncate text-[12px] text-muted"
                     title={[formatAddresses(m.to), m.cc.length ? `Cc ${formatAddresses(m.cc)}` : ''].filter(Boolean).join('\n')}
+                    onContextMenu={(e) => openMenu(e, recipientItems([...m.to, ...m.cc]))}
                   >
                     {to}
                   </span>
                 )}
-              </button>
+              </div>
               <time dateTime={new Date(m.date).toISOString()} className="tnum hidden shrink-0 pt-0.5 text-[12px] text-muted @[640px]:block">
                 {fullDate(m.date)}
               </time>
@@ -207,6 +237,7 @@ function Message({
           </article>
         )}
       </div>
+      {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={240} />}
     </li>
   )
 }
@@ -255,6 +286,7 @@ function Folded({ messages, onOpen }: { messages: MessageDetail[]; onOpen: () =>
 
 function People({ people, accountId }: { people: Address[]; accountId: string }) {
   const compose = useStore((s) => s.compose)
+  const [menu, setMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
   return (
     <div>
       <h3 className="mb-2 text-[12px] font-medium text-muted">Participants</h3>
@@ -264,6 +296,11 @@ function People({ people, accountId }: { people: Address[]; accountId: string })
             key={p.address}
             onClick={() => compose({ accountId, to: [p] })}
             title={`Écrire à ${p.address}`}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setMenu({ anchor: { x: e.clientX, y: e.clientY }, items: addressItems(p, { accountId }) })
+            }}
             className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left hover:bg-hover"
           >
             <Avatar name={displayName(p)} seed={p.address} size={28} />
@@ -274,6 +311,7 @@ function People({ people, accountId }: { people: Address[]; accountId: string })
           </button>
         ))}
       </div>
+      {menu && <Menu anchor={menu.anchor} items={menu.items} onClose={() => setMenu(null)} minWidth={240} />}
     </div>
   )
 }
@@ -287,6 +325,7 @@ export function Reader() {
   // Conversation (key) whose folded older messages were opened.
   const [showAll, setShowAll] = useState<string | null>(null)
   const [more, setMore] = useState<HTMLElement | null>(null)
+  const [copyMenu, setCopyMenu] = useState<{ anchor: { x: number; y: number }; items: MenuEntry[] } | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const { single } = useLayout()
   // Reload the open conversation when the connection comes back (bodies may now download).
@@ -404,9 +443,19 @@ export function Reader() {
         </span>
         <ToolButton icon={MoreHorizontal} label="Plus d’actions" onClick={(e) => setMore(e.currentTarget)} />
         {more && <Menu anchor={more} align="end" items={threadMenu([thread])} onClose={() => setMore(null)} minWidth={230} />}
+        {copyMenu && <Menu anchor={copyMenu.anchor} items={copyMenu.items} onClose={() => setCopyMenu(null)} minWidth={180} />}
       </div>
 
-      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scroller}
+        className="min-h-0 flex-1 overflow-y-auto"
+        onContextMenu={(e) => {
+          const items = selectionItems().slice(0, 1)
+          if (!items.length) return
+          e.preventDefault()
+          setCopyMenu({ anchor: { x: e.clientX, y: e.clientY }, items })
+        }}
+      >
         <div className="mx-auto flex max-w-[1180px] gap-8 px-4 pb-16 pt-6 @[600px]:px-6">
           <div className="min-w-0 flex-1">
             <div className="mb-5 flex items-start gap-3">

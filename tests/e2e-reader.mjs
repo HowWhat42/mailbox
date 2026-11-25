@@ -31,7 +31,7 @@ await send({
 await send({
   from: 'Paul Durand <paul@example.com>',
   subject: 'Re: Horaires',
-  text: 'Oui, 14h me va.\n\nLe 15/11/2026 à 18:00, Toi a écrit :\n> On se voit à quelle heure ?\n> Je suis dispo l’après-midi.'
+  text: 'Oui, 14h me va. Pour la salle, écris à julie@example.com directement.\n\nLe 15/11/2026 à 18:00, Toi a écrit :\n> On se voit à quelle heure ?\n> Je suis dispo l’après-midi.'
 })
 // A five-message conversation over four days, one of them from us.
 const day = 86_400_000
@@ -118,6 +118,21 @@ if ((await conv.locator('article').count()) !== 1) throw new Error('only the lat
 await page.screenshot({ path: join(shots, 'r-00-conversation-read.png') })
 step('conversation timeline: newest first, summary, own message, day gaps, older messages folded')
 
+// Correspondents: the header can be selected, and a right-click copies an address.
+const clipboard = () => app.evaluate((main) => main.clipboard.readText())
+const latest = conv.locator('article').first()
+const senderAddress = latest.locator('header span:text-is("claire@example.com")')
+if ((await senderAddress.evaluate((el) => getComputedStyle(el).userSelect)) === 'none') throw new Error('sender address should be selectable')
+await senderAddress.click({ button: 'right' })
+await page.click('[role=menuitem]:has-text("Copier l’adresse e-mail")')
+if ((await clipboard()) !== 'claire@example.com') throw new Error(`sender address not copied: ${await clipboard()}`)
+await latest.locator('header span[title]').click({ button: 'right' })
+await page.locator('[role=menuitem]:has-text("marc@example.com")').waitFor()
+await page.click('[role=menuitem]:has-text("Copier les 2 adresses")')
+if (!(await clipboard()).includes('marc@example.com')) throw new Error(`recipients not copied: ${await clipboard()}`)
+if ((await conv.locator('article').count()) !== 1) throw new Error('right-clicking the header should not fold or unfold messages')
+step('sender and recipient addresses copied from the header right-click menu')
+
 const body = () => page.frameLocator('iframe[title="Contenu du message"]').last()
 const frameHeight = () =>
   page
@@ -139,6 +154,29 @@ for (const [subject, quoted, fresh] of [
   if ((await frameHeight()) <= folded) throw new Error(`${subject}: frame did not grow after unfolding`)
   step(`${subject}: quote folded behind •••, unfolds on click`)
 }
+
+// An address written as plain text in the body: right-click on it to copy it.
+const frame = page.locator('iframe[title="Contenu du message"]').last()
+const box = await frame.boundingBox()
+const spot = await frame.evaluate((f) => {
+  const d = f.contentDocument
+  const walker = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT)
+  while (walker.nextNode()) {
+    const i = walker.currentNode.textContent.indexOf('julie@example.com')
+    if (i < 0) continue
+    const r = d.createRange()
+    r.setStart(walker.currentNode, i + 3)
+    r.setEnd(walker.currentNode, i + 4)
+    const rect = r.getBoundingClientRect()
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+  }
+  return null
+})
+if (!spot) throw new Error('plain-text address not found in the body')
+await page.mouse.click(box.x + spot.x, box.y + spot.y, { button: 'right' })
+await page.click('[role=menuitem]:has-text("Copier l’adresse e-mail")')
+if ((await clipboard()) !== 'julie@example.com') throw new Error(`plain-text address not copied: ${await clipboard()}`)
+step('plain-text address in the body copied from the right-click menu')
 await page.screenshot({ path: join(shots, 'r-01-quotes.png') })
 
 // Folder actions: mark the whole inbox read from the list's ⋯ menu, then empty the trash.
